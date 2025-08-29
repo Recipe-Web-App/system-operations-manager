@@ -1,0 +1,62 @@
+# HashiCorp Vault and secret management dependencies
+# Vault client and related security tools
+
+-r base.txt
+
+# HashiCorp Vault client
+hvac>=2.0.0
+
+# Additional Vault utilities
+vault-client>=0.1.0
+
+# AWS Secrets Manager
+boto3>=1.29.0
+
+# Azure Key Vault
+azure-keyvault-secrets>=4.7.0
+azure-identity>=1.15.0
+
+# Google Cloud Secret Manager
+google-cloud-secret-manager>=2.17.0
+
+# Kubernetes secrets integration
+kubernetes>=28.1.0
+
+# Encryption utilities
+cryptography>=41.0.0
+pynacl>=1.5.0
+
+# Key derivation and password utilities
+bcrypt>=4.1.0
+passlib>=1.7.4
+
+# JWT token handling
+pyjwt>=2.8.0
+
+# Certificate management
+pyopenssl>=23.3.0
+certifi>=2023.7.22
+
+# LDAP/AD integration for authentication
+python-ldap>=3.4.0
+
+# OAuth2 and OIDC
+authlib>=1.2.0
+oauthlib>=3.2.0
+
+# Multi-factor authentication
+pyotp>=2.9.0
+qrcode>=7.4.0
+
+# Secure random generation
+secrets>=3.3.0
+
+# Key management
+cryptg>=0.4.0
+
+# Hardware security modules (optional)
+pkcs11>=0.7.0
+
+# Secret scanning and detection
+detect-secrets>=1.4.0
+truffleHog>=3.63.0
