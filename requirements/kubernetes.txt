@@ -1,0 +1,55 @@
+# Kubernetes integration dependencies
+# K8s client libraries and tools
+
+-r base.txt
+
+# Official Kubernetes Python client
+kubernetes>=28.1.0
+
+# Higher-level Kubernetes operations
+kr8s>=0.8.0
+
+# Helm integration
+python-helm>=0.2.0
+
+# kubectl wrapper
+kubectl-py>=1.29.0
+
+# Kubernetes configuration management
+kubeconfig>=1.0.1
+
+# Custom Resource Definitions
+kubernetes-asyncio>=28.1.0
+
+# Service mesh integration
+istio-client>=1.19.0
+
+# Kubernetes events
+kubernetes-events>=0.1.0
+
+# YAML processing for K8s manifests
+ruamel.yaml>=0.17.0
+
+# Kubernetes utilities
+kustomize-wrapper>=0.2.0
+
+# Pod logs and exec
+kubernetes-pod-operator>=0.1.0
+
+# Networking
+kubernetes-networking>=0.1.0
+
+# Security and RBAC
+kubernetes-rbac>=0.1.0
+
+# Operators and controllers
+kopf>=1.37.0
+
+# Kubernetes testing
+kubernetes-test>=0.1.0
+
+# ArgoCD integration (GitOps)
+argocd-python-client>=0.2.0
+
+# Flux integration (GitOps)
+flux-client>=0.1.0

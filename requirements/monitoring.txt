@@ -1,0 +1,55 @@
+# Monitoring and observability dependencies
+# Prometheus, Grafana, and metrics collection
+
+-r base.txt
+
+# Prometheus client and metrics
+prometheus-client>=0.18.0
+prometheus-api-client>=0.5.3
+
+# Grafana integration
+grafana-api>=1.0.3
+
+# Time series data
+influxdb-client>=1.38.0
+
+# Metrics collection and processing
+statsd>=4.0.1
+py-statsd>=0.1.4
+
+# OpenTelemetry
+opentelemetry-api>=1.20.0
+opentelemetry-sdk>=1.20.0
+opentelemetry-exporter-prometheus>=1.12.0
+opentelemetry-instrumentation>=0.41b0
+
+# APM and tracing
+jaeger-client>=4.8.0
+zipkin-py>=2.0.1
+
+# Log aggregation
+elasticsearch>=8.10.0
+elasticsearch-dsl>=8.9.0
+
+# Loki client
+python-logging-loki>=0.3.1
+
+# Health checks
+healthcheck>=1.3.3
+
+# System monitoring
+py3nvml>=0.2.7
+
+# Network monitoring
+scapy>=2.5.0
+
+# Database monitoring helpers
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.0
+pymongo>=4.5.0
+redis>=5.0.0
+
+# Cloud monitoring
+boto3>=1.29.0  # AWS CloudWatch
+azure-monitor>=0.4.0  # Azure Monitor
+google-cloud-monitoring>=2.16.0  # GCP Monitoring
