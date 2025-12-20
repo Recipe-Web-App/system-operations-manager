@@ -39,7 +39,7 @@ sysctl script run migrate.py --arg version=2.1.0 --arg environment=production
 """
 Example System Control script
 """
-from system_control import cli, config, logger
+from system_operations_manager import cli, config, logger
 
 def main():
     """Main script entry point."""
@@ -68,7 +68,7 @@ if __name__ == "__main__":
 ### Python API Reference
 
 ```python
-from system_control import cli, config, metrics, alerts
+from system_operations_manager import cli, config, metrics, alerts
 
 # CLI command execution
 result = cli.run("deploy api --env production")
@@ -106,7 +106,7 @@ alerts.create(
 ### Advanced API Usage
 
 ```python
-from system_control import (
+from system_operations_manager import (
     Service, Deployment, Environment,
     Health, Backup, Monitor
 )
@@ -212,7 +212,7 @@ Deployment script template
 Usage: sysctl script run deployment.py --service SERVICE --version VERSION
 """
 import argparse
-from system_control import cli, logger, config
+from system_operations_manager import cli, logger, config
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Deploy service')
@@ -351,7 +351,7 @@ event_hooks:
 """
 Pre-deployment hook script
 """
-from system_control import cli, logger, context
+from system_operations_manager import cli, logger, context
 
 def main():
     # Get deployment context
@@ -414,7 +414,7 @@ if __name__ == "__main__":
 """
 Custom CLI command extensions
 """
-from system_control import cli, register_command
+from system_operations_manager import cli, register_command
 import click
 
 @register_command()
@@ -460,7 +460,7 @@ if __name__ == "__main__":
 """
 Custom monitoring plugin
 """
-from system_control.plugin import Plugin, hook
+from system_operations_manager.plugin import Plugin, hook
 import time
 
 class MonitoringPlugin(Plugin):
@@ -517,7 +517,7 @@ Disaster recovery automation workflow
 """
 import asyncio
 from datetime import datetime
-from system_control import cli, logger, metrics
+from system_operations_manager import cli, logger, metrics
 
 class DisasterRecoveryWorkflow:
     def __init__(self, primary_region, backup_region):
@@ -688,7 +688,7 @@ scripting:
   # Import settings
   imports:
     allowed_modules:
-      - "system_control"
+      - "system_operations_manager"
       - "requests"
       - "pyyaml"
       - "jinja2"
@@ -718,7 +718,7 @@ scripting:
 
 ```python
 # Security best practices
-from system_control import cli, secrets
+from system_operations_manager import cli, secrets
 
 # Don't hardcode secrets
 # Bad:
@@ -766,13 +766,13 @@ sysctl script validate deployment.py
 ```python
 # Import errors
 try:
-    from system_control import cli
+    from system_operations_manager import cli
 except ImportError:
     print("Run script with: sysctl script run <script.py>")
     sys.exit(1)
 
 # Context issues
-from system_control import context
+from system_operations_manager import context
 
 # Check if running in System Control context
 if not context.is_active():
@@ -780,7 +780,7 @@ if not context.is_active():
     sys.exit(1)
 
 # Permission issues
-from system_control import permissions
+from system_operations_manager import permissions
 
 if not permissions.can_deploy("production"):
     logger.error("Insufficient permissions for production deployment")

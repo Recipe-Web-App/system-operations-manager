@@ -9,9 +9,9 @@ practices for extending the system control framework.
 
 ```python
 # plugins/service_manager/plugin.py
-from system_control.plugin import CommandPlugin
-from system_control.decorators import command, group, option, argument
-from system_control.exceptions import PluginError
+from system_operations_manager.plugin import CommandPlugin
+from system_operations_manager.decorators import command, group, option, argument
+from system_operations_manager.exceptions import PluginError
 from rich.console import Console
 from rich.table import Table
 from rich.progress import Progress
@@ -347,10 +347,10 @@ plugin = ServiceManagerPlugin()
 
 ```python
 # plugins/slack_integration/plugin.py
-from system_control.plugin import IntegrationPlugin, ConfigPlugin
-from system_control.decorators import command, option, argument
-from system_control.events import event_handler
-from system_control.exceptions import PluginError, ConfigurationError
+from system_operations_manager.plugin import IntegrationPlugin, ConfigPlugin
+from system_operations_manager.decorators import command, option, argument
+from system_operations_manager.events import event_handler
+from system_operations_manager.exceptions import PluginError, ConfigurationError
 from marshmallow import fields, validate
 import requests
 import json
@@ -804,10 +804,10 @@ plugin = SlackIntegrationPlugin()
 
 ```python
 # plugins/database_pool/plugin.py
-from system_control.plugin import ServicePlugin
-from system_control.services import BaseService
-from system_control.decorators import command, option, argument
-from system_control.exceptions import PluginError
+from system_operations_manager.plugin import ServicePlugin
+from system_operations_manager.services import BaseService
+from system_operations_manager.decorators import command, option, argument
+from system_operations_manager.exceptions import PluginError
 import asyncio
 import asyncpg
 import time
@@ -1135,10 +1135,10 @@ plugin = DatabasePoolPlugin()
 
 ```python
 # plugins/custom_metrics/plugin.py
-from system_control.plugin import CommandPlugin
-from system_control.decorators import command, option, argument
-from system_control.monitoring import MetricCollector, MetricRegistry
-from system_control.exceptions import PluginError
+from system_operations_manager.plugin import CommandPlugin
+from system_operations_manager.decorators import command, option, argument
+from system_operations_manager.monitoring import MetricCollector, MetricRegistry
+from system_operations_manager.exceptions import PluginError
 import psutil
 import requests
 import time

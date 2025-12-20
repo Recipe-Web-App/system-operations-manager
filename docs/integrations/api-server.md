@@ -386,7 +386,7 @@ websocket_channels:
 ### Python Client
 
 ```python
-# clients/python/system_control_client.py
+# clients/python/system_operations_manager_client.py
 import requests
 import asyncio
 import websockets

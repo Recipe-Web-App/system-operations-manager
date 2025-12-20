@@ -443,7 +443,7 @@ dashboards:
       - title: "Error Rate by Environment"
         type: "singlestat"
         query: |
-          sum(rate(http_requests_total{status=~"5.."}[5m])) by (environment) / 
+          sum(rate(http_requests_total{status=~"5.."}[5m])) by (environment) /
           sum(rate(http_requests_total[5m])) by (environment) * 100
 
   environment_details:
@@ -478,7 +478,7 @@ alerts:
     - name: "EnvironmentDrift"
       condition: |
         abs(
-          avg(cpu_usage{environment="production"}) - 
+          avg(cpu_usage{environment="production"}) -
           avg(cpu_usage{environment="staging"})
         ) > 0.3
       annotations:

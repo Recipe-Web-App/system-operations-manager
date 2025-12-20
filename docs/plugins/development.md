@@ -20,8 +20,8 @@ Plugin development features:
 
 ```python
 # plugins/my_plugin.py
-from system_control.plugin import Plugin, CommandPlugin, ConfigPlugin
-from system_control.decorators import command, option, argument
+from system_operations_manager.plugin import Plugin, CommandPlugin, ConfigPlugin
+from system_operations_manager.decorators import command, option, argument
 from rich.console import Console
 
 class MyPlugin(CommandPlugin):
@@ -72,8 +72,8 @@ __all__ = ["plugin"]
 Add new CLI commands to the system.
 
 ```python
-from system_control.plugin import CommandPlugin
-from system_control.decorators import command, group, option, argument
+from system_operations_manager.plugin import CommandPlugin
+from system_operations_manager.decorators import command, group, option, argument
 
 class DeploymentPlugin(CommandPlugin):
     name = "advanced-deploy"
@@ -118,8 +118,8 @@ class DeploymentPlugin(CommandPlugin):
 Extend configuration management and validation.
 
 ```python
-from system_control.plugin import ConfigPlugin
-from system_control.config import ConfigSchema
+from system_operations_manager.plugin import ConfigPlugin
+from system_operations_manager.config import ConfigSchema
 from marshmallow import fields, validate
 
 class DatabaseConfigPlugin(ConfigPlugin):
@@ -167,8 +167,8 @@ class DatabaseConfigPlugin(ConfigPlugin):
 Extend system services with new functionality.
 
 ```python
-from system_control.plugin import ServicePlugin
-from system_control.services import BaseService
+from system_operations_manager.plugin import ServicePlugin
+from system_operations_manager.services import BaseService
 
 class CacheService(BaseService):
     """Redis cache service integration."""
@@ -217,8 +217,8 @@ class CachePlugin(ServicePlugin):
 Connect with external systems and tools.
 
 ```python
-from system_control.plugin import IntegrationPlugin
-from system_control.monitoring import MetricCollector
+from system_operations_manager.plugin import IntegrationPlugin
+from system_operations_manager.monitoring import MetricCollector
 
 class DatadogPlugin(IntegrationPlugin):
     name = "datadog"
@@ -362,7 +362,7 @@ class Plugin:
 ### Command Decorators
 
 ```python
-from system_control.decorators import (
+from system_operations_manager.decorators import (
     command, group, option, argument,
     pass_context, pass_config, pass_services
 )
@@ -408,7 +408,7 @@ def show_status(ctx, config, services):
 ### Configuration Integration
 
 ```python
-from system_control.config import ConfigValidator
+from system_operations_manager.config import ConfigValidator
 from marshmallow import Schema, fields, validate
 
 class PluginConfigSchema(Schema):
@@ -448,7 +448,7 @@ class MyPlugin(ConfigPlugin):
 # tests/test_my_plugin.py
 import pytest
 from unittest.mock import Mock, patch
-from system_control.testing import PluginTestCase
+from system_operations_manager.testing import PluginTestCase
 from plugins.my_plugin import MyPlugin
 
 class TestMyPlugin(PluginTestCase):
@@ -499,7 +499,7 @@ class TestMyPlugin(PluginTestCase):
 ### Mock Services
 
 ```python
-from system_control.testing import MockService
+from system_operations_manager.testing import MockService
 
 class TestServiceIntegration(PluginTestCase):
     def setUp(self):
@@ -530,7 +530,7 @@ class TestServiceIntegration(PluginTestCase):
 
 ```python
 import pytest
-from system_control.testing import SystemTestCase
+from system_operations_manager.testing import SystemTestCase
 
 class TestPluginIntegration(SystemTestCase):
     """Test plugin integration with full system."""
@@ -592,7 +592,7 @@ class BadPlugin(CommandPlugin):
 ### Error Handling
 
 ```python
-from system_control.exceptions import PluginError, ConfigurationError
+from system_operations_manager.exceptions import PluginError, ConfigurationError
 
 class MyPlugin(CommandPlugin):
     @command("risky-operation")
@@ -627,7 +627,7 @@ class MyPlugin(CommandPlugin):
 ### Configuration Management
 
 ```python
-from system_control.config import get_config_value
+from system_operations_manager.config import get_config_value
 
 class ConfigurablePlugin(CommandPlugin):
     def get_setting(self, key: str, default=None):
@@ -715,7 +715,7 @@ class ReloadablePlugin(CommandPlugin):
 
 ```python
 import asyncio
-from system_control.plugin import AsyncCommandPlugin
+from system_operations_manager.plugin import AsyncCommandPlugin
 
 class AsyncPlugin(AsyncCommandPlugin):
     """Plugin with async command support."""
@@ -752,7 +752,7 @@ class AsyncPlugin(AsyncCommandPlugin):
 ### Plugin Communication
 
 ```python
-from system_control.events import EventBus, event_handler
+from system_operations_manager.events import EventBus, event_handler
 
 class CommunicatingPlugin(CommandPlugin):
     """Plugin that communicates via events."""
@@ -835,7 +835,7 @@ setup(
     },
 
     entry_points={
-        "system_control.plugins": [
+        "system_operations_manager.plugins": [
             "my-plugin = my_plugin:plugin"
         ]
     },
@@ -863,7 +863,7 @@ homepage: "https://github.com/your-username/system-control-my-plugin"
 license: "MIT"
 
 compatibility:
-  system_control: ">=2.0.0,<3.0.0"
+  system_operations_manager: ">=2.0.0,<3.0.0"
   python: ">=3.8"
 
 dependencies:
@@ -917,7 +917,7 @@ events:
 ```python
 # Debug plugin loading
 import logging
-logging.getLogger("system_control.plugins").setLevel(logging.DEBUG)
+logging.getLogger("system_operations_manager.plugins").setLevel(logging.DEBUG)
 
 # Check plugin status
 sysctl plugins status my-plugin
