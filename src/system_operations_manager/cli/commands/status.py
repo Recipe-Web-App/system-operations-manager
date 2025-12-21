@@ -4,21 +4,18 @@ from __future__ import annotations
 
 import platform
 from datetime import datetime
-from pathlib import Path
 
 import structlog
 import typer
+from pydantic import ValidationError
 from rich.console import Console
 from rich.table import Table
 
 from system_operations_manager import __version__
+from system_operations_manager.core.config.models import CONFIG_FILE, load_config
 
 console = Console()
 logger = structlog.get_logger()
-
-# XDG-compliant config location
-CONFIG_DIR = Path.home() / ".config" / "ops"
-CONFIG_FILE = CONFIG_DIR / "config.yaml"
 
 
 def status(
@@ -50,12 +47,21 @@ def status(
 
     console.print(table)
 
-    # Check for configuration
-    if CONFIG_FILE.exists():
-        console.print(f"\n[green]Configuration found:[/green] {CONFIG_FILE}")
-    else:
-        console.print(
-            "\n[yellow]No configuration found.[/yellow] Run [bold]ops init[/bold] to create one."
-        )
+    # Check and validate configuration
+    try:
+        config = load_config()
+        if config:
+            console.print(f"\n[green]Configuration valid:[/green] {CONFIG_FILE}")
+            if verbose:
+                console.print(f"  Environment: {config.environment}")
+                console.print(f"  Plugins: {', '.join(config.plugins.enabled)}")
+        else:
+            console.print(
+                "\n[yellow]No configuration found.[/yellow] Run [bold]ops init[/bold] to create one."
+            )
+    except (ValidationError, ValueError) as e:
+        console.print(f"\n[red]Configuration invalid:[/red] {CONFIG_FILE}")
+        console.print(f"  Error: {e}")
+        console.print("  Run [bold]ops init --force[/bold] to regenerate.")
 
     logger.info("Status check complete")

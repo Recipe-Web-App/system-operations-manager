@@ -103,6 +103,29 @@ def _verify_ops_executable(venv_bin: Path) -> bool:
     return False
 
 
+def _install_shell_completion(venv_bin: Path) -> bool:
+    """Install shell completion for zsh using Typer's built-in support."""
+    ops_path = venv_bin / "ops"
+    try:
+        result = subprocess.run(
+            [str(ops_path), "--install-completion", "zsh"],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            console.print("[green]OK:[/green] Shell completion installed for zsh")
+            return True
+        # Typer may return non-zero if already installed, which is fine
+        if "already" in result.stderr.lower() or "already" in result.stdout.lower():
+            console.print("[green]OK:[/green] Shell completion already installed")
+            return True
+        console.print(f"[yellow]WARN:[/yellow] Could not install shell completion: {result.stderr}")
+        return False
+    except Exception as e:
+        console.print(f"[yellow]WARN:[/yellow] Could not install shell completion: {e}")
+        return False
+
+
 def install() -> None:
     """Install system-operations-cli and add to PATH."""
     console.print("\n[bold]Installing system-operations-cli...[/bold]\n")
@@ -127,12 +150,16 @@ def install() -> None:
     if not _add_path_entry(venv_bin):
         raise typer.Exit(1)
 
+    # Step 5: Install shell completion
+    _install_shell_completion(venv_bin)
+
     # Success message
     console.print("\n[bold green]Installation complete![/bold green]\n")
     console.print("To start using 'ops', either:")
     console.print(f"  1. Run: [cyan]source {SHELL_RC}[/cyan]")
     console.print("  2. Open a new terminal window\n")
-    console.print("Then verify with: [cyan]ops --version[/cyan]\n")
+    console.print("Then verify with: [cyan]ops --version[/cyan]")
+    console.print("Tab completion: [cyan]ops <TAB>[/cyan]\n")
 
 
 def uninstall() -> None:
