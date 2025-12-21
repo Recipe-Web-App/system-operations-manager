@@ -13,14 +13,14 @@ app = typer.Typer(help="Initialize a new system control project.")
 console = Console()
 logger = structlog.get_logger()
 
+# XDG-compliant config location
+CONFIG_DIR = Path.home() / ".config" / "ops"
+CONFIG_FILE = CONFIG_DIR / "config.yaml"
+
 
 @app.callback(invoke_without_command=True)
 def init(
     ctx: typer.Context,
-    path: Path | None = typer.Argument(
-        None,
-        help="Path to initialize the project in. Defaults to current directory.",
-    ),
     template: str = typer.Option(
         "default",
         "--template",
@@ -34,17 +34,17 @@ def init(
         help="Overwrite existing configuration.",
     ),
 ) -> None:
-    """Initialize a new system control project configuration."""
+    """Initialize system control configuration in ~/.config/ops/."""
     if ctx.invoked_subcommand is not None:
         return
 
-    target_path = path or Path.cwd()
-    config_file = target_path / ".ops.yaml"
+    logger.info("Initializing config", path=str(CONFIG_FILE), template=template)
 
-    logger.info("Initializing project", path=str(target_path), template=template)
+    # Create config directory if it doesn't exist
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
-    if config_file.exists() and not force:
-        console.print(f"[yellow]Configuration already exists at {config_file}[/yellow]")
+    if CONFIG_FILE.exists() and not force:
+        console.print(f"[yellow]Configuration already exists at {CONFIG_FILE}[/yellow]")
         console.print("Use --force to overwrite.")
         raise typer.Exit(code=1)
 
@@ -69,18 +69,18 @@ plugins:
     - core
 """
 
-    config_file.write_text(default_config)
+    CONFIG_FILE.write_text(default_config)
 
     console.print(
         Panel(
-            f"[green]Project initialized successfully![/green]\n\n"
-            f"Configuration created at: {config_file}\n\n"
+            f"[green]Configuration initialized successfully![/green]\n\n"
+            f"Configuration created at: {CONFIG_FILE}\n\n"
             f"Next steps:\n"
-            f"  1. Edit {config_file} to customize your configuration\n"
+            f"  1. Edit {CONFIG_FILE} to customize your configuration\n"
             f"  2. Run [bold]ops status[/bold] to verify setup",
             title="ops init",
             border_style="green",
         )
     )
 
-    logger.info("Project initialized", config_file=str(config_file))
+    logger.info("Configuration initialized", config_file=str(CONFIG_FILE))

@@ -16,6 +16,10 @@ from system_operations_manager import __version__
 console = Console()
 logger = structlog.get_logger()
 
+# XDG-compliant config location
+CONFIG_DIR = Path.home() / ".config" / "ops"
+CONFIG_FILE = CONFIG_DIR / "config.yaml"
+
 
 def status(
     verbose: bool = typer.Option(
@@ -47,9 +51,8 @@ def status(
     console.print(table)
 
     # Check for configuration
-    config_file = Path.cwd() / ".ops.yaml"
-    if config_file.exists():
-        console.print("\n[green]Configuration found:[/green]", str(config_file))
+    if CONFIG_FILE.exists():
+        console.print(f"\n[green]Configuration found:[/green] {CONFIG_FILE}")
     else:
         console.print(
             "\n[yellow]No configuration found.[/yellow] Run [bold]ops init[/bold] to create one."
