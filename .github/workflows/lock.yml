@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Lock closed issues
-        uses: dessant/lock-threads@v5
+        uses: dessant/lock-threads@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           issue-inactive-days: 90
@@ -30,7 +30,7 @@ jobs:
           exclude-any-issue-labels: "security"
 
       - name: Lock closed PRs
-        uses: dessant/lock-threads@v5
+        uses: dessant/lock-threads@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           pr-inactive-days: 60
