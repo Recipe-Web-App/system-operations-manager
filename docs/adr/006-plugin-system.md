@@ -243,7 +243,7 @@ my-plugin/
 plugin_info = {
     "name": "advanced-monitoring",
     "version": "2.1.0",
-    "system_control_version": ">=3.0.0,<4.0.0",
+    "system_operations_manager_version": ">=3.0.0,<4.0.0",
     "python_version": ">=3.8"
 }
 ```

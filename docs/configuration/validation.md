@@ -190,7 +190,7 @@ rules:
     level: "error"
     applies_to: ["production"]
     condition: |
-      environment.type == "production" && 
+      environment.type == "production" &&
       any(services.*.replicas < 2)
     message: "Production services must have at least 2 replicas for high availability"
 

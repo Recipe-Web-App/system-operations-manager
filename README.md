@@ -93,24 +93,50 @@ Comprehensive documentation is available in the `docs/` directory:
 ## 🚀 Quick Start
 
 ```bash
-# Install the CLI
-pip install -e .
+# Install dependencies with Poetry
+poetry install
+
+# Add ops to PATH (makes 'ops' available globally)
+poetry run ops-install
+source ~/.zshrc  # or open a new terminal
 
 # Initialize configuration
-sysctl init
+ops init
 
 # Check system status
-sysctl status
+ops status
 
-# Deploy a service
-sysctl deploy myservice --env production
-
-# Start interactive mode
-sysctl interactive
-
-# View real-time dashboard
-sysctl dashboard
+# Show version
+ops --version
 ```
+
+## 📖 Available Commands
+
+### Global Options
+
+| Option            | Description           |
+| ----------------- | --------------------- |
+| `--version`, `-V` | Show version and exit |
+| `--verbose`, `-v` | Enable verbose output |
+| `--debug`         | Enable debug mode     |
+| `--help`          | Show help message     |
+
+### Commands
+
+| Command                      | Description                                  |
+| ---------------------------- | -------------------------------------------- |
+| `ops status`                 | Show system status and health information    |
+| `ops status --verbose`       | Show detailed status with architecture info  |
+| `ops init`                   | Initialize configuration at `~/.config/ops/` |
+| `ops init --force`           | Overwrite existing configuration             |
+| `ops init --template <name>` | Use a specific template                      |
+
+### Installation Scripts
+
+| Command                    | Description                 |
+| -------------------------- | --------------------------- |
+| `poetry run ops-install`   | Add `ops` to your PATH      |
+| `poetry run ops-uninstall` | Remove `ops` from your PATH |
 
 ## 🤝 Contributing
 

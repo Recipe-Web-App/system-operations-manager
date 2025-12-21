@@ -149,7 +149,7 @@ data:
         Log_Level     info
         Daemon        off
         Parsers_File  parsers.conf
-        
+
     [INPUT]
         Name              tail
         Path              /var/log/containers/*.log
@@ -158,7 +158,7 @@ data:
         Refresh_Interval  5
         Mem_Buf_Limit     50MB
         Skip_Long_Lines   On
-        
+
     [FILTER]
         Name                kubernetes
         Match               kube.*
@@ -168,7 +168,7 @@ data:
         Merge_Log           On
         K8S-Logging.Parser  On
         K8S-Logging.Exclude Off
-        
+
     [OUTPUT]
         Name            es
         Match           *
@@ -336,9 +336,9 @@ log_alerts:
   high_error_rate:
     name: "High Error Rate"
     query: |
-      SELECT count(*) 
-      FROM logs 
-      WHERE level = 'ERROR' 
+      SELECT count(*)
+      FROM logs
+      WHERE level = 'ERROR'
         AND timestamp > now() - interval '5 minutes'
         AND service = '{{ service }}'
     threshold: 10
@@ -348,8 +348,8 @@ log_alerts:
   database_connection_errors:
     name: "Database Connection Errors"
     query: |
-      SELECT count(*) 
-      FROM logs 
+      SELECT count(*)
+      FROM logs
       WHERE message LIKE '%database connection%'
         AND level = 'ERROR'
         AND timestamp > now() - interval '2 minutes'
@@ -361,7 +361,7 @@ log_alerts:
     name: "Suspicious Login Activity"
     query: |
       SELECT client_ip, count(*) as attempts
-      FROM logs 
+      FROM logs
       WHERE message LIKE '%failed login%'
         AND timestamp > now() - interval '10 minutes'
       GROUP BY client_ip
@@ -374,7 +374,7 @@ log_alerts:
     name: "Potential Memory Leak"
     query: |
       SELECT service, avg(memory_usage_percent) as avg_memory
-      FROM logs 
+      FROM logs
       WHERE message LIKE '%memory usage%'
         AND timestamp > now() - interval '30 minutes'
       GROUP BY service

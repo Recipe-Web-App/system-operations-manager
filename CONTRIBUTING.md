@@ -51,7 +51,7 @@ information for contributors.
 ```text
 system-control/
 ├── src/
-│   └── system_control/        # Main package
+│   └── system_operations_manager/        # Main package
 │       ├── cli/              # CLI command definitions
 │       ├── core/             # Core engine and plugin system
 │       ├── services/         # Business logic services
@@ -128,7 +128,7 @@ pre-commit run --all-files
 pytest
 
 # Run with coverage
-pytest --cov=system_control
+pytest --cov=system_operations_manager
 
 # Run specific test file
 pytest tests/test_deployment.py
@@ -199,14 +199,14 @@ make serve
 1. **Create plugin directory**
 
    ```bash
-   mkdir src/system_control/plugins/my_plugin
-   touch src/system_control/plugins/my_plugin/__init__.py
+   mkdir src/system_operations_manager/plugins/my_plugin
+   touch src/system_operations_manager/plugins/my_plugin/__init__.py
    ```
 
 2. **Implement plugin interface**
 
    ```python
-   from system_control.core.plugin import SystemControlPlugin
+   from system_operations_manager.core.plugin import SystemControlPlugin
 
    class MyPlugin(SystemControlPlugin):
        def initialize(self, config):
@@ -222,8 +222,8 @@ make serve
    Update `pyproject.toml`:
 
    ```toml
-   [project.entry-points."system_control.plugins"]
-   my_plugin = "system_control.plugins.my_plugin:MyPlugin"
+   [project.entry-points."system_operations_manager.plugins"]
+   my_plugin = "system_operations_manager.plugins.my_plugin:MyPlugin"
    ```
 
 4. **Write tests**

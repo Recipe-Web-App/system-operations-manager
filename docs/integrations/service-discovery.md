@@ -152,7 +152,7 @@ sysctl discovery watch api --follow
 
 ```python
 # Example: Python service registration
-from system_control.discovery import ServiceRegistry
+from system_operations_manager.discovery import ServiceRegistry
 import atexit
 
 # Initialize service registry

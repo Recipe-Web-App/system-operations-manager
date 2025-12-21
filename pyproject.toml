@@ -1,19 +1,16 @@
 [build-system]
-requires = ["setuptools>=68.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
 
-[project]
-name = "system-control-cli"
+[tool.poetry]
+name = "system-operations-cli"
 version = "0.1.0"
 description = "A comprehensive Python-based CLI for managing distributed systems, deployments, monitoring, and infrastructure operations."
 readme = "README.md"
-license = {text = "MIT"}
-authors = [
-    {name = "Your Name", email = "your.email@company.com"}
-]
-maintainers = [
-    {name = "Your Name", email = "your.email@company.com"}
-]
+license = "MIT"
+authors = ["jsamuelsen11 <jsamuelsen11@gmail.com>"]
+maintainers = ["jsamuelsen11 <jsamuelsen11@gmail.com>"]
+packages = [{include = "system_operations_manager", from = "src"}]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
@@ -22,167 +19,140 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: System :: Systems Administration",
     "Topic :: System :: Monitoring",
     "Topic :: Utilities",
 ]
 keywords = [
-    "cli", "devops", "deployment", "monitoring", "kubernetes", 
+    "cli", "devops", "deployment", "monitoring", "kubernetes",
     "infrastructure", "distributed-systems", "automation"
 ]
-requires-python = ">=3.8"
 
-# Core dependencies
-dependencies = [
-    "click>=8.1.0",
-    "typer>=0.9.0",
-    "rich>=13.0.0",
-    "inquirerpy>=0.3.4",
-    "sh>=2.0.0",
-    "plumbum>=1.8.0",
-    "pydantic>=2.0.0",
-    "PyYAML>=6.0",
-    "httpx>=0.25.0",
-    "jinja2>=3.1.0",
-    "structlog>=23.0.0",
-    "cryptography>=41.0.0",
-    "jsonschema>=4.17.0",
-    "psutil>=5.9.0",
-    "pluggy>=1.3.0",
+[tool.poetry.urls]
+Homepage = "https://github.com/Recipe-Web-App/system-control?tab=readme-ov-file#system-control-cli"
+Documentation = "https://github.com/Recipe-Web-App/system-control/tree/main/docs"
+Repository = "https://github.com/Recipe-Web-App/system-control"
+"Bug Tracker" = "https://github.com/Recipe-Web-App/system-control/issues"
+Changelog = "https://github.com/Recipe-Web-App/system-control/blob/main/CHANGELOG.md"
+
+[tool.poetry.scripts]
+ops = "system_operations_manager.cli.main:cli"
+ops-install = "system_operations_manager.cli.install:install"
+ops-uninstall = "system_operations_manager.cli.install:uninstall"
+
+[tool.poetry.plugins."system_operations_manager.plugins"]
+core = "system_operations_manager.plugins.core:CorePlugin"
+
+[tool.poetry.dependencies]
+python = ">=3.14,<4.0"
+click = ">=8.1.0"
+typer = ">=0.9.0"
+rich = ">=13.0.0"
+inquirerpy = ">=0.3.4"
+sh = ">=2.0.0"
+plumbum = ">=1.8.0"
+pydantic = ">=2.0.0"
+pyyaml = ">=6.0"
+httpx = ">=0.25.0"
+jinja2 = ">=3.1.0"
+structlog = ">=23.0.0"
+cryptography = ">=41.0.0"
+jsonschema = ">=4.17.0"
+psutil = ">=5.9.0"
+pluggy = ">=1.3.0"
+cloup = {version = ">=3.0.0", optional = true}
+cement = {version = ">=3.0.10", optional = true}
+textual = {version = ">=0.45.0", optional = true}
+blessed = {version = ">=1.20.0", optional = true}
+prompt-toolkit = {version = ">=3.0.40", optional = true}
+kubernetes = {version = ">=28.1.0", optional = true}
+kr8s = {version = ">=0.8.0", optional = true}
+ruamel-yaml = {version = ">=0.17.0", optional = true}
+prometheus-client = {version = ">=0.18.0", optional = true}
+grafana-api = {version = ">=1.0.3", optional = true}
+elasticsearch = {version = ">=8.10.0", optional = true}
+opentelemetry-api = {version = ">=1.20.0", optional = true}
+opentelemetry-sdk = {version = ">=1.20.0", optional = true}
+hvac = {version = ">=2.0.0", optional = true}
+boto3 = {version = ">=1.29.0", optional = true}
+azure-keyvault-secrets = {version = ">=4.7.0", optional = true}
+azure-identity = {version = ">=1.15.0", optional = true}
+google-cloud-secret-manager = {version = ">=2.17.0", optional = true}
+pyjwt = {version = ">=2.8.0", optional = true}
+
+[tool.poetry.extras]
+cli = ["cloup", "cement", "textual", "blessed", "prompt-toolkit"]
+kubernetes = ["kubernetes", "kr8s", "ruamel-yaml"]
+monitoring = ["prometheus-client", "grafana-api", "elasticsearch", "opentelemetry-api", "opentelemetry-sdk"]
+vault = ["hvac", "boto3", "azure-keyvault-secrets", "azure-identity", "google-cloud-secret-manager", "pyjwt"]
+all = ["cloup", "cement", "textual", "blessed", "prompt-toolkit", "kubernetes", "kr8s", "ruamel-yaml", "prometheus-client", "grafana-api", "elasticsearch", "opentelemetry-api", "opentelemetry-sdk", "hvac", "boto3", "azure-keyvault-secrets", "azure-identity", "google-cloud-secret-manager", "pyjwt"]
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=7.4.0"
+pytest-asyncio = ">=0.21.0"
+pytest-cov = ">=4.1.0"
+pytest-mock = ">=3.11.0"
+ruff = ">=0.8.0"
+mypy = ">=1.6.0"
+pre-commit = ">=3.5.0"
+sphinx = ">=7.2.0"
+sphinx-rtd-theme = ">=1.3.0"
+types-pyyaml = ">=6.0.0"
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # Pyflakes (logic/syntax bugs)
+    "I",    # isort (import sorting)
+    "UP",   # pyupgrade (modernizes syntax)
+    "B",    # flake8-bugbear (common design pitfalls)
+    "SIM",  # flake8-simplify (identifies complex logic)
+    "PTH",  # flake8-use-pathlib (modern file paths)
+    "RUF",  # Ruff-specific internal rules
+    "ASYNC",# flake8-async (crucial for distributed apps)
+    "T20",  # flake8-print (flags print statements)
 ]
 
-# Optional dependency groups
-[project.optional-dependencies]
-# CLI enhancements
-cli = [
-    "cloup>=3.0.0",
-    "cement>=3.0.10",
-    "textual>=0.45.0",
-    "blessed>=1.20.0",
-    "prompt-toolkit>=3.0.40",
+ignore = [
+    "E501",    # Ignore line-length (the formatter handles this automatically)
+    "D100",    # Missing docstring in public module
+    "D104",    # Missing docstring in public package
+    "B008",    # Do not perform function calls in argument defaults (Too strict for Typer/Click)
+    "RUF012",  # Mutable class attributes should be annotated with `typing.ClassVar`
 ]
 
-# Kubernetes integration
-kubernetes = [
-    "kubernetes>=28.1.0",
-    "kr8s>=0.8.0",
-    "kubectl-py>=1.29.0",
-    "ruamel.yaml>=0.17.0",
-]
+[tool.ruff.lint.per-file-ignores]
+"src/cli/main.py" = ["T201"]    # Main can use print statements
+"tests/**/*" = ["S101", "D"]    # Tests can use asserts and don't need docstrings
 
-# Monitoring and observability
-monitoring = [
-    "prometheus-client>=0.18.0",
-    "grafana-api>=1.0.3",
-    "elasticsearch>=8.10.0",
-    "opentelemetry-api>=1.20.0",
-    "opentelemetry-sdk>=1.20.0",
-]
+[tool.ruff.lint.isort]
+known-first-party = ["system_operations_manager"]
 
-# Secret management
-vault = [
-    "hvac>=2.0.0",
-    "boto3>=1.29.0",
-    "azure-keyvault-secrets>=4.7.0",
-    "azure-identity>=1.15.0",
-    "google-cloud-secret-manager>=2.17.0",
-    "pyjwt>=2.8.0",
-]
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
 
-# Development tools
-dev = [
-    "pytest>=7.4.0",
-    "pytest-asyncio>=0.21.0",
-    "pytest-cov>=4.1.0",
-    "pytest-mock>=3.11.0",
-    "black>=23.9.0",
-    "isort>=5.12.0",
-    "flake8>=6.1.0",
-    "mypy>=1.6.0",
-    "pre-commit>=3.5.0",
-    "sphinx>=7.2.0",
-    "sphinx-rtd-theme>=1.3.0",
-]
-
-# All optional dependencies
-all = [
-    "system-control-cli[cli,kubernetes,monitoring,vault]"
-]
-
-[project.urls]
-Homepage = "https://github.com/yourusername/system-control"
-Documentation = "https://system-control.readthedocs.io"
-Repository = "https://github.com/yourusername/system-control.git"
-"Bug Tracker" = "https://github.com/yourusername/system-control/issues"
-Changelog = "https://github.com/yourusername/system-control/blob/main/CHANGELOG.md"
-
-[project.scripts]
-sysctl = "system_control.cli.main:main"
-
-[project.entry-points."system_control.plugins"]
-# Built-in plugins will be registered here
-core = "system_control.plugins.core:CorePlugin"
-deployment = "system_control.plugins.deployment:DeploymentPlugin"
-monitoring = "system_control.plugins.monitoring:MonitoringPlugin"
-
-[tool.setuptools.packages.find]
-where = ["src"]
-include = ["system_control*"]
-
-[tool.setuptools.package-data]
-"system_control" = [
-    "templates/*.yaml",
-    "templates/*.json",
-    "schemas/*.yaml",
-    "schemas/*.json",
-    "config/*.yaml",
-]
-
-# Black code formatting
-[tool.black]
-line-length = 88
-target-version = ['py38', 'py39', 'py310', 'py311']
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-  # directories
-  \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | build
-  | dist
-)/
-'''
-
-# isort import sorting
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-line_length = 88
-known_first_party = ["system_control"]
-skip_glob = ["*/migrations/*"]
-
-# mypy type checking
 [tool.mypy]
-python_version = "3.8"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-check_untyped_defs = true
-no_implicit_optional = true
-warn_redundant_casts = true
-warn_unused_ignores = true
+python_version = "3.14"
 show_error_codes = true
+pretty = true
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+no_implicit_optional = true
+strict_optional = true
+ignore_missing_imports = true
+disallow_untyped_decorators = false
 
 [[tool.mypy.overrides]]
 module = [
@@ -192,20 +162,16 @@ module = [
     "kubernetes.*",
     "hvac.*",
     "prometheus_client.*",
+    "pluggy.*",
 ]
 ignore_missing_imports = true
 
-# pytest configuration
 [tool.pytest.ini_options]
 minversion = "7.0"
 addopts = [
     "-ra",
     "--strict-markers",
     "--strict-config",
-    "--cov=system_control",
-    "--cov-report=term-missing",
-    "--cov-report=html",
-    "--cov-report=xml",
 ]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
@@ -221,7 +187,7 @@ markers = [
 
 # Coverage configuration
 [tool.coverage.run]
-source = ["src/system_control"]
+source = ["src/system_operations_manager"]
 omit = [
     "*/tests/*",
     "*/test_*.py",
@@ -244,20 +210,6 @@ exclude_lines = [
     "@(abc\\.)?abstractmethod",
 ]
 
-# Flake8 linting
-[tool.flake8]
-max-line-length = 88
-extend-ignore = ["E203", "E501", "W503"]
-exclude = [
-    ".git",
-    "__pycache__",
-    "build",
-    "dist",
-    ".venv",
-    "venv",
-]
-
-# Bandit security linting
 [tool.bandit]
 exclude_dirs = ["tests", "test_*"]
 skips = ["B101", "B601"]

@@ -196,7 +196,7 @@ cpu,memory  cpu,memory,disk  cpu  memory  network
 
 ```python
 # plugins/custom_plugin.py
-from system_control.completion import CompletionProvider
+from system_operations_manager.completion import CompletionProvider
 
 class CustomCompletions(CompletionProvider):
     def get_completions(self, word, context):
