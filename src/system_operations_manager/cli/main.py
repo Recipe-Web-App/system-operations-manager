@@ -56,5 +56,10 @@ app.add_typer(init.app, name="init")
 app.command()(status.status)
 
 
-if __name__ == "__main__":
+def cli() -> None:
+    """Entry point for the CLI."""
     app()
+
+
+if __name__ == "__main__":
+    cli()

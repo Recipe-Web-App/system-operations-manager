@@ -38,7 +38,9 @@ Repository = "https://github.com/Recipe-Web-App/system-control"
 Changelog = "https://github.com/Recipe-Web-App/system-control/blob/main/CHANGELOG.md"
 
 [tool.poetry.scripts]
-ops = "system_operations_manager.cli.main:main"
+ops = "system_operations_manager.cli.main:cli"
+ops-install = "system_operations_manager.cli.install:install"
+ops-uninstall = "system_operations_manager.cli.install:uninstall"
 
 [tool.poetry.plugins."system_operations_manager.plugins"]
 core = "system_operations_manager.plugins.core:CorePlugin"
