@@ -1,0 +1,60 @@
+title: "[Idea]: "
+labels:
+  - "idea"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Share your ideas for improving the System Control CLI! We'd love to hear your thoughts
+        on new features, enhancements, or improvements.
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your Idea
+      description: Describe your idea in detail
+      placeholder: |
+        What's your idea? How would it improve the CLI?
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Use Case
+      description: What problem does this solve or what use case does it address?
+      placeholder: |
+        What situation led you to this idea?
+        What workflow would this improve?
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Current Alternatives
+      description: How do you currently handle this? Are there workarounds?
+      placeholder: |
+        Describe any current approaches or workarounds
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which area of the CLI does this idea relate to?
+      options:
+        - CLI Commands
+        - Plugin System
+        - Configuration
+        - Integrations
+        - Developer Experience
+        - Documentation
+        - Performance
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution Interest
+      options:
+        - label: I might be interested in helping implement this idea

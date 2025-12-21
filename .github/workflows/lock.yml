@@ -1,0 +1,42 @@
+name: Lock Threads
+
+on:
+  schedule:
+    - cron: "0 1 * * *" # Run daily at 1 AM UTC
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  lock:
+    name: Lock Old Threads
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Lock closed issues
+        uses: dessant/lock-threads@v5
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-inactive-days: 90
+          issue-lock-reason: "resolved"
+          issue-comment: |
+            This issue has been automatically locked since there has not been
+            any recent activity after it was closed.
+
+            If you encounter a similar problem, please open a new issue with
+            up-to-date information.
+          exclude-any-issue-labels: "security"
+
+      - name: Lock closed PRs
+        uses: dessant/lock-threads@v5
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pr-inactive-days: 60
+          pr-lock-reason: "resolved"
+          pr-comment: |
+            This pull request has been automatically locked since there has not been
+            any recent activity after it was closed.
+
+            If you would like to continue this work, please open a new pull request.

@@ -1,0 +1,73 @@
+name: License Check
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "pyproject.toml"
+      - "poetry.lock"
+  schedule:
+    - cron: "0 6 * * 1" # Monday at 6 AM UTC
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.14"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  license-check:
+    name: Check Dependency Licenses
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Install pip-licenses
+        run: poetry run pip install pip-licenses
+
+      - name: Generate license report
+        run: |
+          poetry run pip-licenses --format=markdown --output-file=licenses.md
+          poetry run pip-licenses --format=json --output-file=licenses.json
+
+      - name: Check for problematic licenses
+        id: check
+        continue-on-error: true
+        run: |
+          poetry run pip-licenses --fail-on="GPL-3.0;AGPL-3.0;LGPL-3.0" || echo "problematic_licenses=true" >> $GITHUB_OUTPUT
+
+      - name: Upload license report
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-report
+          path: |
+            licenses.md
+            licenses.json
+          retention-days: 90
+
+      - name: Comment on PR if problematic licenses found
+        if: github.event_name == 'pull_request' && steps.check.outputs.problematic_licenses == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: '⚠️ **License Warning**: This PR introduces dependencies with potentially problematic licenses (GPL-3.0, AGPL-3.0, or LGPL-3.0). Please review the license report artifact.'
+            });

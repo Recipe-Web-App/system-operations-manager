@@ -1,0 +1,108 @@
+---
+# PR Labeler Configuration
+# Labels are applied based on file paths changed in PRs
+
+# Dependencies
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file:
+          - pyproject.toml
+          - poetry.lock
+          - requirements*.txt
+
+# Documentation
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+          - docs/**/*
+          - CLAUDE.md
+          - README.md
+
+# GitHub configuration
+github:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/**/*
+
+# Workflows
+github-actions:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/workflows/**/*
+
+# Docker
+docker:
+  - changed-files:
+      - any-glob-to-any-file:
+          - Dockerfile
+          - docker-compose*.yml
+          - .dockerignore
+
+# Configuration
+configuration:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.yml"
+          - "**/*.yaml"
+          - "**/*.json"
+          - "**/*.toml"
+          - .env.example
+
+# Source code
+python:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.py"
+          - src/**/*
+
+# Tests
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/test_*.py"
+          - "**/*_test.py"
+          - tests/**/*
+
+# CLI
+cli:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/system_operations_manager/cli/**/*
+
+# Core Engine
+core:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/system_operations_manager/core/**/*
+
+# Plugin System
+plugins:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/system_operations_manager/plugins/**/*
+
+# Services
+services:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/system_operations_manager/services/**/*
+
+# Integrations
+integrations:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/system_operations_manager/integrations/**/*
+
+# Logging
+logging:
+  - changed-files:
+      - any-glob-to-any-file:
+          - src/system_operations_manager/logging/**/*
+
+# Scripts
+scripts:
+  - changed-files:
+      - any-glob-to-any-file:
+          - scripts/**/*
+          - "**/*.sh"

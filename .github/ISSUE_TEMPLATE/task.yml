@@ -1,0 +1,129 @@
+---
+name: Task
+description: Create a development task (implementation, refactoring, tech debt)
+title: "[Task]: "
+labels: ["task"]
+assignees:
+  - jsamuelsen11
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for tracking development tasks, refactoring work, or technical debt.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Task Description
+      description: A clear description of what needs to be done
+      placeholder: Describe the task in detail
+    validations:
+      required: true
+
+  - type: dropdown
+    id: task_type
+    attributes:
+      label: Task Type
+      description: What type of task is this?
+      options:
+        - Implementation
+        - Refactoring
+        - Technical Debt
+        - Infrastructure
+        - Testing
+        - Documentation
+        - Performance Optimization
+        - Security Hardening
+        - Dependency Update
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component Area
+      description: Which area of the CLI does this task affect?
+      options:
+        - CLI Commands
+        - Core Engine
+        - Plugin System
+        - Configuration
+        - Logging
+        - Services
+        - Integrations
+        - Tests
+        - Documentation
+        - CI/CD
+        - Multiple Components
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How urgent is this task?
+      options:
+        - Low
+        - Medium
+        - High
+        - Critical
+    validations:
+      required: true
+
+  - type: dropdown
+    id: size
+    attributes:
+      label: Estimated Size
+      description: How much effort is expected?
+      options:
+        - XS (< 1 hour)
+        - S (1-4 hours)
+        - M (1-2 days)
+        - L (3-5 days)
+        - XL (> 1 week)
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      description: What needs to be true for this task to be considered complete?
+      placeholder: |
+        - [ ] Criterion 1
+        - [ ] Criterion 2
+        - [ ] Criterion 3
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical_details
+    attributes:
+      label: Technical Details
+      description: Any technical context or implementation notes
+      placeholder: |
+        Files to modify:
+        - src/...
+
+        Approach:
+        - ...
+
+  - type: textarea
+    id: related
+    attributes:
+      label: Related Issues/PRs
+      description: Link any related issues or pull requests
+      placeholder: |
+        Related to #123
+        Blocked by #456
+        Depends on #789
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other context about the task
+      placeholder: Additional information, links, or references
