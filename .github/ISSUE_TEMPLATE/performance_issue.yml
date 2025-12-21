@@ -1,0 +1,132 @@
+---
+name: Performance Issue
+description: Report a performance problem or degradation
+title: "[Performance]: "
+labels: ["performance", "needs-triage"]
+assignees:
+  - jsamuelsen11
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a performance issue! Please provide as much detail as possible
+        to help us investigate and optimize.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Performance Issue Description
+      description: A clear description of the performance problem
+      placeholder: Describe the performance issue you're experiencing
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected Component
+      description: Which component has performance issues?
+      options:
+        - CLI Startup Time
+        - Command Execution
+        - Plugin Loading
+        - Configuration Parsing
+        - Logging Performance
+        - External API Calls
+        - File Operations
+        - Memory Usage
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Impact Severity
+      description: How much does this affect your workflow?
+      options:
+        - Minor (slightly slower than expected)
+        - Moderate (noticeable delays)
+        - Major (significantly impacts productivity)
+        - Critical (makes the CLI unusable)
+    validations:
+      required: true
+
+  - type: textarea
+    id: metrics
+    attributes:
+      label: Performance Metrics
+      description: Include any metrics you've gathered
+      placeholder: |
+        - Command execution time: X seconds
+        - Memory usage: X MB
+        - CPU usage: X%
+
+        Include timing measurements, profiler output, etc.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Performance
+      description: What performance do you expect?
+      placeholder: |
+        - Expected execution time: X seconds
+        - Expected memory usage: X MB
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: How to reproduce the performance issue
+      placeholder: |
+        1. Run command '...'
+        2. With data size '...'
+        3. Observe performance '...'
+    validations:
+      required: true
+
+  - type: textarea
+    id: profiling
+    attributes:
+      label: Profiling Data
+      description: Include any profiling or benchmark data
+      render: shell
+      placeholder: |
+        Include cProfile output, memory_profiler results, or py-spy flamegraphs
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Information about your environment
+      value: |
+        - Python version:
+        - CLI version:
+        - OS:
+        - CPU:
+        - RAM:
+        - Disk type: (SSD/HDD)
+        - Number of plugins loaded:
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Current Workaround
+      description: Have you found any workarounds?
+      placeholder: Describe any workarounds you're currently using
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other relevant information
+      placeholder: |
+        - When did this start happening?
+        - Does it happen consistently or intermittently?
+        - Any recent changes to your environment?

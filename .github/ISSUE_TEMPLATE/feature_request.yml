@@ -1,0 +1,127 @@
+---
+name: Feature Request
+description: Suggest a new feature or enhancement for the System Control CLI
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+assignees:
+  - jsamuelsen11
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! Please fill out the form below to help us understand
+        your proposal.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Feature Summary
+      description: A clear and concise description of the feature you'd like to see
+      placeholder: Describe the feature you're proposing
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve? Why is it needed?
+      placeholder: |
+        I'm always frustrated when...
+        Currently, there's no way to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: How do you envision this feature working?
+      placeholder: |
+        Describe how you'd like the feature to work
+        Include CLI command examples if applicable
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Have you considered any alternative solutions or workarounds?
+      placeholder: Describe any alternatives you've considered
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component Area
+      description: Which area of the CLI would this feature affect?
+      options:
+        - CLI Commands
+        - Core Engine
+        - Plugin System
+        - Configuration
+        - Logging
+        - Services
+        - Integrations (Kubernetes, Vault, etc.)
+        - Monitoring
+        - Documentation
+        - Shell Completions
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - Nice to have
+        - Would improve workflow
+        - Important for my use case
+        - Critical blocker
+    validations:
+      required: true
+
+  - type: textarea
+    id: api_design
+    attributes:
+      label: API Design
+      description: If applicable, provide a proposed CLI interface or API design
+      render: python
+      placeholder: |
+        # Example CLI usage:
+        ops new-command --option value
+
+        # Example Python API:
+        from system_operations_manager import NewFeature
+        feature = NewFeature(option=value)
+
+  - type: checkboxes
+    id: feature_type
+    attributes:
+      label: Feature Type
+      description: What type of feature is this?
+      options:
+        - label: This feature adds a new CLI command
+        - label: This feature modifies an existing command
+        - label: This feature requires plugin API changes
+        - label: This feature requires configuration changes
+        - label: This is a documentation improvement
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context, mockups, or references about the feature request
+      placeholder: Links to similar features in other tools, screenshots, etc.
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      description: Would you be willing to contribute to this feature?
+      options:
+        - label: I would be willing to help implement this feature
+        - label: I would be willing to help test this feature
+        - label: I would be willing to help document this feature

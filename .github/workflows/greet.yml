@@ -1,0 +1,47 @@
+name: Greet Contributors
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  greet:
+    name: Greet First-Time Contributors
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Greet first-time contributors
+        uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: |
+            Welcome to System Control CLI! Thanks for opening your first issue.
+
+            Here are some helpful resources:
+            - [Documentation](https://github.com/Recipe-Web-App/system-control#readme)
+            - [Contributing Guide](https://github.com/Recipe-Web-App/system-control/blob/main/.github/CONTRIBUTING.md)
+            - [Code of Conduct](https://github.com/Recipe-Web-App/system-control/blob/main/.github/CODE_OF_CONDUCT.md)
+
+            A maintainer will review your issue soon. In the meantime, please make sure
+            you've provided all the requested information.
+          pr-message: |
+            Welcome to System Control CLI! Thanks for opening your first pull request.
+
+            Here are some helpful resources:
+            - [Contributing Guide](https://github.com/Recipe-Web-App/system-control/blob/main/.github/CONTRIBUTING.md)
+            - [Development Setup](https://github.com/Recipe-Web-App/system-control/blob/main/.github/CONTRIBUTING.md#development-setup)
+            - [Code of Conduct](https://github.com/Recipe-Web-App/system-control/blob/main/.github/CODE_OF_CONDUCT.md)
+
+            Please ensure:
+            - Your changes follow our code style guidelines
+            - All tests pass (`poetry run pytest`)
+            - Type checking passes (`poetry run mypy src`)
+            - Linting passes (`poetry run ruff check src tests`)
+
+            A maintainer will review your PR soon. Thanks for contributing!

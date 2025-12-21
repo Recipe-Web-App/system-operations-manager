@@ -1,0 +1,121 @@
+---
+name: Documentation
+description: Report a documentation issue or suggest improvements
+title: "[Docs]: "
+labels: ["documentation", "needs-triage"]
+assignees:
+  - jsamuelsen11
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve our documentation! Clear documentation helps everyone.
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Documentation Issue Type
+      description: What type of documentation issue is this?
+      options:
+        - Missing Documentation
+        - Incorrect/Outdated Information
+        - Unclear/Confusing Documentation
+        - Typo/Grammar
+        - Missing Example
+        - Broken Link
+        - Suggestion for Improvement
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: location
+    attributes:
+      label: Documentation Location
+      description: Where is the documentation issue?
+      options:
+        - README.md
+        - CLAUDE.md
+        - CLI Help Text (--help)
+        - Code Docstrings
+        - docs/ Directory
+        - CONTRIBUTING.md
+        - SECURITY.md
+        - SUPPORT.md
+        - Configuration Guide
+        - Plugin Development Guide
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Issue Description
+      description: Describe the documentation issue
+      placeholder: |
+        What's wrong or missing? What needs to be improved?
+    validations:
+      required: true
+
+  - type: textarea
+    id: location_detail
+    attributes:
+      label: Specific Location
+      description: Where exactly is the issue?
+      placeholder: |
+        - File: README.md
+        - Section: "Installation"
+        - Line/Paragraph: ...
+        - URL (if online): ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: current
+    attributes:
+      label: Current Documentation
+      description: What does the current documentation say?
+      placeholder: |
+        Copy the relevant text or describe what's currently documented
+
+  - type: textarea
+    id: suggested
+    attributes:
+      label: Suggested Change
+      description: What should the documentation say instead?
+      placeholder: |
+        Provide the corrected or improved text
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this documentation fix?
+      options:
+        - Low (minor improvement)
+        - Medium (causes confusion)
+        - High (blocking users)
+        - Critical (security-related documentation)
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other relevant information
+      placeholder: |
+        - Related issues or PRs
+        - Screenshots
+        - Links to external resources that could help
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      description: Would you like to contribute the fix?
+      options:
+        - label: I would be willing to submit a PR for this documentation change

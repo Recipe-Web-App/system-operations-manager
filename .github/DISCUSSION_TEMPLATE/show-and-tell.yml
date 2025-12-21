@@ -1,0 +1,70 @@
+title: "[Show & Tell]: "
+labels:
+  - "show-and-tell"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Share something cool you've built with the System Control CLI! We'd love to see
+        your plugins, integrations, scripts, or creative uses.
+
+  - type: textarea
+    id: showcase
+    attributes:
+      label: What You've Built
+      description: Describe what you've created
+      placeholder: |
+        Tell us about your project, plugin, integration, or creative use of the CLI!
+    validations:
+      required: true
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type
+      description: What type of thing are you sharing?
+      options:
+        - Custom Plugin
+        - Integration
+        - Script/Automation
+        - Configuration Example
+        - Workflow/Process
+        - Tutorial/Guide
+        - Tool Built with CLI
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: code
+    attributes:
+      label: Code or Configuration
+      description: Share relevant code, configuration, or commands
+      render: python
+      placeholder: |
+        # Share your code, config, or commands here
+
+  - type: textarea
+    id: links
+    attributes:
+      label: Links
+      description: Link to repositories, blog posts, or other resources
+      placeholder: |
+        - GitHub repo: https://github.com/...
+        - Blog post: https://...
+        - Demo: https://...
+
+  - type: textarea
+    id: lessons
+    attributes:
+      label: Lessons Learned
+      description: What did you learn? Any tips for others?
+      placeholder: |
+        Share any insights, challenges overcome, or tips for others trying similar things
+
+  - type: checkboxes
+    id: open_source
+    attributes:
+      label: Availability
+      options:
+        - label: This project/code is open source and available for others to use

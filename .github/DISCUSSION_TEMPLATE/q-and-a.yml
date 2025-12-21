@@ -1,0 +1,65 @@
+title: "[Question]: "
+labels:
+  - "question"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have a question about the System Control CLI? Ask away! Please search existing
+        discussions first to see if your question has been answered.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: What would you like to know?
+      placeholder: |
+        Ask your question here. Be as specific as possible.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: topic
+    attributes:
+      label: Topic Area
+      description: What is your question about?
+      options:
+        - Installation & Setup
+        - CLI Commands
+        - Configuration
+        - Plugin Development
+        - Integrations (Kubernetes, Vault, etc.)
+        - Deployment & Monitoring
+        - Contributing
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Provide any relevant context for your question
+      placeholder: |
+        - What are you trying to accomplish?
+        - What have you already tried?
+        - Any relevant configuration or environment details?
+
+  - type: textarea
+    id: research
+    attributes:
+      label: What I've Tried
+      description: What resources have you already consulted?
+      placeholder: |
+        - Checked README.md
+        - Searched existing issues/discussions
+        - Reviewed documentation
+        - Tried X, Y, Z...
+
+  - type: checkboxes
+    id: searched
+    attributes:
+      label: Prior Search
+      options:
+        - label: I have searched existing discussions and issues for this question
+          required: true
