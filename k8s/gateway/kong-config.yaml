@@ -1,0 +1,64 @@
+# minikube-kong-values.yaml
+
+###############################
+# 1. Deployment Mode: DB-less #
+###############################
+env:
+  database: "off"
+
+#######################################
+# 2. Ingress Controller Configuration #
+#######################################
+ingressController:
+  enabled: true
+  installCRDs: false
+  ingressClass: kong
+
+##################################
+# 3. Proxy Service Configuration #
+##################################
+proxy:
+  type: LoadBalancer
+  http:
+    servicePort: 80
+  tls:
+    servicePort: 443
+
+##############################
+# 4. Admin API Configuration #
+##############################
+admin:
+  enabled: true
+  type: ClusterIP
+  http:
+    enabled: true
+
+######################
+# 5. Resource Limits #
+######################
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1024Mi
+
+#############################################
+# 6. Readiness/Liveness Probes Optimization #
+#############################################
+readinessProbe:
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  failureThreshold: 10
+livenessProbe:
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  failureThreshold: 10
+
+####################################
+# 7. Admission Webhook Remediation #
+####################################
+admissionWebhook:
+  enabled: true
+  failurePolicy: Ignore
