@@ -1,0 +1,526 @@
+"""CLI commands for Kong Consumers.
+
+This module provides commands for managing Kong Consumer entities
+and their credentials:
+- list: List all consumers
+- get: Get consumer details
+- create: Create a new consumer
+- update: Update an existing consumer
+- delete: Delete a consumer
+- credentials list/add/delete: Manage consumer credentials
+"""
+
+from __future__ import annotations
+
+import json
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Annotated, Any
+
+import typer
+
+from system_operations_manager.integrations.kong.exceptions import KongAPIError
+from system_operations_manager.integrations.kong.models.consumer import Consumer
+from system_operations_manager.plugins.kong.commands.base import (
+    ForceOption,
+    LimitOption,
+    OffsetOption,
+    OutputOption,
+    TagsOption,
+    confirm_delete,
+    console,
+    handle_kong_error,
+    parse_config_options,
+)
+from system_operations_manager.plugins.kong.formatters import OutputFormat, get_formatter
+
+if TYPE_CHECKING:
+    from system_operations_manager.services.kong.consumer_manager import ConsumerManager
+
+
+# Column definitions for consumer listings
+CONSUMER_COLUMNS = [
+    ("username", "Username"),
+    ("id", "ID"),
+    ("custom_id", "Custom ID"),
+    ("tags", "Tags"),
+]
+
+# Column definitions for credential listings
+CREDENTIAL_COLUMNS = {
+    "key-auth": [
+        ("id", "ID"),
+        ("key", "Key"),
+        ("ttl", "TTL"),
+    ],
+    "basic-auth": [
+        ("id", "ID"),
+        ("username", "Username"),
+    ],
+    "hmac-auth": [
+        ("id", "ID"),
+        ("username", "Username"),
+    ],
+    "jwt": [
+        ("id", "ID"),
+        ("key", "Key"),
+        ("algorithm", "Algorithm"),
+    ],
+    "oauth2": [
+        ("id", "ID"),
+        ("name", "Name"),
+        ("client_id", "Client ID"),
+    ],
+}
+
+ACL_COLUMNS = [
+    ("id", "ID"),
+    ("group", "Group"),
+    ("tags", "Tags"),
+]
+
+
+def register_consumer_commands(
+    app: typer.Typer,
+    get_manager: Callable[[], ConsumerManager],
+) -> None:
+    """Register consumer commands with the Kong app.
+
+    Args:
+        app: Typer app to register commands on.
+        get_manager: Factory function that returns a ConsumerManager instance.
+    """
+    consumers_app = typer.Typer(
+        name="consumers",
+        help="Manage Kong Consumers and credentials",
+        no_args_is_help=True,
+    )
+
+    # =========================================================================
+    # Consumer CRUD Commands
+    # =========================================================================
+
+    @consumers_app.command("list")
+    def list_consumers(
+        output: OutputOption = OutputFormat.TABLE,
+        tags: TagsOption = None,
+        limit: LimitOption = None,
+        offset: OffsetOption = None,
+    ) -> None:
+        """List all consumers.
+
+        Examples:
+            ops kong consumers list
+            ops kong consumers list --tag production
+            ops kong consumers list --output json
+        """
+        try:
+            manager = get_manager()
+            consumers, next_offset = manager.list(tags=tags, limit=limit, offset=offset)
+
+            formatter = get_formatter(output, console)
+            formatter.format_list(consumers, CONSUMER_COLUMNS, title="Kong Consumers")
+
+            if next_offset:
+                console.print(f"\n[dim]More results available. Use --offset {next_offset}[/dim]")
+
+        except KongAPIError as e:
+            handle_kong_error(e)
+
+    @consumers_app.command("get")
+    def get_consumer(
+        username_or_id: Annotated[str, typer.Argument(help="Consumer username or ID")],
+        output: OutputOption = OutputFormat.TABLE,
+    ) -> None:
+        """Get a consumer by username or ID.
+
+        Examples:
+            ops kong consumers get my-user
+            ops kong consumers get my-user --output json
+        """
+        try:
+            manager = get_manager()
+            consumer = manager.get(username_or_id)
+
+            formatter = get_formatter(output, console)
+            title = f"Consumer: {consumer.username or consumer.id}"
+            formatter.format_entity(consumer, title=title)
+
+        except KongAPIError as e:
+            handle_kong_error(e)
+
+    @consumers_app.command("create")
+    def create_consumer(
+        username: Annotated[
+            str | None,
+            typer.Option("--username", "-u", help="Consumer username (unique)"),
+        ] = None,
+        custom_id: Annotated[
+            str | None,
+            typer.Option("--custom-id", "-c", help="Custom identifier (unique)"),
+        ] = None,
+        tags: Annotated[
+            list[str] | None,
+            typer.Option("--tag", "-t", help="Tags (can be repeated)"),
+        ] = None,
+        output: OutputOption = OutputFormat.TABLE,
+    ) -> None:
+        """Create a new consumer.
+
+        At least one of --username or --custom-id must be provided.
+
+        Examples:
+            ops kong consumers create --username my-user
+            ops kong consumers create --custom-id user-123
+            ops kong consumers create --username my-user --custom-id user-123 --tag production
+        """
+        if not username and not custom_id:
+            console.print("[red]Error:[/red] At least one of --username or --custom-id is required")
+            raise typer.Exit(1)
+
+        try:
+            manager = get_manager()
+
+            consumer = Consumer(
+                username=username,
+                custom_id=custom_id,
+                tags=tags,
+            )
+
+            created = manager.create(consumer)
+
+            formatter = get_formatter(output, console)
+            console.print("[green]Consumer created successfully[/green]\n")
+            title = f"Consumer: {created.username or created.id}"
+            formatter.format_entity(created, title=title)
+
+        except KongAPIError as e:
+            handle_kong_error(e)
+
+    @consumers_app.command("update")
+    def update_consumer(
+        username_or_id: Annotated[str, typer.Argument(help="Consumer username or ID to update")],
+        username: Annotated[
+            str | None,
+            typer.Option("--username", "-u", help="New username"),
+        ] = None,
+        custom_id: Annotated[
+            str | None,
+            typer.Option("--custom-id", "-c", help="New custom ID"),
+        ] = None,
+        tags: Annotated[
+            list[str] | None,
+            typer.Option("--tag", "-t", help="Tags (replaces existing)"),
+        ] = None,
+        output: OutputOption = OutputFormat.TABLE,
+    ) -> None:
+        """Update an existing consumer.
+
+        Only specified fields will be updated.
+
+        Examples:
+            ops kong consumers update my-user --username new-username
+            ops kong consumers update my-user --custom-id new-custom-id
+            ops kong consumers update my-user --tag staging
+        """
+        update_data: dict[str, Any] = {}
+        if username is not None:
+            update_data["username"] = username
+        if custom_id is not None:
+            update_data["custom_id"] = custom_id
+        if tags is not None:
+            update_data["tags"] = tags
+
+        if not update_data:
+            console.print("[yellow]No updates specified[/yellow]")
+            raise typer.Exit(0)
+
+        try:
+            manager = get_manager()
+            consumer = Consumer(**update_data)
+            updated = manager.update(username_or_id, consumer)
+
+            formatter = get_formatter(output, console)
+            console.print("[green]Consumer updated successfully[/green]\n")
+            title = f"Consumer: {updated.username or updated.id}"
+            formatter.format_entity(updated, title=title)
+
+        except KongAPIError as e:
+            handle_kong_error(e)
+
+    @consumers_app.command("delete")
+    def delete_consumer(
+        username_or_id: Annotated[str, typer.Argument(help="Consumer username or ID to delete")],
+        force: ForceOption = False,
+    ) -> None:
+        """Delete a consumer.
+
+        This will also delete all associated credentials.
+
+        Examples:
+            ops kong consumers delete my-user
+            ops kong consumers delete my-user --force
+        """
+        try:
+            manager = get_manager()
+
+            # Verify consumer exists
+            consumer = manager.get(username_or_id)
+            display_name = consumer.username or consumer.id or username_or_id
+
+            if not force and not confirm_delete("consumer", display_name):
+                console.print("[yellow]Cancelled[/yellow]")
+                raise typer.Exit(0)
+
+            manager.delete(username_or_id)
+            console.print(f"[green]Consumer '{display_name}' deleted successfully[/green]")
+
+        except KongAPIError as e:
+            handle_kong_error(e)
+
+    # =========================================================================
+    # Credential Management Commands (nested under consumers)
+    # =========================================================================
+
+    credentials_app = typer.Typer(
+        name="credentials",
+        help="Manage consumer credentials",
+        no_args_is_help=True,
+    )
+
+    @credentials_app.command("list")
+    def list_credentials(
+        consumer: Annotated[str, typer.Argument(help="Consumer username or ID")],
+        credential_type: Annotated[
+            str,
+            typer.Option(
+                "--type",
+                "-t",
+                help="Credential type: key-auth, basic-auth, hmac-auth, jwt, oauth2",
+            ),
+        ] = "key-auth",
+        output: OutputOption = OutputFormat.TABLE,
+    ) -> None:
+        """List credentials for a consumer.
+
+        Examples:
+            ops kong consumers credentials list my-user
+            ops kong consumers credentials list my-user --type jwt
+            ops kong consumers credentials list my-user --type basic-auth --output json
+        """
+        try:
+            manager = get_manager()
+            credentials = manager.list_credentials(consumer, credential_type)
+
+            columns = CREDENTIAL_COLUMNS.get(
+                credential_type,
+                [("id", "ID")],
+            )
+
+            formatter = get_formatter(output, console)
+            formatter.format_list(
+                credentials,
+                columns,
+                title=f"{credential_type} credentials for: {consumer}",
+            )
+
+        except ValueError as e:
+            console.print(f"[red]Error:[/red] {e}")
+            raise typer.Exit(1) from None
+        except KongAPIError as e:
+            handle_kong_error(e)
+
+    @credentials_app.command("add")
+    def add_credential(
+        consumer: Annotated[str, typer.Argument(help="Consumer username or ID")],
+        credential_type: Annotated[
+            str,
+            typer.Option(
+                "--type",
+                "-t",
+                help="Credential type: key-auth, basic-auth, hmac-auth, jwt, oauth2",
+            ),
+        ] = "key-auth",
+        config: Annotated[
+            list[str] | None,
+            typer.Option(
+                "--config",
+                "-c",
+                help="Credential config as key=value (can be repeated)",
+            ),
+        ] = None,
+        config_json: Annotated[
+            str | None,
+            typer.Option(
+                "--config-json",
+                help="Credential config as JSON string",
+            ),
+        ] = None,
+        output: OutputOption = OutputFormat.TABLE,
+    ) -> None:
+        """Add a credential to a consumer.
+
+        Examples:
+            ops kong consumers credentials add my-user --type key-auth
+            ops kong consumers credentials add my-user --type key-auth --config key=my-api-key
+            ops kong consumers credentials add my-user --type basic-auth --config username=foo --config password=bar
+            ops kong consumers credentials add my-user --type jwt --config-json '{"key": "my-key", "algorithm": "RS256"}'
+        """
+        # Build credential data
+        data: dict[str, Any] = {}
+
+        if config:
+            data.update(parse_config_options(config))
+
+        if config_json:
+            try:
+                json_data = json.loads(config_json)
+                data.update(json_data)
+            except json.JSONDecodeError as e:
+                console.print(f"[red]Error:[/red] Invalid JSON: {e}")
+                raise typer.Exit(1) from None
+
+        try:
+            manager = get_manager()
+            credential = manager.add_credential(consumer, credential_type, data)
+
+            formatter = get_formatter(output, console)
+            console.print("[green]Credential created successfully[/green]\n")
+            formatter.format_entity(
+                credential,
+                title=f"{credential_type} credential",
+            )
+
+        except ValueError as e:
+            console.print(f"[red]Error:[/red] {e}")
+            raise typer.Exit(1) from None
+        except KongAPIError as e:
+            handle_kong_error(e)
+
+    @credentials_app.command("delete")
+    def delete_credential(
+        consumer: Annotated[str, typer.Argument(help="Consumer username or ID")],
+        credential_id: Annotated[str, typer.Argument(help="Credential ID to delete")],
+        credential_type: Annotated[
+            str,
+            typer.Option(
+                "--type",
+                "-t",
+                help="Credential type: key-auth, basic-auth, hmac-auth, jwt, oauth2",
+            ),
+        ] = "key-auth",
+        force: ForceOption = False,
+    ) -> None:
+        """Delete a credential from a consumer.
+
+        Examples:
+            ops kong consumers credentials delete my-user abc-123
+            ops kong consumers credentials delete my-user abc-123 --type jwt
+            ops kong consumers credentials delete my-user abc-123 --force
+        """
+        try:
+            manager = get_manager()
+
+            if not force and not confirm_delete(f"{credential_type} credential", credential_id):
+                console.print("[yellow]Cancelled[/yellow]")
+                raise typer.Exit(0)
+
+            manager.delete_credential(consumer, credential_type, credential_id)
+            console.print(f"[green]Credential '{credential_id}' deleted successfully[/green]")
+
+        except ValueError as e:
+            console.print(f"[red]Error:[/red] {e}")
+            raise typer.Exit(1) from None
+        except KongAPIError as e:
+            handle_kong_error(e)
+
+    consumers_app.add_typer(credentials_app, name="credentials")
+
+    # =========================================================================
+    # ACL Group Commands
+    # =========================================================================
+
+    acl_app = typer.Typer(
+        name="acls",
+        help="Manage consumer ACL group memberships",
+        no_args_is_help=True,
+    )
+
+    @acl_app.command("list")
+    def list_acl_groups(
+        consumer: Annotated[str, typer.Argument(help="Consumer username or ID")],
+        output: OutputOption = OutputFormat.TABLE,
+    ) -> None:
+        """List ACL groups for a consumer.
+
+        Examples:
+            ops kong consumers acls list my-user
+        """
+        try:
+            manager = get_manager()
+            groups = manager.list_acl_groups(consumer)
+
+            formatter = get_formatter(output, console)
+            formatter.format_list(
+                groups,
+                ACL_COLUMNS,
+                title=f"ACL groups for: {consumer}",
+            )
+
+        except KongAPIError as e:
+            handle_kong_error(e)
+
+    @acl_app.command("add")
+    def add_to_acl_group(
+        consumer: Annotated[str, typer.Argument(help="Consumer username or ID")],
+        group: Annotated[str, typer.Argument(help="ACL group name")],
+        tags: Annotated[
+            list[str] | None,
+            typer.Option("--tag", "-t", help="Tags"),
+        ] = None,
+        output: OutputOption = OutputFormat.TABLE,
+    ) -> None:
+        """Add a consumer to an ACL group.
+
+        Examples:
+            ops kong consumers acls add my-user admin-group
+            ops kong consumers acls add my-user read-only --tag production
+        """
+        try:
+            manager = get_manager()
+            acl = manager.add_to_acl_group(consumer, group, tags)
+
+            formatter = get_formatter(output, console)
+            console.print(f"[green]Consumer added to group '{group}' successfully[/green]\n")
+            formatter.format_entity(acl, title="ACL membership")
+
+        except KongAPIError as e:
+            handle_kong_error(e)
+
+    @acl_app.command("remove")
+    def remove_from_acl_group(
+        consumer: Annotated[str, typer.Argument(help="Consumer username or ID")],
+        acl_id: Annotated[str, typer.Argument(help="ACL entry ID to remove")],
+        force: ForceOption = False,
+    ) -> None:
+        """Remove a consumer from an ACL group.
+
+        Examples:
+            ops kong consumers acls remove my-user abc-123
+            ops kong consumers acls remove my-user abc-123 --force
+        """
+        try:
+            manager = get_manager()
+
+            if not force and not confirm_delete("ACL membership", acl_id):
+                console.print("[yellow]Cancelled[/yellow]")
+                raise typer.Exit(0)
+
+            manager.remove_from_acl_group(consumer, acl_id)
+            console.print("[green]Consumer removed from ACL group successfully[/green]")
+
+        except KongAPIError as e:
+            handle_kong_error(e)
+
+    consumers_app.add_typer(acl_app, name="acls")
+
+    app.add_typer(consumers_app, name="consumers")

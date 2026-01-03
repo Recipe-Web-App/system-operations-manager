@@ -1,0 +1,346 @@
+"""CLI commands for Kong Routes.
+
+This module provides commands for managing Kong Route entities:
+- list: List all routes
+- get: Get route details
+- create: Create a new route
+- update: Update an existing route
+- delete: Delete a route
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Annotated, Any
+
+import typer
+
+from system_operations_manager.integrations.kong.exceptions import KongAPIError
+from system_operations_manager.integrations.kong.models.base import KongEntityReference
+from system_operations_manager.integrations.kong.models.route import Route
+from system_operations_manager.plugins.kong.commands.base import (
+    ForceOption,
+    LimitOption,
+    OffsetOption,
+    OutputOption,
+    ServiceFilterOption,
+    TagsOption,
+    confirm_delete,
+    console,
+    handle_kong_error,
+)
+from system_operations_manager.plugins.kong.formatters import OutputFormat, get_formatter
+
+if TYPE_CHECKING:
+    from system_operations_manager.services.kong.route_manager import RouteManager
+
+
+# Column definitions for route listings
+ROUTE_COLUMNS = [
+    ("name", "Name"),
+    ("id", "ID"),
+    ("paths", "Paths"),
+    ("methods", "Methods"),
+    ("hosts", "Hosts"),
+    ("service", "Service"),
+]
+
+
+def register_route_commands(
+    app: typer.Typer,
+    get_manager: Callable[[], RouteManager],
+) -> None:
+    """Register route commands with the Kong app.
+
+    Args:
+        app: Typer app to register commands on.
+        get_manager: Factory function that returns a RouteManager instance.
+    """
+    routes_app = typer.Typer(
+        name="routes",
+        help="Manage Kong Routes",
+        no_args_is_help=True,
+    )
+
+    @routes_app.command("list")
+    def list_routes(
+        service: ServiceFilterOption = None,
+        output: OutputOption = OutputFormat.TABLE,
+        tags: TagsOption = None,
+        limit: LimitOption = None,
+        offset: OffsetOption = None,
+    ) -> None:
+        """List all routes.
+
+        Examples:
+            ops kong routes list
+            ops kong routes list --service my-api
+            ops kong routes list --tag production --output json
+        """
+        try:
+            manager = get_manager()
+
+            if service:
+                routes, next_offset = manager.list_by_service(
+                    service, tags=tags, limit=limit, offset=offset
+                )
+                title = f"Routes for Service: {service}"
+            else:
+                routes, next_offset = manager.list(tags=tags, limit=limit, offset=offset)
+                title = "Kong Routes"
+
+            formatter = get_formatter(output, console)
+            formatter.format_list(routes, ROUTE_COLUMNS, title=title)
+
+            if next_offset:
+                console.print(f"\n[dim]More results available. Use --offset {next_offset}[/dim]")
+
+        except KongAPIError as e:
+            handle_kong_error(e)
+
+    @routes_app.command("get")
+    def get_route(
+        name_or_id: Annotated[str, typer.Argument(help="Route name or ID")],
+        output: OutputOption = OutputFormat.TABLE,
+    ) -> None:
+        """Get a route by name or ID.
+
+        Examples:
+            ops kong routes get my-route
+            ops kong routes get my-route --output json
+        """
+        try:
+            manager = get_manager()
+            route = manager.get(name_or_id)
+
+            formatter = get_formatter(output, console)
+            title = f"Route: {route.name or route.id}"
+            formatter.format_entity(route, title=title)
+
+        except KongAPIError as e:
+            handle_kong_error(e)
+
+    @routes_app.command("create")
+    def create_route(
+        name: Annotated[
+            str | None,
+            typer.Option("--name", "-n", help="Route name (unique)"),
+        ] = None,
+        service: Annotated[
+            str | None,
+            typer.Option("--service", "-s", help="Service ID or name (required)"),
+        ] = None,
+        paths: Annotated[
+            list[str] | None,
+            typer.Option("--path", "-p", help="Path to match (can be repeated)"),
+        ] = None,
+        methods: Annotated[
+            list[str] | None,
+            typer.Option("--method", "-m", help="HTTP method (can be repeated)"),
+        ] = None,
+        hosts: Annotated[
+            list[str] | None,
+            typer.Option("--host", "-H", help="Host header (can be repeated)"),
+        ] = None,
+        protocols: Annotated[
+            list[str] | None,
+            typer.Option("--protocol", help="Protocol (http, https, grpc, etc.)"),
+        ] = None,
+        strip_path: Annotated[
+            bool,
+            typer.Option("--strip-path/--no-strip-path", help="Strip matched path prefix"),
+        ] = True,
+        preserve_host: Annotated[
+            bool,
+            typer.Option("--preserve-host/--no-preserve-host", help="Preserve host header"),
+        ] = False,
+        regex_priority: Annotated[
+            int | None,
+            typer.Option("--regex-priority", help="Priority for regex matching"),
+        ] = None,
+        tags: Annotated[
+            list[str] | None,
+            typer.Option("--tag", "-t", help="Tags (can be repeated)"),
+        ] = None,
+        output: OutputOption = OutputFormat.TABLE,
+    ) -> None:
+        """Create a new route.
+
+        At least one matching criterion (--path, --method, --host) should be provided.
+
+        Examples:
+            ops kong routes create --service my-api --path /api/v1
+            ops kong routes create --name my-route --service my-api --path /api --method GET
+            ops kong routes create --service my-api --host api.example.com
+        """
+        if not service:
+            console.print("[red]Error:[/red] --service is required")
+            raise typer.Exit(1)
+
+        if not any([paths, methods, hosts]):
+            console.print(
+                "[red]Error:[/red] At least one of --path, --method, or --host is required"
+            )
+            raise typer.Exit(1)
+
+        try:
+            manager = get_manager()
+
+            # Build route data, only including non-None values
+            route_data: dict[str, Any] = {
+                "service": KongEntityReference.from_id_or_name(service),
+            }
+            if name is not None:
+                route_data["name"] = name
+            if paths is not None:
+                route_data["paths"] = paths
+            if methods is not None:
+                route_data["methods"] = methods
+            if hosts is not None:
+                route_data["hosts"] = hosts
+            if protocols is not None:
+                route_data["protocols"] = protocols
+            if strip_path is not None:
+                route_data["strip_path"] = strip_path
+            if preserve_host is not None:
+                route_data["preserve_host"] = preserve_host
+            if regex_priority is not None:
+                route_data["regex_priority"] = regex_priority
+            if tags is not None:
+                route_data["tags"] = tags
+
+            route = Route(**route_data)
+
+            created = manager.create(route)
+
+            formatter = get_formatter(output, console)
+            console.print("[green]Route created successfully[/green]\n")
+            title = f"Route: {created.name or created.id}"
+            formatter.format_entity(created, title=title)
+
+        except KongAPIError as e:
+            handle_kong_error(e)
+
+    @routes_app.command("update")
+    def update_route(
+        name_or_id: Annotated[str, typer.Argument(help="Route name or ID to update")],
+        name: Annotated[
+            str | None,
+            typer.Option("--name", "-n", help="New route name"),
+        ] = None,
+        service: Annotated[
+            str | None,
+            typer.Option("--service", "-s", help="New service ID or name"),
+        ] = None,
+        paths: Annotated[
+            list[str] | None,
+            typer.Option("--path", "-p", help="Paths (replaces existing)"),
+        ] = None,
+        methods: Annotated[
+            list[str] | None,
+            typer.Option("--method", "-m", help="Methods (replaces existing)"),
+        ] = None,
+        hosts: Annotated[
+            list[str] | None,
+            typer.Option("--host", "-H", help="Hosts (replaces existing)"),
+        ] = None,
+        protocols: Annotated[
+            list[str] | None,
+            typer.Option("--protocol", help="Protocols"),
+        ] = None,
+        strip_path: Annotated[
+            bool | None,
+            typer.Option("--strip-path/--no-strip-path", help="Strip matched path prefix"),
+        ] = None,
+        preserve_host: Annotated[
+            bool | None,
+            typer.Option("--preserve-host/--no-preserve-host", help="Preserve host header"),
+        ] = None,
+        regex_priority: Annotated[
+            int | None,
+            typer.Option("--regex-priority", help="Priority for regex matching"),
+        ] = None,
+        tags: Annotated[
+            list[str] | None,
+            typer.Option("--tag", "-t", help="Tags (replaces existing)"),
+        ] = None,
+        output: OutputOption = OutputFormat.TABLE,
+    ) -> None:
+        """Update an existing route.
+
+        Only specified fields will be updated.
+
+        Examples:
+            ops kong routes update my-route --path /api/v2
+            ops kong routes update my-route --no-strip-path
+            ops kong routes update my-route --method GET --method POST
+        """
+        # Build update data from non-None values
+        update_data: dict[str, Any] = {}
+        if name is not None:
+            update_data["name"] = name
+        if service is not None:
+            update_data["service"] = KongEntityReference.from_id_or_name(service)
+        if paths is not None:
+            update_data["paths"] = paths
+        if methods is not None:
+            update_data["methods"] = methods
+        if hosts is not None:
+            update_data["hosts"] = hosts
+        if protocols is not None:
+            update_data["protocols"] = protocols
+        if strip_path is not None:
+            update_data["strip_path"] = strip_path
+        if preserve_host is not None:
+            update_data["preserve_host"] = preserve_host
+        if regex_priority is not None:
+            update_data["regex_priority"] = regex_priority
+        if tags is not None:
+            update_data["tags"] = tags
+
+        if not update_data:
+            console.print("[yellow]No updates specified[/yellow]")
+            raise typer.Exit(0)
+
+        try:
+            manager = get_manager()
+            route = Route(**update_data)
+            updated = manager.update(name_or_id, route)
+
+            formatter = get_formatter(output, console)
+            console.print("[green]Route updated successfully[/green]\n")
+            title = f"Route: {updated.name or updated.id}"
+            formatter.format_entity(updated, title=title)
+
+        except KongAPIError as e:
+            handle_kong_error(e)
+
+    @routes_app.command("delete")
+    def delete_route(
+        name_or_id: Annotated[str, typer.Argument(help="Route name or ID to delete")],
+        force: ForceOption = False,
+    ) -> None:
+        """Delete a route.
+
+        Examples:
+            ops kong routes delete my-route
+            ops kong routes delete my-route --force
+        """
+        try:
+            manager = get_manager()
+
+            # Verify route exists
+            route = manager.get(name_or_id)
+            display_name = route.name or route.id or name_or_id
+
+            if not force and not confirm_delete("route", display_name):
+                console.print("[yellow]Cancelled[/yellow]")
+                raise typer.Exit(0)
+
+            manager.delete(name_or_id)
+            console.print(f"[green]Route '{display_name}' deleted successfully[/green]")
+
+        except KongAPIError as e:
+            handle_kong_error(e)
+
+    app.add_typer(routes_app, name="routes")
