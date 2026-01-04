@@ -28,6 +28,24 @@ from system_operations_manager.integrations.kong.models.consumer import (
     KeyAuthCredential,
     OAuth2Credential,
 )
+from system_operations_manager.integrations.kong.models.enterprise import (
+    AWSSecretsConfig,
+    AzureVaultConfig,
+    Developer,
+    DevPortalFile,
+    DevPortalSpec,
+    DevPortalStatus,
+    EnvVaultConfig,
+    GCPSecretsConfig,
+    HashiCorpVaultConfig,
+    RBACEndpointPermission,
+    RBACRole,
+    RBACUser,
+    RBACUserRole,
+    Vault,
+    Workspace,
+    WorkspaceConfig,
+)
 from system_operations_manager.integrations.kong.models.observability import (
     MetricsSummary,
     NodeStatus,
@@ -55,24 +73,41 @@ from system_operations_manager.integrations.kong.models.upstream import (
 )
 
 __all__ = [
+    # Consumer credentials
     "ACLGroup",
+    # Enterprise: Vaults
+    "AWSSecretsConfig",
+    # Declarative config
     "ApplyOperation",
+    # Plugins
     "AvailablePlugin",
+    "AzureVaultConfig",
     "BasicAuthCredential",
     "ConfigDiff",
     "ConfigDiffSummary",
     "ConfigValidationError",
     "ConfigValidationResult",
+    # Core entities
     "Consumer",
     "Credential",
     "DeclarativeConfig",
+    "DevPortalFile",
+    "DevPortalSpec",
+    "DevPortalStatus",
+    # Enterprise: Developer Portal
+    "Developer",
+    "EnvVaultConfig",
+    "GCPSecretsConfig",
     "HMACAuthCredential",
+    "HashiCorpVaultConfig",
     "HealthFailure",
     "JWTCredential",
     "KeyAuthCredential",
+    # Base models
     "KongEntityBase",
     "KongEntityReference",
     "KongPluginEntity",
+    # Observability
     "MetricsSummary",
     "NodeStatus",
     "OAuth2Credential",
@@ -80,6 +115,11 @@ __all__ = [
     "PercentileMetrics",
     "PluginSchema",
     "PrometheusMetric",
+    # Enterprise: RBAC
+    "RBACEndpointPermission",
+    "RBACRole",
+    "RBACUser",
+    "RBACUserRole",
     "Route",
     "RouteSummary",
     "Service",
@@ -89,4 +129,8 @@ __all__ = [
     "Upstream",
     "UpstreamHealth",
     "UpstreamHealthSummary",
+    "Vault",
+    # Enterprise: Workspaces
+    "Workspace",
+    "WorkspaceConfig",
 ]

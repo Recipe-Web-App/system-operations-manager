@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, field_validator
+
+if TYPE_CHECKING:
+    from system_operations_manager.integrations.observability.config import (
+        ObservabilityStackConfig,
+    )
 
 
 class KongConnectionConfig(BaseModel):
@@ -83,6 +88,7 @@ class KongPluginConfig(BaseModel):
     output_format: Literal["table", "json", "yaml"] = "table"
     default_workspace: str = "default"
     enterprise: KongEnterpriseConfig = KongEnterpriseConfig()
+    observability: ObservabilityStackConfig | None = None
 
     @field_validator("output_format")
     @classmethod
@@ -105,7 +111,20 @@ class KongPluginConfig(BaseModel):
             OPS_KONG_AUTH_TYPE: Authentication type (none, api_key, mtls)
             OPS_KONG_WORKSPACE: Default workspace name
             OPS_KONG_OUTPUT: Output format (table, json, yaml)
+
+        Observability environment variables:
+            OPS_PROMETHEUS_URL: Prometheus server URL
+            OPS_ELASTICSEARCH_HOSTS: Comma-separated Elasticsearch hosts
+            OPS_ELASTICSEARCH_INDEX: Elasticsearch index pattern
+            OPS_LOKI_URL: Grafana Loki URL
+            OPS_JAEGER_URL: Jaeger Query API URL
+            OPS_ZIPKIN_URL: Zipkin API URL
         """
+        # Import here to avoid circular imports
+        from system_operations_manager.integrations.observability.config import (
+            ObservabilityStackConfig,
+        )
+
         config_dict = base_config.copy() if base_config else {}
 
         # Ensure nested dicts exist
@@ -134,5 +153,22 @@ class KongPluginConfig(BaseModel):
 
         if output_format := os.environ.get("OPS_KONG_OUTPUT"):
             config_dict["output_format"] = output_format
+
+        # Handle observability config from env
+        obs_base_config = config_dict.pop("observability", None)
+        if isinstance(obs_base_config, dict) or any(
+            os.environ.get(var)
+            for var in [
+                "OPS_PROMETHEUS_URL",
+                "OPS_ELASTICSEARCH_HOSTS",
+                "OPS_LOKI_URL",
+                "OPS_JAEGER_URL",
+                "OPS_ZIPKIN_URL",
+            ]
+        ):
+            obs_config = ObservabilityStackConfig.from_env(
+                obs_base_config if isinstance(obs_base_config, dict) else None
+            )
+            config_dict["observability"] = obs_config
 
         return cls.model_validate(config_dict)

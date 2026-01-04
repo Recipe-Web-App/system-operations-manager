@@ -191,12 +191,55 @@ class KongPlugin(Plugin):
         # Register traffic commands
         register_traffic_commands(app, get_plugin_manager)
 
+        # Create external observability manager factories
+        get_metrics_manager = None
+        get_logs_manager = None
+        get_tracing_manager = None
+
+        if self._plugin_config and self._plugin_config.observability:
+            obs_config = self._plugin_config.observability
+
+            if obs_config.prometheus:
+                from system_operations_manager.services.observability import MetricsManager
+
+                prometheus_config = obs_config.prometheus
+
+                def get_metrics_manager() -> MetricsManager:
+                    return MetricsManager(prometheus_config)
+
+            if obs_config.elasticsearch or obs_config.loki:
+                from system_operations_manager.services.observability import LogsManager
+
+                es_config = obs_config.elasticsearch
+                loki_config = obs_config.loki
+
+                def get_logs_manager() -> LogsManager:
+                    return LogsManager(
+                        elasticsearch_config=es_config,
+                        loki_config=loki_config,
+                    )
+
+            if obs_config.jaeger or obs_config.zipkin:
+                from system_operations_manager.services.observability import TracingManager
+
+                jaeger_config = obs_config.jaeger
+                zipkin_config = obs_config.zipkin
+
+                def get_tracing_manager() -> TracingManager:
+                    return TracingManager(
+                        jaeger_config=jaeger_config,
+                        zipkin_config=zipkin_config,
+                    )
+
         # Register observability commands
         register_observability_commands(
             app,
             get_plugin_manager,
             get_upstream_manager,
             get_observability_manager,
+            get_metrics_manager=get_metrics_manager,
+            get_logs_manager=get_logs_manager,
+            get_tracing_manager=get_tracing_manager,
         )
 
         # Register config commands

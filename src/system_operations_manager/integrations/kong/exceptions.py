@@ -186,3 +186,30 @@ class KongDBLessWriteError(KongAPIError):
             status_code=405,
             endpoint=endpoint,
         )
+
+
+class KongEnterpriseRequiredError(KongAPIError):
+    """Exception raised when attempting to use Enterprise features on OSS.
+
+    Kong Enterprise features like Workspaces, RBAC, Vaults, and Developer Portal
+    are not available in the open-source edition.
+    """
+
+    def __init__(
+        self,
+        feature: str,
+        message: str | None = None,
+    ) -> None:
+        """Initialize KongEnterpriseRequiredError.
+
+        Args:
+            feature: The Enterprise feature that was attempted.
+            message: Optional custom error message.
+        """
+        if message is None:
+            message = f"Kong Enterprise is required for '{feature}' feature"
+        super().__init__(
+            message=message,
+            status_code=None,
+        )
+        self.feature = feature
