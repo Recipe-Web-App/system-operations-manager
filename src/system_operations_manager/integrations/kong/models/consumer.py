@@ -159,17 +159,38 @@ class ACLGroup(KongEntityBase):
     consumer: dict[str, str] | None = Field(default=None, description="Associated consumer")
 
 
+class MTLSAuthCredential(KongEntityBase):
+    """mTLS authentication credential.
+
+    Used with the mtls-auth plugin for client certificate authentication.
+
+    Attributes:
+        subject_name: Certificate subject distinguished name.
+        ca_certificate: Reference to CA certificate used for validation.
+        consumer: Associated consumer reference.
+    """
+
+    _entity_name: ClassVar[str] = "mtls-auth"
+
+    subject_name: str | None = Field(default=None, description="Certificate subject DN")
+    ca_certificate: dict[str, str] | None = Field(
+        default=None, description="CA certificate reference"
+    )
+    consumer: dict[str, str] | None = Field(default=None, description="Associated consumer")
+
+
 # Mapping of credential type names to model classes
-CREDENTIAL_TYPES: dict[str, type[Credential]] = {
+CREDENTIAL_TYPES: dict[str, type[Credential | MTLSAuthCredential]] = {
     "key-auth": KeyAuthCredential,
     "basic-auth": BasicAuthCredential,
     "hmac-auth": HMACAuthCredential,
     "jwt": JWTCredential,
     "oauth2": OAuth2Credential,
+    "mtls-auth": MTLSAuthCredential,
 }
 
 
-def get_credential_model(credential_type: str) -> type[Credential]:
+def get_credential_model(credential_type: str) -> type[Credential] | type[MTLSAuthCredential]:
     """Get the credential model class for a credential type.
 
     Args:

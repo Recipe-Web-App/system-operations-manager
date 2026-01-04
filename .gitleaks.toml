@@ -1,0 +1,12 @@
+# Gitleaks configuration
+# See: https://github.com/gitleaks/gitleaks
+
+[extend]
+# Extend the default gitleaks config
+useDefault = true
+
+[allowlist]
+# Ignore test directories - they contain mock/fake credentials for testing
+paths = [
+    '''tests/.*''',
+]

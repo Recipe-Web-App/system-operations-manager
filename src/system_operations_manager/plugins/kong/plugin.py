@@ -112,6 +112,9 @@ class KongPlugin(Plugin):
         from system_operations_manager.plugins.kong.commands.routes import (
             register_route_commands,
         )
+        from system_operations_manager.plugins.kong.commands.security import (
+            register_security_commands,
+        )
         from system_operations_manager.plugins.kong.commands.services import (
             register_service_commands,
         )
@@ -160,6 +163,9 @@ class KongPlugin(Plugin):
         register_consumer_commands(app, get_consumer_manager)
         register_upstream_commands(app, get_upstream_manager)
         register_plugin_commands(app, get_plugin_manager)
+
+        # Register security commands (Phase 3)
+        register_security_commands(app, get_plugin_manager, get_consumer_manager)
 
     def _register_status_commands(self, app: typer.Typer) -> None:
         """Register status and info commands."""

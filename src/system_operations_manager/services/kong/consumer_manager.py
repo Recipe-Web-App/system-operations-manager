@@ -12,6 +12,7 @@ from system_operations_manager.integrations.kong.models.consumer import (
     ACLGroup,
     Consumer,
     Credential,
+    MTLSAuthCredential,
     get_credential_model,
 )
 from system_operations_manager.services.kong.base import BaseEntityManager
@@ -42,13 +43,14 @@ class ConsumerManager(BaseEntityManager[Consumer]):
         "jwt": "jwt",
         "oauth2": "oauth2",
         "acls": "acls",
+        "mtls-auth": "mtls-auth",
     }
 
     def list_credentials(
         self,
         consumer_id_or_name: str,
         credential_type: str,
-    ) -> list[Credential]:
+    ) -> list[Credential | MTLSAuthCredential]:
         """List credentials of a specific type for a consumer.
 
         Args:
@@ -85,7 +87,7 @@ class ConsumerManager(BaseEntityManager[Consumer]):
         consumer_id_or_name: str,
         credential_type: str,
         data: dict[str, Any],
-    ) -> Credential:
+    ) -> Credential | MTLSAuthCredential:
         """Add a credential to a consumer.
 
         Args:
@@ -126,7 +128,7 @@ class ConsumerManager(BaseEntityManager[Consumer]):
         consumer_id_or_name: str,
         credential_type: str,
         credential_id: str,
-    ) -> Credential:
+    ) -> Credential | MTLSAuthCredential:
         """Get a specific credential.
 
         Args:
