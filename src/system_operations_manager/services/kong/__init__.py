@@ -7,6 +7,7 @@ to abstract data access from command implementations.
 
 from system_operations_manager.services.kong.base import BaseEntityManager
 from system_operations_manager.services.kong.consumer_manager import ConsumerManager
+from system_operations_manager.services.kong.observability_manager import ObservabilityManager
 from system_operations_manager.services.kong.plugin_manager import KongPluginManager
 from system_operations_manager.services.kong.route_manager import RouteManager
 from system_operations_manager.services.kong.service_manager import ServiceManager
@@ -16,6 +17,7 @@ __all__ = [
     "BaseEntityManager",
     "ConsumerManager",
     "KongPluginManager",
+    "ObservabilityManager",
     "RouteManager",
     "ServiceManager",
     "UpstreamManager",

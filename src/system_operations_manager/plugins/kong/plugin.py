@@ -106,6 +106,9 @@ class KongPlugin(Plugin):
         from system_operations_manager.plugins.kong.commands.consumers import (
             register_consumer_commands,
         )
+        from system_operations_manager.plugins.kong.commands.observability import (
+            register_observability_commands,
+        )
         from system_operations_manager.plugins.kong.commands.plugins import (
             register_plugin_commands,
         )
@@ -129,6 +132,7 @@ class KongPlugin(Plugin):
         from system_operations_manager.services.kong import (
             ConsumerManager,
             KongPluginManager,
+            ObservabilityManager,
             RouteManager,
             ServiceManager,
             UpstreamManager,
@@ -160,6 +164,11 @@ class KongPlugin(Plugin):
                 raise RuntimeError("Kong client not initialized")
             return KongPluginManager(self._client)
 
+        def get_observability_manager() -> ObservabilityManager:
+            if not self._client:
+                raise RuntimeError("Kong client not initialized")
+            return ObservabilityManager(self._client)
+
         # Register all command groups
         register_service_commands(app, get_service_manager)
         register_route_commands(app, get_route_manager)
@@ -172,6 +181,14 @@ class KongPlugin(Plugin):
 
         # Register traffic commands
         register_traffic_commands(app, get_plugin_manager)
+
+        # Register observability commands
+        register_observability_commands(
+            app,
+            get_plugin_manager,
+            get_upstream_manager,
+            get_observability_manager,
+        )
 
     def _register_status_commands(self, app: typer.Typer) -> None:
         """Register status and info commands."""

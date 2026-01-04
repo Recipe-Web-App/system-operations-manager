@@ -18,6 +18,13 @@ from system_operations_manager.integrations.kong.models.consumer import (
     KeyAuthCredential,
     OAuth2Credential,
 )
+from system_operations_manager.integrations.kong.models.observability import (
+    MetricsSummary,
+    NodeStatus,
+    PrometheusMetric,
+    TargetHealthDetail,
+    UpstreamHealthSummary,
+)
 from system_operations_manager.integrations.kong.models.plugin import (
     AvailablePlugin,
     KongPluginEntity,
@@ -49,14 +56,19 @@ __all__ = [
     "KongEntityBase",
     "KongEntityReference",
     "KongPluginEntity",
+    "MetricsSummary",
+    "NodeStatus",
     "OAuth2Credential",
     "PaginatedResponse",
     "PluginSchema",
+    "PrometheusMetric",
     "Route",
     "RouteSummary",
     "Service",
     "ServiceSummary",
     "Target",
+    "TargetHealthDetail",
     "Upstream",
     "UpstreamHealth",
+    "UpstreamHealthSummary",
 ]
