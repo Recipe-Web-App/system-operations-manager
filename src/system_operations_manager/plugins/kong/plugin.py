@@ -92,7 +92,7 @@ class KongPlugin(Plugin):
         # Register status commands (existing)
         self._register_status_commands(kong_app)
 
-        # Register entity commands (Phase 2)
+        # Register entity commands
         self._register_entity_commands(kong_app)
 
         # Add Kong sub-app to main app
@@ -117,6 +117,9 @@ class KongPlugin(Plugin):
         )
         from system_operations_manager.plugins.kong.commands.services import (
             register_service_commands,
+        )
+        from system_operations_manager.plugins.kong.commands.traffic import (
+            register_traffic_commands,
         )
         from system_operations_manager.plugins.kong.commands.upstreams import (
             register_upstream_commands,
@@ -164,8 +167,11 @@ class KongPlugin(Plugin):
         register_upstream_commands(app, get_upstream_manager)
         register_plugin_commands(app, get_plugin_manager)
 
-        # Register security commands (Phase 3)
+        # Register security commands
         register_security_commands(app, get_plugin_manager, get_consumer_manager)
+
+        # Register traffic commands
+        register_traffic_commands(app, get_plugin_manager)
 
     def _register_status_commands(self, app: typer.Typer) -> None:
         """Register status and info commands."""
