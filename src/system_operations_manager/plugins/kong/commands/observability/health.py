@@ -364,5 +364,60 @@ def register_health_commands(
         except KongAPIError as e:
             handle_kong_error(e)
 
+    @health_app.command("failures")
+    def health_failures(
+        upstream: UpstreamArgument,
+        output: OutputOption = OutputFormat.TABLE,
+    ) -> None:
+        """Show health check failure details for an upstream.
+
+        Displays targets that have failed health checks with failure type
+        and diagnostic details.
+
+        Examples:
+            ops kong observability health failures my-upstream
+            ops kong observability health failures my-upstream --output json
+        """
+        try:
+            manager = get_observability_manager()
+            failures = manager.get_health_failures(upstream)
+
+            if not failures:
+                console.print(f"[green]No health check failures for upstream '{upstream}'[/green]")
+                raise typer.Exit(0)
+
+            if output == OutputFormat.TABLE:
+                console.print(f"\n[bold]Upstream:[/bold] {upstream}")
+                console.print(f"[bold]Failed targets:[/bold] {len(failures)}\n")
+
+                table = Table(title="Health Check Failures")
+                table.add_column("Target", style="cyan")
+                table.add_column("Failure Type", style="red")
+                table.add_column("Details", style="dim")
+
+                for failure in failures:
+                    table.add_row(
+                        failure.target,
+                        failure.failure_type,
+                        failure.details or "-",
+                    )
+
+                console.print(table)
+
+                console.print(
+                    "\n[dim]Note: Kong's Admin API doesn't expose detailed failure history. "
+                    "This shows current unhealthy targets.[/dim]"
+                )
+            else:
+                formatter = get_formatter(output, console)
+                data = [f.model_dump(exclude_none=True) for f in failures]
+                formatter.format_dict(
+                    {"upstream": upstream, "failures": data},
+                    title="Health Check Failures",
+                )
+
+        except KongAPIError as e:
+            handle_kong_error(e)
+
     # Add health app to parent
     app.add_typer(health_app, name="health")

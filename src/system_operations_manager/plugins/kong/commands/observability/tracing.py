@@ -144,7 +144,7 @@ def register_tracing_commands(
             list[str] | None,
             typer.Option(
                 "--resource-attribute",
-                "-r",
+                "-a",
                 help="Resource attributes as key=value (can be repeated)",
             ),
         ] = None,
@@ -328,7 +328,7 @@ def register_tracing_commands(
             float,
             typer.Option(
                 "--sample-ratio",
-                "-s",
+                "-S",
                 help="Sampling ratio (0.0 to 1.0)",
                 min=0.0,
                 max=1.0,

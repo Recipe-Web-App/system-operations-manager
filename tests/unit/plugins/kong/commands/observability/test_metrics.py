@@ -9,6 +9,7 @@ import typer
 from typer.testing import CliRunner
 
 from system_operations_manager.integrations.kong.exceptions import KongAPIError
+from system_operations_manager.integrations.kong.models.config import PercentileMetrics
 from system_operations_manager.integrations.kong.models.observability import (
     MetricsSummary,
 )
@@ -367,3 +368,100 @@ class TestMetricsStatus(TestMetricsCommands):
 
         assert result.exit_code == 0
         mock_observability_manager.get_node_status.assert_called_once()
+
+
+class TestMetricsPercentiles(TestMetricsCommands):
+    """Tests for metrics percentiles command."""
+
+    @pytest.mark.unit
+    def test_percentiles_displays_values(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_observability_manager: MagicMock,
+    ) -> None:
+        """metrics percentiles should display P50/P95/P99 values."""
+        result = cli_runner.invoke(app, ["metrics", "percentiles"])
+
+        assert result.exit_code == 0
+        mock_observability_manager.get_percentile_metrics.assert_called_once()
+        # Should show percentile values
+        assert "p50" in result.stdout.lower() or "25.5" in result.stdout
+
+    @pytest.mark.unit
+    def test_percentiles_with_service_filter(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_observability_manager: MagicMock,
+    ) -> None:
+        """metrics percentiles should pass service filter."""
+        result = cli_runner.invoke(app, ["metrics", "percentiles", "--service", "my-api"])
+
+        assert result.exit_code == 0
+        call_kwargs = mock_observability_manager.get_percentile_metrics.call_args
+        assert call_kwargs[1]["service_filter"] == "my-api"
+
+    @pytest.mark.unit
+    def test_percentiles_with_route_filter(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_observability_manager: MagicMock,
+    ) -> None:
+        """metrics percentiles should pass route filter."""
+        result = cli_runner.invoke(app, ["metrics", "percentiles", "--route", "my-route"])
+
+        assert result.exit_code == 0
+        call_kwargs = mock_observability_manager.get_percentile_metrics.call_args
+        assert call_kwargs[1]["route_filter"] == "my-route"
+
+    @pytest.mark.unit
+    def test_percentiles_no_data(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_observability_manager: MagicMock,
+    ) -> None:
+        """metrics percentiles should show message when no data."""
+        mock_observability_manager.get_percentile_metrics.return_value = PercentileMetrics(
+            p50_ms=None,
+            p95_ms=None,
+            p99_ms=None,
+        )
+
+        result = cli_runner.invoke(app, ["metrics", "percentiles"])
+
+        assert result.exit_code == 0
+        assert "no latency" in result.stdout.lower() or "no data" in result.stdout.lower()
+
+    @pytest.mark.unit
+    def test_percentiles_json_output(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_observability_manager: MagicMock,
+    ) -> None:
+        """metrics percentiles should support JSON output."""
+        result = cli_runner.invoke(app, ["metrics", "percentiles", "--output", "json"])
+
+        assert result.exit_code == 0
+        mock_observability_manager.get_percentile_metrics.assert_called_once()
+
+    @pytest.mark.unit
+    def test_percentiles_error_handling(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_observability_manager: MagicMock,
+    ) -> None:
+        """metrics percentiles should handle KongAPIError gracefully."""
+        mock_observability_manager.get_percentile_metrics.side_effect = KongAPIError(
+            "Metrics not available",
+            status_code=500,
+        )
+
+        result = cli_runner.invoke(app, ["metrics", "percentiles"])
+
+        assert result.exit_code == 1
+        assert "error" in result.stdout.lower()

@@ -517,6 +517,77 @@ def register_metrics_commands(
         except KongAPIError as e:
             handle_kong_error(e)
 
+    @metrics_app.command("percentiles")
+    def metrics_percentiles(
+        service: ServiceScopeOption = None,
+        route: RouteScopeOption = None,
+        output: OutputOption = OutputFormat.TABLE,
+    ) -> None:
+        """Show latency percentile metrics (P50, P95, P99).
+
+        Calculates latency percentiles from Prometheus histogram data.
+        Requires the Prometheus plugin to be enabled with latency_metrics=true.
+
+        Examples:
+            ops kong observability metrics percentiles
+            ops kong observability metrics percentiles --service my-api
+            ops kong observability metrics percentiles --output json
+        """
+        try:
+            manager = get_observability_manager()
+            percentiles = manager.get_percentile_metrics(
+                service_filter=service,
+                route_filter=route,
+            )
+
+            if percentiles.p50_ms is None:
+                console.print(
+                    "[yellow]No latency histogram data available.[/yellow]\n"
+                    "Ensure Prometheus plugin is enabled with latency metrics:\n"
+                    "  ops kong observability metrics prometheus enable --global --latency-metrics"
+                )
+                raise typer.Exit(0)
+
+            if output == OutputFormat.TABLE:
+                table = Table(title="Latency Percentiles")
+                table.add_column("Percentile", style="cyan")
+                table.add_column("Latency", style="green")
+                table.add_column("Description", style="dim")
+
+                if percentiles.p50_ms is not None:
+                    table.add_row(
+                        "P50 (median)",
+                        f"{percentiles.p50_ms:.2f} ms",
+                        "50% of requests faster than this",
+                    )
+                if percentiles.p95_ms is not None:
+                    table.add_row(
+                        "P95",
+                        f"{percentiles.p95_ms:.2f} ms",
+                        "95% of requests faster than this",
+                    )
+                if percentiles.p99_ms is not None:
+                    table.add_row(
+                        "P99",
+                        f"{percentiles.p99_ms:.2f} ms",
+                        "99% of requests faster than this",
+                    )
+
+                console.print(table)
+
+                if service or route:
+                    filter_desc = f"service '{service}'" if service else f"route '{route}'"
+                    console.print(f"\n[dim]Filtered by: {filter_desc}[/dim]")
+            else:
+                formatter = get_formatter(output, console)
+                formatter.format_dict(
+                    percentiles.model_dump(exclude_none=True),
+                    title="Latency Percentiles",
+                )
+
+        except KongAPIError as e:
+            handle_kong_error(e)
+
     # Add sub-apps to metrics app
     metrics_app.add_typer(prometheus_app, name="prometheus")
 

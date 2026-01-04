@@ -14,6 +14,10 @@ import structlog
 if TYPE_CHECKING:
     from system_operations_manager.integrations.kong.client import KongAdminClient
 
+from system_operations_manager.integrations.kong.models.config import (
+    HealthFailure,
+    PercentileMetrics,
+)
 from system_operations_manager.integrations.kong.models.observability import (
     MetricsSummary,
     NodeStatus,
@@ -371,3 +375,187 @@ class ObservabilityManager:
                     )
 
         return summaries
+
+    # =========================================================================
+    # Percentile Metrics
+    # =========================================================================
+
+    def get_percentile_metrics(
+        self,
+        service_filter: str | None = None,
+        route_filter: str | None = None,
+    ) -> PercentileMetrics:
+        """Calculate P50, P95, P99 latency from histogram metrics.
+
+        Uses the histogram bucket data from Prometheus metrics to calculate
+        latency percentiles via linear interpolation.
+
+        Args:
+            service_filter: Filter metrics to specific service.
+            route_filter: Filter metrics to specific route.
+
+        Returns:
+            PercentileMetrics with P50, P95, P99 values.
+        """
+        self._log.debug(
+            "getting_percentile_metrics",
+            service=service_filter,
+            route=route_filter,
+        )
+
+        try:
+            raw_metrics = self.get_raw_metrics()
+            metrics = self.parse_prometheus_metrics(raw_metrics)
+        except Exception as e:
+            self._log.warning("metrics_not_available", error=str(e))
+            return PercentileMetrics(service=service_filter, route=route_filter)
+
+        # Collect histogram bucket data for latency
+        buckets: dict[float, float] = {}
+        total_count = 0.0
+
+        for metric in metrics:
+            if not metric.name.startswith("kong_request_latency_ms_bucket"):
+                continue
+            if service_filter and metric.labels.get("service") != service_filter:
+                continue
+            if route_filter and metric.labels.get("route") != route_filter:
+                continue
+
+            le_str = metric.labels.get("le", "")
+            if not le_str:
+                continue
+
+            try:
+                le = float(le_str) if le_str != "+Inf" else float("inf")
+            except ValueError:
+                continue
+
+            count = metric.value or 0.0
+            buckets[le] = buckets.get(le, 0.0) + count
+
+            # Track total from +Inf bucket
+            if le == float("inf"):
+                total_count = max(total_count, count)
+
+        # Calculate percentiles from buckets
+        p50 = self._calculate_percentile(buckets, total_count, 0.50)
+        p95 = self._calculate_percentile(buckets, total_count, 0.95)
+        p99 = self._calculate_percentile(buckets, total_count, 0.99)
+
+        return PercentileMetrics(
+            p50_ms=p50,
+            p95_ms=p95,
+            p99_ms=p99,
+            service=service_filter,
+            route=route_filter,
+        )
+
+    def _calculate_percentile(
+        self,
+        buckets: dict[float, float],
+        total: float,
+        percentile: float,
+    ) -> float | None:
+        """Calculate a percentile from histogram buckets.
+
+        Uses linear interpolation within buckets to estimate the percentile value.
+
+        Args:
+            buckets: Histogram buckets as {upper_bound: cumulative_count}.
+            total: Total number of observations.
+            percentile: Percentile to calculate (0.0 to 1.0).
+
+        Returns:
+            Estimated percentile value, or None if insufficient data.
+        """
+        if total == 0 or not buckets:
+            return None
+
+        target = total * percentile
+        sorted_buckets = sorted([(b, c) for b, c in buckets.items() if b != float("inf")])
+
+        if not sorted_buckets:
+            return None
+
+        prev_bound = 0.0
+        prev_count = 0.0
+
+        for bound, count in sorted_buckets:
+            if count >= target:
+                # Linear interpolation within bucket
+                if count > prev_count:
+                    bucket_fraction = (target - prev_count) / (count - prev_count)
+                else:
+                    bucket_fraction = 0.0
+                return prev_bound + bucket_fraction * (bound - prev_bound)
+            prev_bound = bound
+            prev_count = count
+
+        # Return last bucket bound if percentile is beyond all buckets
+        return sorted_buckets[-1][0] if sorted_buckets else None
+
+    # =========================================================================
+    # Health Failures
+    # =========================================================================
+
+    def get_health_failures(self, upstream_name: str) -> list[HealthFailure]:
+        """Get health check failure details for an upstream.
+
+        Identifies targets that are currently unhealthy and provides
+        failure details based on available health check data.
+
+        Note: Kong's Admin API doesn't expose detailed failure history.
+        This method returns current unhealthy state with inferred failure info.
+
+        Args:
+            upstream_name: Upstream ID or name.
+
+        Returns:
+            List of HealthFailure objects for unhealthy targets.
+        """
+        self._log.debug("getting_health_failures", upstream=upstream_name)
+
+        health_summary = self.get_upstream_health(upstream_name)
+        failures: list[HealthFailure] = []
+
+        for target in health_summary.targets:
+            if target.health in ("UNHEALTHY", "DNS_ERROR"):
+                failure_type = (
+                    "dns_error" if target.health == "DNS_ERROR" else "health_check_failed"
+                )
+                details = self._get_failure_details(target)
+
+                failures.append(
+                    HealthFailure(
+                        target=target.target,
+                        failure_type=failure_type,
+                        failure_count=0,  # Kong doesn't expose this via API
+                        details=details,
+                    )
+                )
+
+        return failures
+
+    def _get_failure_details(self, target: TargetHealthDetail) -> str:
+        """Generate failure details string for a target.
+
+        Args:
+            target: Target health detail.
+
+        Returns:
+            Human-readable failure details.
+        """
+        if target.health == "DNS_ERROR":
+            return f"DNS resolution failed for target {target.target}"
+
+        if target.addresses:
+            unhealthy_addrs = [
+                addr.get("ip", "unknown")
+                for addr in target.addresses
+                if addr.get("health") == "UNHEALTHY"
+            ]
+            if unhealthy_addrs:
+                return f"Unhealthy addresses: {', '.join(unhealthy_addrs)}"
+
+        return f"Target marked unhealthy by health checker (weight: {target.weight})"

@@ -9,6 +9,10 @@ from unittest.mock import MagicMock
 import pytest
 from typer.testing import CliRunner
 
+from system_operations_manager.integrations.kong.models.config import (
+    HealthFailure,
+    PercentileMetrics,
+)
 from system_operations_manager.integrations.kong.models.observability import (
     MetricsSummary,
     NodeStatus,
@@ -136,6 +140,31 @@ def mock_observability_manager() -> MagicMock:
             healthy_targets=1,
             unhealthy_targets=2,
             targets=[],
+        ),
+    ]
+
+    # Default percentile metrics
+    manager.get_percentile_metrics.return_value = PercentileMetrics(
+        p50_ms=25.5,
+        p95_ms=85.2,
+        p99_ms=150.7,
+        service=None,
+        route=None,
+    )
+
+    # Default health failures
+    manager.get_health_failures.return_value = [
+        HealthFailure(
+            target="api1:8080",
+            failure_type="health_check_failed",
+            failure_count=5,
+            details="Target marked unhealthy by health checker",
+        ),
+        HealthFailure(
+            target="api2:8080",
+            failure_type="dns_error",
+            failure_count=3,
+            details="DNS resolution failed",
         ),
     ]
 

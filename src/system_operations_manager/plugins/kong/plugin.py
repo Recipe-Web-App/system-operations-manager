@@ -103,6 +103,9 @@ class KongPlugin(Plugin):
     def _register_entity_commands(self, app: typer.Typer) -> None:
         """Register all entity management commands."""
         # Import command registration functions
+        from system_operations_manager.plugins.kong.commands.config import (
+            register_config_commands,
+        )
         from system_operations_manager.plugins.kong.commands.consumers import (
             register_consumer_commands,
         )
@@ -130,6 +133,7 @@ class KongPlugin(Plugin):
 
         # Import managers
         from system_operations_manager.services.kong import (
+            ConfigManager,
             ConsumerManager,
             KongPluginManager,
             ObservabilityManager,
@@ -169,6 +173,11 @@ class KongPlugin(Plugin):
                 raise RuntimeError("Kong client not initialized")
             return ObservabilityManager(self._client)
 
+        def get_config_manager() -> ConfigManager:
+            if not self._client:
+                raise RuntimeError("Kong client not initialized")
+            return ConfigManager(self._client)
+
         # Register all command groups
         register_service_commands(app, get_service_manager)
         register_route_commands(app, get_route_manager)
@@ -189,6 +198,9 @@ class KongPlugin(Plugin):
             get_upstream_manager,
             get_observability_manager,
         )
+
+        # Register config commands
+        register_config_commands(app, get_config_manager)
 
     def _register_status_commands(self, app: typer.Typer) -> None:
         """Register status and info commands."""

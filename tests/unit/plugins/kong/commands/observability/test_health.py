@@ -295,3 +295,86 @@ class TestHealthSet(TestHealthCommands):
 
         assert result.exit_code == 1
         assert "error" in result.stdout.lower()
+
+
+class TestHealthFailures(TestHealthCommands):
+    """Tests for health failures command."""
+
+    @pytest.mark.unit
+    def test_failures_displays_list(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_observability_manager: MagicMock,
+    ) -> None:
+        """health failures should display failure list."""
+        result = cli_runner.invoke(app, ["health", "failures", "test-upstream"])
+
+        assert result.exit_code == 0
+        mock_observability_manager.get_health_failures.assert_called_once_with("test-upstream")
+        assert "api1:8080" in result.stdout or "health_check_failed" in result.stdout
+
+    @pytest.mark.unit
+    def test_failures_shows_details(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_observability_manager: MagicMock,
+    ) -> None:
+        """health failures should show failure details."""
+        result = cli_runner.invoke(app, ["health", "failures", "test-upstream"])
+
+        assert result.exit_code == 0
+        # Should show failure types
+        assert (
+            "health_check_failed" in result.stdout.lower() or "dns_error" in result.stdout.lower()
+        )
+
+    @pytest.mark.unit
+    def test_failures_no_failures(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_observability_manager: MagicMock,
+    ) -> None:
+        """health failures should show message when no failures."""
+        mock_observability_manager.get_health_failures.return_value = []
+
+        result = cli_runner.invoke(app, ["health", "failures", "test-upstream"])
+
+        assert result.exit_code == 0
+        assert (
+            "no health check failures" in result.stdout.lower()
+            or "no failures" in result.stdout.lower()
+        )
+
+    @pytest.mark.unit
+    def test_failures_json_output(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_observability_manager: MagicMock,
+    ) -> None:
+        """health failures should support JSON output."""
+        result = cli_runner.invoke(app, ["health", "failures", "test-upstream", "--output", "json"])
+
+        assert result.exit_code == 0
+        mock_observability_manager.get_health_failures.assert_called_once()
+
+    @pytest.mark.unit
+    def test_failures_error_handling(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_observability_manager: MagicMock,
+    ) -> None:
+        """health failures should handle KongAPIError gracefully."""
+        mock_observability_manager.get_health_failures.side_effect = KongAPIError(
+            "Upstream not found",
+            status_code=404,
+        )
+
+        result = cli_runner.invoke(app, ["health", "failures", "nonexistent"])
+
+        assert result.exit_code == 1
+        assert "error" in result.stdout.lower()

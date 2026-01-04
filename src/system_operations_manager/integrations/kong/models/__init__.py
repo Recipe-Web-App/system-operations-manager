@@ -8,6 +8,16 @@ from system_operations_manager.integrations.kong.models.base import (
     KongEntityReference,
     PaginatedResponse,
 )
+from system_operations_manager.integrations.kong.models.config import (
+    ApplyOperation,
+    ConfigDiff,
+    ConfigDiffSummary,
+    ConfigValidationError,
+    ConfigValidationResult,
+    DeclarativeConfig,
+    HealthFailure,
+    PercentileMetrics,
+)
 from system_operations_manager.integrations.kong.models.consumer import (
     ACLGroup,
     BasicAuthCredential,
@@ -46,11 +56,18 @@ from system_operations_manager.integrations.kong.models.upstream import (
 
 __all__ = [
     "ACLGroup",
+    "ApplyOperation",
     "AvailablePlugin",
     "BasicAuthCredential",
+    "ConfigDiff",
+    "ConfigDiffSummary",
+    "ConfigValidationError",
+    "ConfigValidationResult",
     "Consumer",
     "Credential",
+    "DeclarativeConfig",
     "HMACAuthCredential",
+    "HealthFailure",
     "JWTCredential",
     "KeyAuthCredential",
     "KongEntityBase",
@@ -60,6 +77,7 @@ __all__ = [
     "NodeStatus",
     "OAuth2Credential",
     "PaginatedResponse",
+    "PercentileMetrics",
     "PluginSchema",
     "PrometheusMetric",
     "Route",
