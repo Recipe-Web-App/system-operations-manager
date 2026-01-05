@@ -1,0 +1,63 @@
+_format_version: "3.0"
+_transform: true
+
+# Pre-configured services for testing
+services:
+  - name: test-service
+    url: http://httpbin.org
+    tags:
+      - test
+      - integration
+    routes:
+      - name: test-route
+        paths:
+          - /test
+        strip_path: true
+        tags:
+          - test
+
+  - name: mock-api
+    host: mockbin.org
+    port: 80
+    protocol: http
+    tags:
+      - mock
+    routes:
+      - name: mock-route
+        paths:
+          - /mock
+        methods:
+          - GET
+          - POST
+
+# Pre-configured upstreams
+upstreams:
+  - name: test-upstream
+    algorithm: round-robin
+    healthchecks:
+      passive:
+        healthy:
+          successes: 2
+        unhealthy:
+          http_failures: 2
+    targets:
+      - target: httpbin.org:80
+        weight: 100
+
+# Pre-configured consumers
+consumers:
+  - username: test-user
+    custom_id: test-custom-id
+    tags:
+      - test
+
+  - username: api-consumer
+    keyauth_credentials:
+      - key: test-api-key
+
+# Global plugins
+plugins:
+  - name: correlation-id
+    config:
+      header_name: X-Request-ID
+      generator: uuid

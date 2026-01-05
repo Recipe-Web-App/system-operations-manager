@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, Literal
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from system_operations_manager.integrations.kong.models.base import KongEntityBase
 
@@ -102,6 +102,12 @@ class Upstream(KongEntityBase):
     hash_on_uri_capture: str | None = Field(
         default=None, description="URI capture group for hashing"
     )
+    hash_fallback_query_arg: str | None = Field(
+        default=None, description="Fallback query argument for hashing"
+    )
+    hash_fallback_uri_capture: str | None = Field(
+        default=None, description="Fallback URI capture group for hashing"
+    )
 
     # Health checks
     healthchecks: HealthCheckConfig | dict[str, Any] | None = Field(
@@ -130,6 +136,8 @@ class Target(KongEntityBase):
         upstream: Reference to parent upstream.
     """
 
+    model_config = ConfigDict(extra="allow")  # Kong returns additional runtime fields
+
     _entity_name: ClassVar[str] = "target"
 
     target: str = Field(description="Target address (host:port or host)")
@@ -145,6 +153,8 @@ class TargetHealth(KongEntityBase):
         health: Health status (HEALTHY, UNHEALTHY, DNS_ERROR, HEALTHCHECKS_OFF).
         weight: Current weight.
     """
+
+    model_config = ConfigDict(extra="allow")  # Kong returns additional runtime fields
 
     _entity_name: ClassVar[str] = "target_health"
 
@@ -164,9 +174,11 @@ class UpstreamHealth(KongEntityBase):
         data: Detailed health information including target states.
     """
 
+    model_config = ConfigDict(extra="allow")  # Kong returns additional runtime fields
+
     _entity_name: ClassVar[str] = "upstream_health"
 
     health: Literal["HEALTHY", "UNHEALTHY", "HEALTHCHECKS_OFF"] | str | None = Field(
         default=None, description="Overall health status"
     )
-    data: dict[str, Any] | None = Field(default=None, description="Detailed health data")
+    data: list[dict[str, Any]] | None = Field(default=None, description="Detailed health data")

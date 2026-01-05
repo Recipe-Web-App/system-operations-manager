@@ -51,7 +51,7 @@ class Workspace(KongEntityBase):
 
     _entity_name: ClassVar[str] = "workspace"
 
-    name: str = Field(..., description="Unique workspace name")
+    name: str | None = Field(default=None, description="Unique workspace name")
     comment: str | None = Field(default=None, description="Workspace description")
     config: WorkspaceConfig | None = Field(default=None, description="Workspace configuration")
     meta: dict[str, Any] | None = Field(default=None, description="Additional metadata")

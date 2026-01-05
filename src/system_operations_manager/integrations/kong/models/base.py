@@ -26,15 +26,17 @@ class KongEntityBase(BaseModel):
     """
 
     model_config = ConfigDict(
-        extra="forbid",
+        extra="ignore",  # Allow extra fields for Enterprise compatibility
         populate_by_name=True,
         str_strip_whitespace=True,
     )
 
     # Common Kong entity fields
     id: str | None = Field(default=None, description="Unique identifier")
-    created_at: int | None = Field(default=None, description="Unix timestamp of creation")
-    updated_at: int | None = Field(default=None, description="Unix timestamp of last update")
+    created_at: float | int | None = Field(default=None, description="Unix timestamp of creation")
+    updated_at: float | int | None = Field(
+        default=None, description="Unix timestamp of last update"
+    )
     tags: list[str] | None = Field(default=None, description="Entity tags for filtering")
 
     # Subclasses should define this for better error messages
