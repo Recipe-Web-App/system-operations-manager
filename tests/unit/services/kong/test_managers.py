@@ -435,6 +435,170 @@ class TestUpstreamManager:
         assert health.health == "HEALTHY"
 
 
+class TestBaseEntityManagerEdgeCases:
+    """Edge case tests for BaseEntityManager functionality."""
+
+    @pytest.fixture
+    def manager(self, mock_client: MagicMock) -> ServiceManager:
+        """Create a ServiceManager with mock client for testing base features."""
+        return ServiceManager(mock_client)
+
+    @pytest.mark.unit
+    def test_endpoint_property(self, manager: ServiceManager) -> None:
+        """endpoint property should return the API endpoint."""
+        assert manager.endpoint == "services"
+
+    @pytest.mark.unit
+    def test_list_with_all_pagination_params(
+        self,
+        manager: ServiceManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """list should pass limit and offset parameters."""
+        mock_client.get.return_value = {"data": [], "offset": None}
+
+        manager.list(limit=50, offset="abc123")
+
+        call_args = mock_client.get.call_args
+        assert call_args[1]["params"]["size"] == 50
+        assert call_args[1]["params"]["offset"] == "abc123"
+
+    @pytest.mark.unit
+    def test_list_with_custom_filters(
+        self,
+        manager: ServiceManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """list should pass custom filter parameters."""
+        mock_client.get.return_value = {"data": [], "offset": None}
+
+        manager.list(host="api.example.com", protocol="https")
+
+        call_args = mock_client.get.call_args
+        assert call_args[1]["params"]["host"] == "api.example.com"
+        assert call_args[1]["params"]["protocol"] == "https"
+
+    @pytest.mark.unit
+    def test_list_empty_response(
+        self,
+        manager: ServiceManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """list should handle empty response."""
+        mock_client.get.return_value = {}
+
+        entities, offset = manager.list()
+
+        assert entities == []
+        assert offset is None
+
+    @pytest.mark.unit
+    def test_upsert_creates_entity(
+        self,
+        manager: ServiceManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """upsert should create entity if it doesn't exist."""
+        mock_client.put.return_value = {
+            "id": "svc-new",
+            "name": "new-service",
+            "host": "api.example.com",
+            "port": 80,
+        }
+
+        service = Service(name="new-service", host="api.example.com")
+        result = manager.upsert("new-service", service)
+
+        assert result.id == "svc-new"
+        mock_client.put.assert_called_once()
+        call_args = mock_client.put.call_args
+        assert call_args[0][0] == "services/new-service"
+
+    @pytest.mark.unit
+    def test_upsert_updates_entity(
+        self,
+        manager: ServiceManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """upsert should update entity if it exists."""
+        mock_client.put.return_value = {
+            "id": "svc-1",
+            "name": "existing-service",
+            "host": "new-host.example.com",
+            "port": 80,
+        }
+
+        service = Service(name="existing-service", host="new-host.example.com")
+        result = manager.upsert("existing-service", service)
+
+        assert result.host == "new-host.example.com"
+
+    @pytest.mark.unit
+    def test_count_single_page(
+        self,
+        manager: ServiceManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """count should return count for single page of results."""
+        mock_client.get.return_value = {
+            "data": [{"id": "1"}, {"id": "2"}, {"id": "3"}],
+            "offset": None,
+        }
+
+        result = manager.count()
+
+        assert result == 3
+
+    @pytest.mark.unit
+    def test_count_multiple_pages(
+        self,
+        manager: ServiceManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """count should paginate through all results."""
+        mock_client.get.side_effect = [
+            {"data": [{"id": "1"}, {"id": "2"}], "offset": "page2"},
+            {"data": [{"id": "3"}, {"id": "4"}], "offset": "page3"},
+            {"data": [{"id": "5"}], "offset": None},
+        ]
+
+        result = manager.count()
+
+        assert result == 5
+        assert mock_client.get.call_count == 3
+
+    @pytest.mark.unit
+    def test_count_with_tags(
+        self,
+        manager: ServiceManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """count should filter by tags."""
+        mock_client.get.return_value = {
+            "data": [{"id": "1"}],
+            "offset": None,
+        }
+
+        result = manager.count(tags=["production"])
+
+        assert result == 1
+        call_args = mock_client.get.call_args
+        assert "production" in str(call_args)
+
+    @pytest.mark.unit
+    def test_count_empty(
+        self,
+        manager: ServiceManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """count should return 0 for empty results."""
+        mock_client.get.return_value = {"data": [], "offset": None}
+
+        result = manager.count()
+
+        assert result == 0
+
+
 class TestKongPluginManager:
     """Tests for KongPluginManager."""
 

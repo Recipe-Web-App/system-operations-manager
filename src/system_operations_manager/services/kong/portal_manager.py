@@ -23,6 +23,15 @@ if TYPE_CHECKING:
 logger = structlog.get_logger()
 
 
+def _strip_type_field(data: dict[str, Any]) -> dict[str, Any]:
+    """Strip the 'type' field from a dict before DevPortalSpec validation.
+
+    The Kong API returns a 'type' field for files, but DevPortalSpec doesn't
+    accept it since it's a specialized model for spec files only.
+    """
+    return {k: v for k, v in data.items() if k != "type"}
+
+
 class PortalManager:
     """Manager for Kong Enterprise Developer Portal.
 
@@ -118,11 +127,11 @@ class PortalManager:
         try:
             response = self._client.get("files", params=params)
 
-            # Filter for spec files
+            # Filter for spec files and strip type field before validation
             all_files = response.get("data", [])
             spec_files = [f for f in all_files if f.get("type") == "spec"]
 
-            specs = [DevPortalSpec.model_validate(item) for item in spec_files]
+            specs = [DevPortalSpec.model_validate(_strip_type_field(item)) for item in spec_files]
             next_offset = response.get("offset")
 
             self._log.debug("listed_specs", count=len(specs))
@@ -146,7 +155,7 @@ class PortalManager:
         """
         self._log.debug("getting_spec", path=path)
         response = self._client.get(f"files/{path}")
-        spec = DevPortalSpec.model_validate(response)
+        spec = DevPortalSpec.model_validate(_strip_type_field(response))
         self._log.debug("got_spec", path=spec.path)
         return spec
 
@@ -180,7 +189,7 @@ class PortalManager:
 
         try:
             response = self._client.post("files", json=payload)
-            spec = DevPortalSpec.model_validate(response)
+            spec = DevPortalSpec.model_validate(_strip_type_field(response))
             self._log.info("published_spec", name=spec.name, path=spec.path)
             return spec
 
@@ -188,7 +197,7 @@ class PortalManager:
             # Try update if already exists
             self._log.debug("spec_exists_attempting_update", path=spec_path)
             response = self._client.patch(f"files/{spec_path}", json={"contents": contents})
-            spec = DevPortalSpec.model_validate(response)
+            spec = DevPortalSpec.model_validate(_strip_type_field(response))
             self._log.info("updated_spec", name=spec.name, path=spec.path)
             return spec
 
@@ -204,7 +213,7 @@ class PortalManager:
         """
         self._log.info("updating_spec", path=path)
         response = self._client.patch(f"files/{path}", json={"contents": contents})
-        spec = DevPortalSpec.model_validate(response)
+        spec = DevPortalSpec.model_validate(_strip_type_field(response))
         self._log.info("updated_spec", path=spec.path)
         return spec
 
