@@ -66,6 +66,45 @@ sysctl config set docker.build_context ./
 - Image scanning and security
 - Docker Compose integration
 
+### API Management
+
+#### Kong Gateway Plugin
+
+**Package**: `system-control-kong`
+**Version**: 0.1.0
+**Maintainer**: System Control Team
+
+Comprehensive Kong Gateway integration for API management, traffic control, security,
+and observability through the Kong Admin API.
+
+```bash
+# Configuration
+ops config set kong.connection.base_url http://localhost:8001
+ops config set kong.auth.type none
+```
+
+**Features**:
+
+- Full API management (services, routes, consumers, upstreams)
+- Traffic control (rate limiting, request/response transformation)
+- Security (key-auth, JWT, OAuth2, ACLs, IP restrictions, mTLS, CORS)
+- Observability (logging, Prometheus metrics, health checks, distributed tracing)
+- Declarative configuration management (export, validate, diff, apply)
+- Enterprise features (workspaces, RBAC, vaults, developer portal)
+
+**Commands**:
+
+```bash
+ops kong status                                    # Check Kong connectivity
+ops kong services list                             # List all services
+ops kong services create --name api --host backend.local
+ops kong routes create --service api --path /api   # Create a route
+ops kong security key-auth enable --service api    # Enable authentication
+ops kong traffic rate-limit enable --service api --minute 100
+ops kong config export kong-state.yaml             # Export configuration
+ops kong config apply kong-state.yaml              # Apply configuration
+```
+
 ### Monitoring & Observability
 
 #### Prometheus Plugin

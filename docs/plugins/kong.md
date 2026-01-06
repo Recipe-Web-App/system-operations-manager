@@ -1434,10 +1434,16 @@ Manage Kong workspaces for multi-tenancy.
 # List workspaces
 ops kong enterprise workspaces list
 
+# Get workspace details
+ops kong enterprise workspaces get production
+
 # Create a workspace
-ops kong enterprise workspaces create \
-  --name production \
-  --comment "Production environment"
+ops kong enterprise workspaces create production \
+  --comment "Production environment" \
+  --portal  # Enable Developer Portal
+
+# Update a workspace
+ops kong enterprise workspaces update production --comment "Updated description"
 
 # Switch workspace context
 ops kong enterprise workspaces use production
@@ -1447,6 +1453,7 @@ ops kong enterprise workspaces current
 
 # Delete a workspace
 ops kong enterprise workspaces delete staging
+ops kong enterprise workspaces delete staging --force  # Skip confirmation
 ```
 
 #### `ops kong enterprise rbac`
@@ -1488,6 +1495,9 @@ Manage secret vaults integration.
 # List configured vaults
 ops kong enterprise vaults list
 
+# Get vault details
+ops kong enterprise vaults get hashicorp-vault
+
 # Configure HashiCorp Vault
 ops kong enterprise vaults configure hcv \
   --name "hashicorp-vault" \
@@ -1508,28 +1518,72 @@ ops kong enterprise vaults configure env \
   --name "env-vault" \
   --prefix "KONG_SECRET_"
 
+# Delete a vault
+ops kong enterprise vaults delete hashicorp-vault
+ops kong enterprise vaults delete hashicorp-vault --force  # Skip confirmation
+
 # Reference secrets in plugin config
 ops kong plugins enable key-auth \
   --service payment-api \
   --config key_names={vault://hashicorp-vault/api-keys/payment}
 ```
 
-#### `ops kong enterprise dev-portal`
+#### `ops kong enterprise portal`
 
 Manage Developer Portal.
 
 ```bash
 # Show portal status
-ops kong enterprise dev-portal status
+ops kong enterprise portal status
+```
 
+##### API Specifications
+
+```bash
 # List published specs
-ops kong enterprise dev-portal specs list
+ops kong enterprise portal specs list
+
+# Get specification details
+ops kong enterprise portal specs get /payment-api
+
+# Show spec contents
+ops kong enterprise portal specs get /payment-api --contents
 
 # Publish OpenAPI spec
-ops kong enterprise dev-portal specs publish payment-api \
-  --spec @openapi.yaml \
-  --title "Payment API" \
-  --description "Payment processing API documentation"
+ops kong enterprise portal specs publish ./openapi.yaml \
+  --name "payment-api" \
+  --path "/payment-api"
+
+# Update an existing spec
+ops kong enterprise portal specs update /payment-api ./openapi-v2.yaml
+
+# Delete a spec
+ops kong enterprise portal specs delete /payment-api
+ops kong enterprise portal specs delete /payment-api --force
+```
+
+##### Developer Management
+
+```bash
+# List developers
+ops kong enterprise portal developers list
+ops kong enterprise portal developers list --status pending
+
+# Get developer details
+ops kong enterprise portal developers get dev@example.com
+
+# Approve a pending developer
+ops kong enterprise portal developers approve dev@example.com
+
+# Reject a pending developer
+ops kong enterprise portal developers reject dev@example.com
+
+# Revoke access from an approved developer
+ops kong enterprise portal developers revoke dev@example.com
+
+# Delete a developer
+ops kong enterprise portal developers delete dev@example.com
+ops kong enterprise portal developers delete dev@example.com --force
 ```
 
 ---
