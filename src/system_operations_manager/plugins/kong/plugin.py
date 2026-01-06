@@ -20,6 +20,11 @@ from system_operations_manager.core.plugins.base import Plugin, hookimpl
 from system_operations_manager.integrations.kong.client import KongAdminClient
 from system_operations_manager.integrations.kong.config import KongPluginConfig
 from system_operations_manager.integrations.kong.exceptions import KongAPIError
+from system_operations_manager.plugins.kong.commands.base import (
+    OutputOption,
+    handle_kong_error,
+)
+from system_operations_manager.plugins.kong.formatters import OutputFormat, get_formatter
 
 if TYPE_CHECKING:
     pass
@@ -247,15 +252,6 @@ class KongPlugin(Plugin):
 
     def _register_status_commands(self, app: typer.Typer) -> None:
         """Register status and info commands."""
-        from system_operations_manager.plugins.kong.commands.base import (
-            OutputOption,
-            handle_kong_error,
-        )
-        from system_operations_manager.plugins.kong.formatters import (
-            OutputFormat,
-            get_formatter,
-        )
-
         client = self._client
         plugin_config = self._plugin_config
 
