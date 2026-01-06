@@ -28,6 +28,18 @@ def coverage() -> None:
     _run_process(base_cmd)
 
 
+def e2e() -> None:
+    """Run end-to-end tests."""
+    base_cmd = [
+        sys.executable,
+        "-m",
+        "pytest",
+        "./tests/e2e/",
+    ]
+
+    _run_process(base_cmd)
+
+
 def integration() -> None:
     """Run integration tests."""
     base_cmd = [

@@ -294,7 +294,7 @@ class TestUpstreamHealthModel:
         health = UpstreamHealth(
             id="upstream-id",
             health="HEALTHY",
-            data={"targets": []},
+            data=[{"target": "server1:8080", "health": "HEALTHY"}],
         )
 
         assert health.health == "HEALTHY"

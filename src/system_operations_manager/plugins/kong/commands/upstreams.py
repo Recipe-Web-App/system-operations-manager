@@ -343,7 +343,7 @@ def register_upstream_commands(
 
             # Show detailed data if available
             if health.data:
-                formatter.format_dict(health.data, title="Health Details")
+                formatter.format_dict({"targets": health.data}, title="Health Details")
 
         except KongAPIError as e:
             handle_kong_error(e)

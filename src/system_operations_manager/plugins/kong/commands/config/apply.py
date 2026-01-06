@@ -168,36 +168,49 @@ def register_apply_command(
                 console.print("[yellow]Cancelled[/yellow]")
                 raise typer.Exit(0)
 
-            # Apply
+            # Apply - use sync_config for DB-less mode, apply_config otherwise
             console.print("\nApplying changes...")
-            operations = manager.apply_config(config, dry_run=False)
 
-            # Report results
-            successful = [o for o in operations if o.result == "success"]
-            failed = [o for o in operations if o.result == "failed"]
+            if manager.is_dbless_mode():
+                # DB-less mode: use /config endpoint
+                try:
+                    manager.sync_config(config)
+                    console.print("\n[green]Successfully synced configuration[/green]")
+                except KongAPIError as e:
+                    console.print(f"\n[red]Failed to sync configuration: {e}[/red]")
+                    raise typer.Exit(1) from None
+            else:
+                # Database mode: use individual entity endpoints
+                operations = manager.apply_config(config, dry_run=False)
 
-            if failed:
-                console.print(
-                    f"\n[yellow]Completed with errors: "
-                    f"{len(successful)} successful, {len(failed)} failed[/yellow]\n"
-                )
+                # Report results
+                successful = [o for o in operations if o.result == "success"]
+                failed = [o for o in operations if o.result == "failed"]
 
-                error_table = Table(title="Failed Operations")
-                error_table.add_column("Operation", style="red")
-                error_table.add_column("Entity", style="cyan")
-                error_table.add_column("Error", style="dim")
-
-                for op in failed:
-                    error_table.add_row(
-                        op.operation.upper(),
-                        f"{op.entity_type}/{op.id_or_name}",
-                        op.error or "Unknown error",
+                if failed:
+                    console.print(
+                        f"\n[yellow]Completed with errors: "
+                        f"{len(successful)} successful, {len(failed)} failed[/yellow]\n"
                     )
 
-                console.print(error_table)
-                raise typer.Exit(1)
-            else:
-                console.print(f"\n[green]Successfully applied {len(successful)} operations[/green]")
+                    error_table = Table(title="Failed Operations")
+                    error_table.add_column("Operation", style="red")
+                    error_table.add_column("Entity", style="cyan")
+                    error_table.add_column("Error", style="dim")
+
+                    for op in failed:
+                        error_table.add_row(
+                            op.operation.upper(),
+                            f"{op.entity_type}/{op.id_or_name}",
+                            op.error or "Unknown error",
+                        )
+
+                    console.print(error_table)
+                    raise typer.Exit(1)
+                else:
+                    console.print(
+                        f"\n[green]Successfully applied {len(successful)} operations[/green]"
+                    )
 
         except KongAPIError as e:
             handle_kong_error(e)

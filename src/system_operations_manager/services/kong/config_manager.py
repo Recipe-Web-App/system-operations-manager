@@ -676,3 +676,68 @@ class ConfigManager:
                 result="failed",
                 error=str(e),
             )
+
+    # =========================================================================
+    # DB-less Mode Methods
+    # =========================================================================
+
+    def sync_config(
+        self,
+        config: DeclarativeConfig,
+    ) -> dict[str, Any]:
+        """Sync declarative config to Kong using the /config endpoint.
+
+        This method is specifically for Kong DB-less mode. It pushes the entire
+        declarative configuration to Kong using the /config endpoint, which
+        completely replaces the current configuration.
+
+        Unlike apply_config which uses individual entity endpoints, this method
+        is the proper way to apply configuration in DB-less mode.
+
+        Args:
+            config: The complete desired configuration.
+
+        Returns:
+            Dict containing the response from Kong.
+
+        Raises:
+            KongAPIError: If the sync fails.
+        """
+        self._log.info("syncing_config_dbless")
+
+        # Convert config to dict for API
+        config_data = config.model_dump(exclude_none=True, by_alias=True)
+
+        # Remove internal metadata fields that Kong doesn't recognize
+        # These are added by the export function for tracking purposes
+        internal_fields = ["_metadata", "_info", "_comment"]
+        for field in internal_fields:
+            config_data.pop(field, None)
+
+        # POST to /config endpoint
+        response = self._client.post("config", json=config_data)
+
+        self._log.info(
+            "sync_complete",
+            services=len(config.services) if config.services else 0,
+            routes=len(config.routes) if config.routes else 0,
+            consumers=len(config.consumers) if config.consumers else 0,
+            plugins=len(config.plugins) if config.plugins else 0,
+        )
+
+        return response
+
+    def is_dbless_mode(self) -> bool:
+        """Check if Kong is running in DB-less mode.
+
+        Returns:
+            True if Kong is in DB-less mode, False otherwise.
+        """
+        try:
+            response = self._client.get("")
+            config = response.get("configuration", {})
+            database = config.get("database", "postgres")
+            return str(database) == "off"
+        except Exception:
+            # If we can't determine, assume DB mode (safer default)
+            return False

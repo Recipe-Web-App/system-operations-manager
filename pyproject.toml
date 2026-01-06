@@ -51,6 +51,7 @@ ops = "system_operations_manager.cli.main:cli"
 ops-install = "system_operations_manager.cli.install:install"
 ops-uninstall = "system_operations_manager.cli.install:uninstall"
 test-cov = "scripts.test_scripts:coverage"
+test-e2e = "scripts.test_scripts:e2e"
 test-integration = "scripts.test_scripts:integration"
 test-unit = "scripts.test_scripts:unit"
 
@@ -234,6 +235,7 @@ markers = [
     "vault: Tests requiring Vault",
     "kong: Tests requiring Kong container",
     "kong_enterprise: Tests requiring Kong Enterprise",
+    "requires_license: Tests requiring Kong Enterprise license for write operations",
 ]
 filterwarnings = [
     # Suppress testcontainers internal deprecation (not in our code)
