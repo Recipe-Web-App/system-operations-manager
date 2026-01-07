@@ -15,7 +15,8 @@ from typing import TYPE_CHECKING, Any
 
 import yaml
 from rich.console import Console
-from rich.table import Table
+
+from system_operations_manager.cli.output import Table
 
 if TYPE_CHECKING:
     from system_operations_manager.integrations.kong.models.base import KongEntityBase

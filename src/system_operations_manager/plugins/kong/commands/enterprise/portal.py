@@ -11,8 +11,8 @@ from typing import Annotated
 
 import typer
 from rich.console import Console
-from rich.table import Table
 
+from system_operations_manager.cli.output import Table
 from system_operations_manager.integrations.kong.exceptions import KongAPIError
 from system_operations_manager.plugins.kong.commands.base import (
     ForceOption,

@@ -9,9 +9,9 @@ import structlog
 import typer
 from pydantic import ValidationError
 from rich.console import Console
-from rich.table import Table
 
 from system_operations_manager import __version__
+from system_operations_manager.cli.output import Table
 from system_operations_manager.core.config.models import CONFIG_FILE, load_config
 
 console = Console()

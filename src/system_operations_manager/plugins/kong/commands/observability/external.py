@@ -14,8 +14,8 @@ from typing import TYPE_CHECKING, Annotated
 
 import typer
 from rich.panel import Panel
-from rich.table import Table
 
+from system_operations_manager.cli.output import Table
 from system_operations_manager.integrations.observability import (
     ObservabilityClientError,
 )

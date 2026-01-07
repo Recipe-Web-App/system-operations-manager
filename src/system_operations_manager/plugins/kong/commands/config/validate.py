@@ -14,8 +14,8 @@ from typing import TYPE_CHECKING, Annotated
 import typer
 import yaml
 from pydantic import ValidationError as PydanticValidationError
-from rich.table import Table
 
+from system_operations_manager.cli.output import Table
 from system_operations_manager.integrations.kong.exceptions import KongAPIError
 from system_operations_manager.integrations.kong.models.config import DeclarativeConfig
 from system_operations_manager.plugins.kong.commands.base import console, handle_kong_error

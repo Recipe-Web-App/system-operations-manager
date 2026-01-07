@@ -140,7 +140,7 @@ def register_plugin_commands(
             available = manager.list_available()
 
             if output == OutputFormat.TABLE:
-                from rich.table import Table
+                from system_operations_manager.cli.output import Table
 
                 table = Table(title="Available Kong Plugins")
                 table.add_column("Name", style="cyan")

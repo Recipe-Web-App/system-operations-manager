@@ -9,8 +9,8 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Annotated, Any
 
 import typer
-from rich.table import Table
 
+from system_operations_manager.cli.output import Table
 from system_operations_manager.integrations.kong.exceptions import KongAPIError
 from system_operations_manager.plugins.kong.commands.observability.base import (
     OutputFormat,
