@@ -236,6 +236,7 @@ markers = [
     "kong: Tests requiring Kong container",
     "kong_enterprise: Tests requiring Kong Enterprise",
     "requires_license: Tests requiring Kong Enterprise license for write operations",
+    "requires_db: Tests requiring Kong database mode (not DB-less)",
 ]
 filterwarnings = [
     # Suppress testcontainers internal deprecation (not in our code)

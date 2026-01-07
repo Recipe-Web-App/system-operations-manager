@@ -9,6 +9,7 @@ from system_operations_manager.services.kong.base import BaseEntityManager
 from system_operations_manager.services.kong.config_manager import ConfigManager
 from system_operations_manager.services.kong.consumer_manager import ConsumerManager
 from system_operations_manager.services.kong.observability_manager import ObservabilityManager
+from system_operations_manager.services.kong.openapi_sync_manager import OpenAPISyncManager
 from system_operations_manager.services.kong.plugin_manager import KongPluginManager
 from system_operations_manager.services.kong.portal_manager import PortalManager
 from system_operations_manager.services.kong.rbac_manager import RBACManager
@@ -24,6 +25,7 @@ __all__ = [
     "ConsumerManager",
     "KongPluginManager",
     "ObservabilityManager",
+    "OpenAPISyncManager",
     "PortalManager",
     "RBACManager",
     "RouteManager",

@@ -23,7 +23,9 @@ from system_operations_manager.services.kong.service_manager import ServiceManag
 from system_operations_manager.services.kong.upstream_manager import UpstreamManager
 
 if TYPE_CHECKING:
-    pass
+    from system_operations_manager.services.kong.openapi_sync_manager import (
+        OpenAPISyncManager,
+    )
 
 
 # ============================================================================
@@ -204,6 +206,25 @@ def upstream_manager(kong_client: KongAdminClient) -> UpstreamManager:
 def plugin_manager(kong_client: KongAdminClient) -> KongPluginManager:
     """Create KongPluginManager instance."""
     return KongPluginManager(kong_client)
+
+
+# ============================================================================
+# OpenAPI Sync Manager Fixtures
+# ============================================================================
+
+
+@pytest.fixture
+def openapi_sync_manager(
+    kong_client: KongAdminClient,
+    route_manager: RouteManager,
+    service_manager: ServiceManager,
+) -> OpenAPISyncManager:
+    """Create OpenAPISyncManager instance."""
+    from system_operations_manager.services.kong.openapi_sync_manager import (
+        OpenAPISyncManager,
+    )
+
+    return OpenAPISyncManager(kong_client, route_manager, service_manager)
 
 
 # ============================================================================

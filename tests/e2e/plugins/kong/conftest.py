@@ -321,6 +321,52 @@ def skip_if_no_license(request: pytest.FixtureRequest) -> None:
             pytest.skip("Kong Enterprise license required for write operations")
 
 
+@pytest.fixture(scope="session")
+def is_dbless_mode(kong_admin_url: str) -> bool:
+    """Detect if Kong is running in DB-less mode.
+
+    In DB-less mode, Kong doesn't support individual entity CRUD operations -
+    only declarative config updates via /config endpoint work.
+    """
+    import httpx
+
+    try:
+        # Try to create a route directly - this fails in DB-less mode
+        response = httpx.post(
+            f"{kong_admin_url}/routes",
+            json={"name": "dbless-test-route", "paths": ["/dbless-test"]},
+            timeout=10,
+        )
+        if response.status_code == 201:
+            # Success - delete the test route
+            httpx.delete(
+                f"{kong_admin_url}/routes/dbless-test-route",
+                timeout=10,
+            )
+            return False
+        elif response.status_code == 405:
+            # Method not allowed - DB-less mode
+            return True
+        else:
+            # Other error - assume DB-less
+            return True
+    except Exception:
+        return True
+
+
+@pytest.fixture(autouse=True)
+def skip_if_dbless(request: pytest.FixtureRequest) -> None:
+    """Skip tests marked with 'requires_db' if Kong is in DB-less mode.
+
+    This fixture auto-runs for all tests but only acts on tests with
+    the @pytest.mark.requires_db marker.
+    """
+    if request.node.get_closest_marker("requires_db"):
+        is_dbless = request.getfixturevalue("is_dbless_mode")
+        if is_dbless:
+            pytest.skip("Kong database mode required for this test")
+
+
 @pytest.fixture
 def cli_runner() -> CliRunner:
     """Create a CLI runner for invoking commands.
@@ -387,6 +433,9 @@ def create_kong_app(kong_url: str) -> typer.Typer:
     from system_operations_manager.plugins.kong.commands.consumers import (
         register_consumer_commands,
     )
+    from system_operations_manager.plugins.kong.commands.openapi import (
+        register_openapi_commands,
+    )
     from system_operations_manager.plugins.kong.commands.plugins import (
         register_plugin_commands,
     )
@@ -409,6 +458,7 @@ def create_kong_app(kong_url: str) -> typer.Typer:
         ConfigManager,
         ConsumerManager,
         KongPluginManager,
+        OpenAPISyncManager,
         RouteManager,
         ServiceManager,
         UpstreamManager,
@@ -443,6 +493,13 @@ def create_kong_app(kong_url: str) -> typer.Typer:
     def get_config_manager() -> ConfigManager:
         return ConfigManager(client)
 
+    def get_openapi_sync_manager() -> OpenAPISyncManager:
+        return OpenAPISyncManager(
+            client,
+            get_route_manager(),
+            get_service_manager(),
+        )
+
     # Create the main app
     app = typer.Typer(
         name="ops",
@@ -466,6 +523,12 @@ def create_kong_app(kong_url: str) -> typer.Typer:
     register_security_commands(kong_app, get_plugin_manager, get_consumer_manager)
     register_traffic_commands(kong_app, get_plugin_manager)
     register_config_commands(kong_app, get_config_manager)
+    register_openapi_commands(
+        kong_app,
+        get_openapi_sync_manager,
+        get_service_manager,
+        get_route_manager,
+    )
 
     # Add Kong sub-app to main app
     app.add_typer(kong_app, name="kong")
