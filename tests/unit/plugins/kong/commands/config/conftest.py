@@ -74,6 +74,9 @@ def mock_config_manager() -> MagicMock:
         ),
     ]
 
+    # Default to database mode (not DB-less) so apply_config is used
+    manager.is_dbless_mode.return_value = False
+
     return manager
 
 

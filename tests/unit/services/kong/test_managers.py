@@ -427,7 +427,7 @@ class TestUpstreamManager:
         mock_client.get.return_value = {
             "id": "upstream-1",
             "health": "HEALTHY",
-            "data": {},
+            "data": [],
         }
 
         health = manager.get_health("my-upstream")
