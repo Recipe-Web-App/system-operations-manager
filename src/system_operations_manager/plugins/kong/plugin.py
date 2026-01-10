@@ -114,6 +114,12 @@ class KongPlugin(Plugin):
         from system_operations_manager.plugins.kong.commands.consumers import (
             register_consumer_commands,
         )
+        from system_operations_manager.plugins.kong.commands.deployment import (
+            register_deployment_commands,
+        )
+        from system_operations_manager.plugins.kong.commands.konnect import (
+            register_konnect_commands,
+        )
         from system_operations_manager.plugins.kong.commands.observability import (
             register_observability_commands,
         )
@@ -143,6 +149,7 @@ class KongPlugin(Plugin):
         from system_operations_manager.services.kong import (
             ConfigManager,
             ConsumerManager,
+            KongDeploymentManager,
             KongPluginManager,
             ObservabilityManager,
             OpenAPISyncManager,
@@ -270,6 +277,15 @@ class KongPlugin(Plugin):
             get_service_manager,
             get_route_manager,
         )
+
+        # Register deployment commands (doesn't require Kong client)
+        def get_deployment_manager() -> KongDeploymentManager:
+            return KongDeploymentManager()
+
+        register_deployment_commands(app, get_deployment_manager)
+
+        # Register Konnect integration commands (talks to Konnect, not Kong)
+        register_konnect_commands(app)
 
     def _register_status_commands(self, app: typer.Typer) -> None:
         """Register status and info commands."""

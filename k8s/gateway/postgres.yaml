@@ -1,0 +1,179 @@
+# Kong PostgreSQL Database
+# For local development with Minikube
+#
+# Prerequisites:
+#   kubectl create namespace kong
+#   kubectl create secret generic kong-postgres-secret \
+#     --from-env-file=config/.env.kong.secrets -n kong
+#
+# Deploy:
+#   kubectl apply -f k8s/gateway/postgres.yaml
+#
+# Connect locally:
+#   psql -h $(minikube ip) -p 30432 -U kong -d kong
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kong-postgres-pvc
+  namespace: kong
+  labels:
+    app.kubernetes.io/name: kong-postgres
+    app.kubernetes.io/component: database
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kong-postgres
+  namespace: kong
+  labels:
+    app.kubernetes.io/name: kong-postgres
+    app.kubernetes.io/component: database
+spec:
+  serviceName: kong-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kong-postgres
+  template:
+    metadata:
+      labels:
+        app: kong-postgres
+        app.kubernetes.io/name: kong-postgres
+        app.kubernetes.io/component: database
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          ports:
+            - containerPort: 5432
+              name: postgres
+              protocol: TCP
+          env:
+            - name: POSTGRES_USER
+              value: "kong"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: kong-postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              value: "kong"
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            # Performance tuning for Kong workload
+            - name: POSTGRES_INITDB_ARGS
+              value: "--encoding=UTF8 --locale=C"
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: postgres-config
+              mountPath: /etc/postgresql/postgresql.conf
+              subPath: postgresql.conf
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - kong
+                - -d
+                - kong
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - kong
+                - -d
+                - kong
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            runAsUser: 999
+            runAsGroup: 999
+            allowPrivilegeEscalation: false
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: kong-postgres-pvc
+        - name: postgres-config
+          configMap:
+            name: kong-postgres-config
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kong-postgres-config
+  namespace: kong
+  labels:
+    app.kubernetes.io/name: kong-postgres
+    app.kubernetes.io/component: database
+data:
+  postgresql.conf: |
+    # Connection settings
+    listen_addresses = '*'
+    max_connections = 200
+
+    # Memory settings (tuned for Kong workload)
+    shared_buffers = 128MB
+    effective_cache_size = 256MB
+    work_mem = 4MB
+    maintenance_work_mem = 64MB
+
+    # Write ahead log
+    wal_level = replica
+    max_wal_size = 256MB
+    min_wal_size = 64MB
+
+    # Query planner
+    random_page_cost = 1.1
+    effective_io_concurrency = 200
+
+    # Logging
+    log_destination = 'stderr'
+    logging_collector = off
+    log_min_duration_statement = 1000
+    log_connections = on
+    log_disconnections = on
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kong-postgres
+  namespace: kong
+  labels:
+    app.kubernetes.io/name: kong-postgres
+    app.kubernetes.io/component: database
+spec:
+  type: NodePort
+  ports:
+    - port: 5432
+      targetPort: 5432
+      nodePort: 30432
+      name: postgres
+      protocol: TCP
+  selector:
+    app: kong-postgres

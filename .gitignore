@@ -53,8 +53,10 @@ Thumbs.db
 
 # Project specific
 *.log
-.env
-.env.local
+
+# Environment files (keep examples)
+.env*
+!.env*.example
 
 # Temp dirs
 .temp/

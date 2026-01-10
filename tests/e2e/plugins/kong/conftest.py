@@ -97,6 +97,66 @@ class KongContainer(DockerContainer):  # type: ignore[misc]
 
 
 # ============================================================================
+# Kong Container with Database Support (OSS)
+# ============================================================================
+
+
+class KongDbContainer(DockerContainer):  # type: ignore[misc]
+    """Kong container with PostgreSQL database support.
+
+    Runs Kong in database mode, enabling full CRUD operations on entities.
+    Works with both OSS and Enterprise images.
+    """
+
+    ADMIN_PORT = 8001
+    PROXY_PORT = 8000
+
+    def __init__(
+        self,
+        pg_host: str,
+        pg_port: int,
+        pg_user: str = "kong",
+        pg_password: str = "kong",
+        pg_database: str = "kong",
+        image: str = KONG_IMAGE,
+    ) -> None:
+        super().__init__(image)
+
+        # Database mode configuration
+        self.with_env("KONG_DATABASE", "postgres")
+        self.with_env("KONG_PG_HOST", pg_host)
+        self.with_env("KONG_PG_PORT", str(pg_port))
+        self.with_env("KONG_PG_USER", pg_user)
+        self.with_env("KONG_PG_PASSWORD", pg_password)
+        self.with_env("KONG_PG_DATABASE", pg_database)
+
+        # Admin API configuration
+        self.with_env("KONG_ADMIN_LISTEN", "0.0.0.0:8001")
+        self.with_env("KONG_PROXY_LISTEN", "0.0.0.0:8000")
+
+        # Logging
+        self.with_env("KONG_PROXY_ACCESS_LOG", "/dev/stdout")
+        self.with_env("KONG_ADMIN_ACCESS_LOG", "/dev/stdout")
+        self.with_env("KONG_PROXY_ERROR_LOG", "/dev/stderr")
+        self.with_env("KONG_ADMIN_ERROR_LOG", "/dev/stderr")
+
+        # Expose ports
+        self.with_exposed_ports(self.ADMIN_PORT, self.PROXY_PORT)
+
+    def get_admin_url(self) -> str:
+        """Get the Admin API URL with mapped port."""
+        host = self.get_container_host_ip()
+        port = self.get_exposed_port(self.ADMIN_PORT)
+        return f"http://{host}:{port}"
+
+    def get_proxy_url(self) -> str:
+        """Get the Proxy URL with mapped port."""
+        host = self.get_container_host_ip()
+        port = self.get_exposed_port(self.PROXY_PORT)
+        return f"http://{host}:{port}"
+
+
+# ============================================================================
 # Kong Enterprise Container with Database Support
 # ============================================================================
 
@@ -162,39 +222,6 @@ class KongEnterpriseDbContainer(DockerContainer):  # type: ignore[misc]
 
 
 @pytest.fixture(scope="session")
-def kong_container() -> Generator[KongContainer]:
-    """Session-scoped Kong container for E2E tests.
-
-    Using session scope to share the container across all E2E tests,
-    which significantly speeds up the test suite.
-    """
-    container = KongContainer(image=KONG_IMAGE)
-
-    # Configure wait strategy for Kong readiness
-    container.waiting_for(LogMessageWaitStrategy("start worker processes").with_startup_timeout(60))
-
-    with container:
-        yield container
-
-
-@pytest.fixture(scope="session")
-def kong_admin_url(kong_container: KongContainer) -> str:
-    """Get Kong Admin API URL."""
-    return kong_container.get_admin_url()
-
-
-@pytest.fixture(scope="session")
-def kong_proxy_url(kong_container: KongContainer) -> str:
-    """Get Kong Proxy URL."""
-    return kong_container.get_proxy_url()
-
-
-# ============================================================================
-# Enterprise Database Fixtures
-# ============================================================================
-
-
-@pytest.fixture(scope="session")
 def docker_network() -> Generator[Network]:
     """Create a Docker network for container communication.
 
@@ -210,13 +237,10 @@ def docker_network() -> Generator[Network]:
 
 @pytest.fixture(scope="session")
 def postgres_container(docker_network: Network) -> Generator[PostgresContainer]:
-    """PostgreSQL container for Kong Enterprise tests.
+    """PostgreSQL container for Kong tests.
 
-    Only starts if running with an enterprise image.
+    Provides database backend for Kong to enable full CRUD operations.
     """
-    if not IS_ENTERPRISE:
-        pytest.skip("Kong Enterprise required for database-backed tests")
-
     container = PostgresContainer(
         image="postgres:15-alpine",
         username="kong",
@@ -225,6 +249,91 @@ def postgres_container(docker_network: Network) -> Generator[PostgresContainer]:
     )
     container.with_network(docker_network)
     container.with_network_aliases("kong-postgres")
+
+    with container:
+        yield container
+
+
+@pytest.fixture(scope="session")
+def kong_container(
+    postgres_container: PostgresContainer,
+    docker_network: Network,
+) -> Generator[KongDbContainer]:
+    """Session-scoped Kong container with PostgreSQL for E2E tests.
+
+    Runs Kong in database mode to enable full CRUD operations on entities.
+    Using session scope to share the container across all E2E tests.
+    """
+    # Use network alias for PostgreSQL host (internal Docker network)
+    container = KongDbContainer(
+        pg_host="kong-postgres",  # Network alias
+        pg_port=5432,  # Internal port
+        pg_user="kong",
+        pg_password="kong",
+        pg_database="kong",
+        image=KONG_IMAGE,
+    )
+    container.with_network(docker_network)
+
+    # Run migrations before starting Kong
+    container.with_command("sh -c 'kong migrations bootstrap && kong start'")
+
+    # Configure wait strategy for Kong readiness (longer timeout for migrations)
+    container.waiting_for(
+        LogMessageWaitStrategy("start worker processes").with_startup_timeout(120)
+    )
+
+    with container:
+        yield container
+
+
+@pytest.fixture(scope="session")
+def kong_dbless_container() -> Generator[KongContainer]:
+    """Kong container in DB-less mode (for tests that don't need database).
+
+    Faster startup but limited to declarative config operations.
+    """
+    container = KongContainer(image=KONG_IMAGE)
+    container.waiting_for(LogMessageWaitStrategy("start worker processes").with_startup_timeout(60))
+
+    with container:
+        yield container
+
+
+@pytest.fixture(scope="session")
+def kong_admin_url(kong_container: KongDbContainer) -> str:
+    """Get Kong Admin API URL."""
+    return kong_container.get_admin_url()
+
+
+@pytest.fixture(scope="session")
+def kong_proxy_url(kong_container: KongDbContainer) -> str:
+    """Get Kong Proxy URL."""
+    return kong_container.get_proxy_url()
+
+
+# ============================================================================
+# Enterprise Database Fixtures
+# ============================================================================
+
+
+@pytest.fixture(scope="session")
+def enterprise_postgres_container(docker_network: Network) -> Generator[PostgresContainer]:
+    """PostgreSQL container for Kong Enterprise tests.
+
+    Separate from main postgres_container to allow independent lifecycle.
+    """
+    if not IS_ENTERPRISE:
+        pytest.skip("Kong Enterprise required")
+
+    container = PostgresContainer(
+        image="postgres:15-alpine",
+        username="kong",
+        password="kong",
+        dbname="kong_enterprise",
+    )
+    container.with_network(docker_network)
+    container.with_network_aliases("kong-enterprise-postgres")
 
     with container:
         yield container

@@ -1,0 +1,194 @@
+# Kong Gateway - Optimal Learning & Development Setup
+# Chart: kong/ingress (recommended)
+# Mode: Traditional with PostgreSQL + Konnect Integration
+#
+# Prerequisites:
+#   kubectl create secret generic kong-postgres-secret \
+#     --from-env-file=config/.env.kong.secrets -n kong
+#
+# Install:
+#   helm repo add kong https://charts.konghq.com
+#   helm repo update
+#   helm install kong kong/ingress -n kong --create-namespace -f k8s/gateway/kong-values.yaml
+#
+# Upgrade:
+#   helm upgrade kong kong/ingress -n kong -f k8s/gateway/kong-values.yaml
+
+# =============================================================================
+# GATEWAY (Kong Proxy / Data Plane)
+# =============================================================================
+gateway:
+  enabled: true
+
+  image:
+    repository: kong/kong-gateway
+    tag: "3.9"
+
+  # ---------------------------------------------------------------------------
+  # Database: PostgreSQL (enables full Admin API)
+  # ---------------------------------------------------------------------------
+  env:
+    database: postgres
+    pg_host: kong-postgres.kong.svc.cluster.local
+    pg_port: "5432"
+    pg_user: kong
+    pg_password:
+      valueFrom:
+        secretKeyRef:
+          name: kong-postgres-secret
+          key: POSTGRES_PASSWORD
+    pg_database: kong
+
+    # Konnect Integration
+    konnect_mode: "on"
+    vitals: "off"
+    cluster_mtls: pki
+    cluster_telemetry_endpoint: "2ae749365b.us.tp0.konghq.com:443"
+    cluster_telemetry_server_name: "2ae749365b.us.tp0.konghq.com"
+    cluster_cert: /etc/secrets/konnect-client-tls/tls.crt
+    cluster_cert_key: /etc/secrets/konnect-client-tls/tls.key
+    lua_ssl_trusted_certificate: system
+
+    # Performance & Logging
+    nginx_worker_processes: "2"
+    proxy_access_log: /dev/stdout
+    admin_access_log: /dev/stdout
+    proxy_error_log: /dev/stderr
+    admin_error_log: /dev/stderr
+
+    # Plugins
+    plugins: bundled
+    dns_stale_ttl: "3600"
+
+  # ---------------------------------------------------------------------------
+  # Secret Volumes (for Konnect TLS)
+  # ---------------------------------------------------------------------------
+  secretVolumes:
+    - konnect-client-tls
+
+  # ---------------------------------------------------------------------------
+  # Database Migrations
+  # ---------------------------------------------------------------------------
+  migrations:
+    preUpgrade: true
+    postUpgrade: true
+
+  # ---------------------------------------------------------------------------
+  # Admin API (for ops kong commands)
+  # ---------------------------------------------------------------------------
+  admin:
+    enabled: true
+    type: ClusterIP
+    http:
+      enabled: true
+      servicePort: 8001
+    tls:
+      enabled: false
+
+  # ---------------------------------------------------------------------------
+  # Proxy (ingress traffic)
+  # ---------------------------------------------------------------------------
+  proxy:
+    enabled: true
+    type: LoadBalancer
+    http:
+      enabled: true
+      servicePort: 80
+      containerPort: 8000
+    tls:
+      enabled: true
+      servicePort: 443
+      containerPort: 8443
+
+  # ---------------------------------------------------------------------------
+  # Status endpoint (health checks)
+  # ---------------------------------------------------------------------------
+  status:
+    enabled: true
+    http:
+      enabled: true
+      containerPort: 8100
+
+  # ---------------------------------------------------------------------------
+  # Resources (sized for Minikube/learning)
+  # ---------------------------------------------------------------------------
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+
+  # ---------------------------------------------------------------------------
+  # Health Probes
+  # ---------------------------------------------------------------------------
+  readinessProbe:
+    httpGet:
+      path: /status/ready
+      port: status
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    failureThreshold: 3
+  livenessProbe:
+    httpGet:
+      path: /status
+      port: status
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    failureThreshold: 3
+
+  # ---------------------------------------------------------------------------
+  # Autoscaling (disabled for learning)
+  # ---------------------------------------------------------------------------
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 70
+
+# =============================================================================
+# CONTROLLER (Kong Ingress Controller)
+# =============================================================================
+controller:
+  enabled: true
+
+  image:
+    repository: kong/kubernetes-ingress-controller
+    tag: "3.5"
+
+  # ---------------------------------------------------------------------------
+  # Ingress Configuration
+  # ---------------------------------------------------------------------------
+  ingressController:
+    enabled: true
+    installCRDs: false # CRDs managed separately by CLI
+    ingressClass: kong
+    watchNamespaces: []
+
+    env:
+      feature_gates: "FillIDs=true,RewriteURIs=true"
+      # Direct admin URL - gateway discovery is broken on K8s 1.34+
+      # Note: This assumes release name "kong" and namespace "kong"
+      # which is enforced by ops kong deploy install
+      kong_admin_url: "http://kong-gateway-admin.kong.svc.cluster.local:8001"
+
+    # Konnect Integration (disabled - we handle this via ops kong konnect setup)
+    konnect:
+      enabled: false
+
+    # Disable gateway discovery - broken on K8s 1.34+
+    # Using direct kong_admin_url instead
+    gatewayDiscovery:
+      enabled: false
+
+  # ---------------------------------------------------------------------------
+  # Resources
+  # ---------------------------------------------------------------------------
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

@@ -8,6 +8,12 @@ to abstract data access from command implementations.
 from system_operations_manager.services.kong.base import BaseEntityManager
 from system_operations_manager.services.kong.config_manager import ConfigManager
 from system_operations_manager.services.kong.consumer_manager import ConsumerManager
+from system_operations_manager.services.kong.deployment_manager import (
+    DeploymentError,
+    DeploymentInfo,
+    DeploymentStatus,
+    KongDeploymentManager,
+)
 from system_operations_manager.services.kong.observability_manager import ObservabilityManager
 from system_operations_manager.services.kong.openapi_sync_manager import OpenAPISyncManager
 from system_operations_manager.services.kong.plugin_manager import KongPluginManager
@@ -23,6 +29,10 @@ __all__ = [
     "BaseEntityManager",
     "ConfigManager",
     "ConsumerManager",
+    "DeploymentError",
+    "DeploymentInfo",
+    "DeploymentStatus",
+    "KongDeploymentManager",
     "KongPluginManager",
     "ObservabilityManager",
     "OpenAPISyncManager",

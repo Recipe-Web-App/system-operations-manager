@@ -1,22 +1,75 @@
-# minikube-kong-values.yaml
+# Kong Gateway with PostgreSQL + Konnect Integration
+# For use with kong/kong helm chart
 
-###############################
-# 1. Deployment Mode: DB-less #
-###############################
+####################################
+# 1. Kong Gateway Image
+####################################
+image:
+  repository: kong/kong-gateway
+  tag: "3.13"
+
+####################################
+# 2. Environment Variables
+####################################
 env:
-  database: "off"
+  # PostgreSQL connection
+  database: "postgres"
+  pg_host: "kong-postgres"
+  pg_port: "5432"
+  pg_user: "kong"
+  pg_password:
+    valueFrom:
+      secretKeyRef:
+        name: kong-postgres-secret
+        key: POSTGRES_PASSWORD
+  pg_database: "kong"
+  # Konnect settings
+  konnect_mode: "on"
+  vitals: "off"
+  cluster_mtls: pki
+  cluster_telemetry_endpoint: "2ae749365b.us.tp0.konghq.com:443"
+  cluster_telemetry_server_name: "2ae749365b.us.tp0.konghq.com"
+  cluster_cert: /etc/secrets/konnect-client-tls/tls.crt
+  cluster_cert_key: /etc/secrets/konnect-client-tls/tls.key
+  lua_ssl_trusted_certificate: system
+  proxy_access_log: "off"
+  dns_stale_ttl: "3600"
 
-#######################################
-# 2. Ingress Controller Configuration #
-#######################################
+####################################
+# 3. Database Migrations
+####################################
+migrations:
+  preUpgrade: true
+  postUpgrade: true
+
+####################################
+# 4. Secret Volumes (for Konnect TLS)
+####################################
+secretVolumes:
+  - konnect-client-tls
+
+####################################
+# 5. Ingress Controller
+####################################
 ingressController:
   enabled: true
   installCRDs: false
   ingressClass: kong
+  image:
+    tag: "3.5"
+  env:
+    feature_gates: "FillIDs=true"
+  konnect:
+    license:
+      enabled: true
+    enabled: true
+    controlPlaneID: "1fc296f1-b64f-4c61-bf11-46f8d024f79e"
+    tlsClientCertSecretName: konnect-client-tls
+    apiHostname: "us.kic.api.konghq.com"
 
-##################################
-# 3. Proxy Service Configuration #
-##################################
+####################################
+# 6. Proxy Service
+####################################
 proxy:
   type: LoadBalancer
   http:
@@ -24,29 +77,29 @@ proxy:
   tls:
     servicePort: 443
 
-##############################
-# 4. Admin API Configuration #
-##############################
+####################################
+# 7. Admin API
+####################################
 admin:
   enabled: true
   type: ClusterIP
   http:
     enabled: true
 
-######################
-# 5. Resource Limits #
-######################
+####################################
+# 8. Resources
+####################################
 resources:
   requests:
-    cpu: 200m
-    memory: 256Mi
+    cpu: 1
+    memory: "2Gi"
   limits:
-    cpu: 1000m
-    memory: 1024Mi
+    cpu: 2
+    memory: "4Gi"
 
-#############################################
-# 6. Readiness/Liveness Probes Optimization #
-#############################################
+####################################
+# 9. Health Probes
+####################################
 readinessProbe:
   initialDelaySeconds: 10
   periodSeconds: 5
@@ -57,7 +110,7 @@ livenessProbe:
   failureThreshold: 10
 
 ####################################
-# 7. Admission Webhook Remediation #
+# 10. Admission Webhook
 ####################################
 admissionWebhook:
   enabled: true

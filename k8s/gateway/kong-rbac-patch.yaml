@@ -1,0 +1,38 @@
+# RBAC patch for Kong Ingress Controller on Kubernetes 1.34+
+#
+# The KIC 3.5 Helm chart only includes 'endpointslices' permission,
+# but the controller also needs 'endpoints' for service discovery.
+# This ClusterRole adds the missing permission.
+#
+# Applied automatically by: ops kong deploy install
+# Can also be applied manually: kubectl apply -f k8s/gateway/kong-rbac-patch.yaml
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kong-controller-endpoints
+  labels:
+    app.kubernetes.io/name: controller
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/managed-by: ops-cli
+rules:
+  - apiGroups: [""]
+    resources: ["endpoints"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kong-controller-endpoints
+  labels:
+    app.kubernetes.io/name: controller
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/managed-by: ops-cli
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kong-controller-endpoints
+subjects:
+  - kind: ServiceAccount
+    name: kong-controller
+    namespace: kong
