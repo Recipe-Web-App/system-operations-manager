@@ -339,8 +339,9 @@ class TestConfigManagerDiff:
     @pytest.mark.unit
     def test_diff_config_no_changes(self, manager: ConfigManager, mock_client: MagicMock) -> None:
         """diff_config should return empty diff when no changes."""
-        # Current state
+        # Current state - includes is_dbless_mode check first
         mock_client.get.side_effect = [
+            {"configuration": {"database": "postgres"}},  # is_dbless_mode check
             {"data": [{"id": "svc-1", "name": "api", "host": "api.local"}]},
             {"data": []},  # upstreams
             {"data": []},  # routes
@@ -359,8 +360,9 @@ class TestConfigManagerDiff:
     @pytest.mark.unit
     def test_diff_config_with_creates(self, manager: ConfigManager, mock_client: MagicMock) -> None:
         """diff_config should detect creates."""
-        # Current state - empty
+        # Current state - empty (includes is_dbless_mode check first)
         mock_client.get.side_effect = [
+            {"configuration": {"database": "postgres"}},  # is_dbless_mode check
             {"data": []},  # services
             {"data": []},  # upstreams
             {"data": []},  # routes
@@ -380,8 +382,9 @@ class TestConfigManagerDiff:
     @pytest.mark.unit
     def test_diff_config_with_updates(self, manager: ConfigManager, mock_client: MagicMock) -> None:
         """diff_config should detect updates."""
-        # Current state
+        # Current state (includes is_dbless_mode check first)
         mock_client.get.side_effect = [
+            {"configuration": {"database": "postgres"}},  # is_dbless_mode check
             {"data": [{"id": "svc-1", "name": "api", "host": "old.local"}]},
             {"data": []},  # upstreams
             {"data": []},  # routes
@@ -401,8 +404,9 @@ class TestConfigManagerDiff:
     @pytest.mark.unit
     def test_diff_config_with_deletes(self, manager: ConfigManager, mock_client: MagicMock) -> None:
         """diff_config should detect deletes."""
-        # Current state has a service
+        # Current state has a service (includes is_dbless_mode check first)
         mock_client.get.side_effect = [
+            {"configuration": {"database": "postgres"}},  # is_dbless_mode check
             {"data": [{"id": "svc-1", "name": "api", "host": "api.local"}]},
             {"data": []},  # upstreams
             {"data": []},  # routes
@@ -537,8 +541,9 @@ class TestConfigManagerApply:
     @pytest.mark.unit
     def test_apply_config_dry_run(self, manager: ConfigManager, mock_client: MagicMock) -> None:
         """apply_config dry_run should not make API calls."""
-        # Current state - empty
+        # Current state - empty (includes is_dbless_mode check first)
         mock_client.get.side_effect = [
+            {"configuration": {"database": "postgres"}},  # is_dbless_mode check
             {"data": []},  # services
             {"data": []},  # upstreams
             {"data": []},  # routes
@@ -562,8 +567,9 @@ class TestConfigManagerApply:
         self, manager: ConfigManager, mock_client: MagicMock
     ) -> None:
         """apply_config should create entities in dependency order."""
-        # Current state - empty
+        # Current state - empty (includes is_dbless_mode check first)
         mock_client.get.side_effect = [
+            {"configuration": {"database": "postgres"}},  # is_dbless_mode check
             {"data": []},  # services
             {"data": []},  # upstreams
             {"data": []},  # routes
@@ -589,8 +595,9 @@ class TestConfigManagerApply:
         self, manager: ConfigManager, mock_client: MagicMock
     ) -> None:
         """apply_config should update existing entities."""
-        # Current state
+        # Current state (includes is_dbless_mode check first)
         mock_client.get.side_effect = [
+            {"configuration": {"database": "postgres"}},  # is_dbless_mode check
             {"data": [{"id": "svc-1", "name": "api", "host": "old.local"}]},
             {"data": []},  # upstreams
             {"data": []},  # routes
@@ -614,8 +621,9 @@ class TestConfigManagerApply:
         self, manager: ConfigManager, mock_client: MagicMock
     ) -> None:
         """apply_config should delete entities in reverse dependency order."""
-        # Current state has routes and services
+        # Current state has routes and services (includes is_dbless_mode check first)
         mock_client.get.side_effect = [
+            {"configuration": {"database": "postgres"}},  # is_dbless_mode check
             {"data": [{"id": "svc-1", "name": "api", "host": "api.local"}]},
             {"data": []},  # upstreams
             {"data": [{"id": "rt-1", "name": "route-1", "paths": ["/api"]}]},

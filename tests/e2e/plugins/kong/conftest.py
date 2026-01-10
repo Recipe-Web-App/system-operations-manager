@@ -240,6 +240,7 @@ def postgres_container(docker_network: Network) -> Generator[PostgresContainer]:
     """PostgreSQL container for Kong tests.
 
     Provides database backend for Kong to enable full CRUD operations.
+    Configured with higher max_connections to support many concurrent tests.
     """
     container = PostgresContainer(
         image="postgres:15-alpine",
@@ -249,6 +250,8 @@ def postgres_container(docker_network: Network) -> Generator[PostgresContainer]:
     )
     container.with_network(docker_network)
     container.with_network_aliases("kong-postgres")
+    # Increase max connections to handle many concurrent tests
+    container.with_command("-c max_connections=200")
 
     with container:
         yield container
@@ -322,6 +325,7 @@ def enterprise_postgres_container(docker_network: Network) -> Generator[Postgres
     """PostgreSQL container for Kong Enterprise tests.
 
     Separate from main postgres_container to allow independent lifecycle.
+    Configured with higher max_connections to support many concurrent tests.
     """
     if not IS_ENTERPRISE:
         pytest.skip("Kong Enterprise required")
@@ -334,6 +338,8 @@ def enterprise_postgres_container(docker_network: Network) -> Generator[Postgres
     )
     container.with_network(docker_network)
     container.with_network_aliases("kong-enterprise-postgres")
+    # Increase max connections to handle many concurrent tests
+    container.with_command("-c max_connections=200")
 
     with container:
         yield container

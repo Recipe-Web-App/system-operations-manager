@@ -59,6 +59,31 @@ class ConfigManager:
         "services",
     ]
 
+    # Nested entity mappings - fields that contain child entities
+    # These are valid in declarative config but need special handling for REST API
+    NESTED_ENTITIES = {
+        "services": {
+            "routes": "service",  # routes nested in services, use 'service' as parent ref
+            "plugins": "service",  # plugins nested in services
+        },
+        "routes": {
+            "plugins": "route",  # plugins nested in routes
+        },
+        "upstreams": {
+            "targets": "upstream",  # targets nested in upstreams
+        },
+        "consumers": {
+            "plugins": "consumer",  # plugins nested in consumers
+            # Credential types - declarative config field names
+            "keyauth_credentials": "key-auth",  # API endpoint suffix
+            "basicauth_credentials": "basic-auth",
+            "jwt_secrets": "jwt",
+            "oauth2_credentials": "oauth2",
+            "acls": "acls",
+            "hmacauth_credentials": "hmac-auth",
+        },
+    }
+
     def __init__(self, client: KongAdminClient) -> None:
         """Initialize the config manager.
 
@@ -67,6 +92,122 @@ class ConfigManager:
         """
         self._client = client
         self._log = logger.bind(service="config_manager")
+
+    # =========================================================================
+    # Config Flattening (for DB mode)
+    # =========================================================================
+
+    def _flatten_config(self, config: DeclarativeConfig) -> DeclarativeConfig:
+        """Flatten nested entities in declarative config for DB mode.
+
+        Kong's declarative config format allows nesting entities (e.g., routes
+        inside services). This is supported by the /config endpoint (DB-less mode)
+        but NOT by individual entity endpoints (DB mode).
+
+        This method extracts nested entities and adds proper parent references
+        so they can be created via the REST API.
+
+        Args:
+            config: Configuration with potentially nested entities.
+
+        Returns:
+            Flattened configuration with all entities at top level.
+        """
+        # Start with copies of top-level entities
+        flat_services = []
+        flat_routes = list(config.routes)
+        flat_upstreams = []
+        flat_consumers = list(config.consumers)
+        flat_plugins = list(config.plugins)
+
+        # Process services - extract nested routes and plugins
+        for service in config.services:
+            service_copy = dict(service)
+            service_name = service.get("name") or service.get("id")
+
+            # Extract nested routes
+            if "routes" in service_copy:
+                for route in service_copy.pop("routes"):
+                    route_copy = dict(route)
+                    # Add service reference if not already present
+                    if "service" not in route_copy and service_name:
+                        route_copy["service"] = {"name": service_name}
+                    flat_routes.append(route_copy)
+
+            # Extract nested plugins
+            if "plugins" in service_copy:
+                for plugin in service_copy.pop("plugins"):
+                    plugin_copy = dict(plugin)
+                    # Add service reference if not already present
+                    if "service" not in plugin_copy and service_name:
+                        plugin_copy["service"] = {"name": service_name}
+                    flat_plugins.append(plugin_copy)
+
+            flat_services.append(service_copy)
+
+        # Process upstreams - keep targets nested (handled specially in _apply_entity)
+        for upstream in config.upstreams:
+            upstream_copy = dict(upstream)
+            # Targets are handled specially - they're created via /upstreams/{name}/targets
+            # We keep them nested for now and handle in _apply_entity
+            flat_upstreams.append(upstream_copy)
+
+        # Process routes - extract nested plugins
+        processed_routes = []
+        for route in flat_routes:
+            route_copy = dict(route)
+            route_name = route.get("name") or route.get("id")
+
+            if "plugins" in route_copy:
+                for plugin in route_copy.pop("plugins"):
+                    plugin_copy = dict(plugin)
+                    if "route" not in plugin_copy and route_name:
+                        plugin_copy["route"] = {"name": route_name}
+                    flat_plugins.append(plugin_copy)
+
+            processed_routes.append(route_copy)
+
+        # Process consumers - extract nested plugins and credentials
+        processed_consumers = []
+        for consumer in flat_consumers:
+            consumer_copy = dict(consumer)
+            consumer_id = consumer.get("username") or consumer.get("id")
+
+            if "plugins" in consumer_copy:
+                for plugin in consumer_copy.pop("plugins"):
+                    plugin_copy = dict(plugin)
+                    if "consumer" not in plugin_copy and consumer_id:
+                        plugin_copy["consumer"] = {"username": consumer_id}
+                    flat_plugins.append(plugin_copy)
+
+            # Credentials stay nested - handled specially in _apply_entity
+            processed_consumers.append(consumer_copy)
+
+        # Create flattened config using model_validate to avoid mypy alias issues
+        flattened = DeclarativeConfig.model_validate(
+            {
+                "_format_version": config.format_version,
+                "_transform": config.transform,
+                "services": flat_services,
+                "routes": processed_routes,
+                "upstreams": flat_upstreams,
+                "consumers": processed_consumers,
+                "plugins": flat_plugins,
+                "certificates": config.certificates,
+                "ca_certificates": config.ca_certificates,
+            }
+        )
+
+        self._log.debug(
+            "config_flattened",
+            services=len(flat_services),
+            routes=len(processed_routes),
+            upstreams=len(flat_upstreams),
+            consumers=len(processed_consumers),
+            plugins=len(flat_plugins),
+        )
+
+        return flattened
 
     # =========================================================================
     # Export Methods
@@ -354,6 +495,7 @@ class ConfigManager:
         """Calculate diff between current state and desired config.
 
         Compares entity by entity to determine what operations are needed.
+        In DB mode, flattens nested entities before comparing.
 
         Args:
             desired: The desired configuration state.
@@ -362,6 +504,10 @@ class ConfigManager:
             ConfigDiffSummary with all required changes.
         """
         self._log.info("diffing_config")
+
+        # Flatten nested entities for DB mode comparison
+        if not self.is_dbless_mode():
+            desired = self._flatten_config(desired)
 
         current = self.export_state()
         diffs: list[ConfigDiff] = []
@@ -415,9 +561,9 @@ class ConfigManager:
         """
         diffs = []
 
-        # Index by name or ID
-        current_map = {self._entity_key(e): e for e in current}
-        desired_map = {self._entity_key(e): e for e in desired}
+        # Index by name or ID (pass entity_type for proper plugin keying)
+        current_map = {self._entity_key(e, entity_type): e for e in current}
+        desired_map = {self._entity_key(e, entity_type): e for e in desired}
 
         # Find creates and updates
         for key, desired_entity in desired_map.items():
@@ -458,15 +604,78 @@ class ConfigManager:
 
         return diffs
 
-    def _entity_key(self, entity: dict[str, Any]) -> str:
-        """Get unique key for an entity (name, username, or ID).
+    def _entity_key(self, entity: dict[str, Any], entity_type: str = "") -> str:
+        """Get unique key for an entity.
+
+        For most entities, uses name, username, or ID.
+        For plugins, includes the scope (service/route/consumer) to ensure uniqueness
+        since multiple plugins with the same name can exist on different parents.
 
         Args:
             entity: Entity dictionary.
+            entity_type: Type of entity (used for special handling of plugins).
 
         Returns:
             String key for indexing.
         """
+        # For plugins, create compound key with scope
+        if entity_type == "plugins" or entity.get("name") in (
+            "key-auth",
+            "basic-auth",
+            "jwt",
+            "oauth2",
+            "acl",
+            "rate-limiting",
+            "request-size-limiting",
+            "request-transformer",
+            "response-transformer",
+            "cors",
+            "ip-restriction",
+            "bot-detection",
+            "aws-lambda",
+            "http-log",
+            "file-log",
+            "tcp-log",
+            "udp-log",
+            "syslog",
+            "prometheus",
+            "datadog",
+            "zipkin",
+            "opentelemetry",
+            "proxy-cache",
+            "response-ratelimiting",
+        ):
+            plugin_name = entity.get("name", "")
+            scope_parts = []
+
+            # Check for service scope
+            service_ref = entity.get("service")
+            if service_ref:
+                svc_name = self._extract_ref_name(service_ref)
+                if svc_name:
+                    scope_parts.append(f"service:{svc_name}")
+
+            # Check for route scope
+            route_ref = entity.get("route")
+            if route_ref:
+                route_name = self._extract_ref_name(route_ref)
+                if route_name:
+                    scope_parts.append(f"route:{route_name}")
+
+            # Check for consumer scope
+            consumer_ref = entity.get("consumer")
+            if consumer_ref:
+                consumer_name = self._extract_ref_name(consumer_ref, prefer_username=True)
+                if consumer_name:
+                    scope_parts.append(f"consumer:{consumer_name}")
+
+            if scope_parts:
+                return f"{plugin_name}@{','.join(sorted(scope_parts))}"
+            else:
+                # Global plugin - use ID if available to ensure uniqueness
+                return entity.get("id") or f"{plugin_name}@global"
+
+        # Standard entity key
         return (
             entity.get("name")
             or entity.get("username")
@@ -582,6 +791,11 @@ class ConfigManager:
     ) -> ApplyOperation:
         """Apply a single entity create/update.
 
+        Handles special cases:
+        - Plugins with parent refs: uses nested endpoints (/services/{name}/plugins)
+        - Upstreams with nested targets: creates targets via /upstreams/{name}/targets
+        - Strips any nested entity fields before sending to API
+
         Args:
             entity_type: Type of entity.
             diff_item: Diff describing the change.
@@ -589,16 +803,37 @@ class ConfigManager:
         Returns:
             ApplyOperation result.
         """
-        endpoint = entity_type
-
         try:
+            # Prepare entity data - strip nested fields that Kong API doesn't accept
+            entity_data = self._prepare_entity_for_api(entity_type, diff_item.desired)
+
+            # Determine the correct endpoint - plugins use nested endpoints
+            endpoint = self._get_entity_endpoint(entity_type, entity_data)
+
             if diff_item.operation == "create":
-                self._client.post(endpoint, json=diff_item.desired)
+                self._client.post(endpoint, json=entity_data)
             else:
+                # For updates, use the ID from current state if available
+                # This is important for plugins where id_or_name may be a compound key
+                update_id = diff_item.id_or_name
+                if diff_item.current:
+                    update_id = (
+                        diff_item.current.get("id")
+                        or diff_item.current.get("name")
+                        or diff_item.id_or_name
+                    )
                 self._client.patch(
-                    f"{endpoint}/{diff_item.id_or_name}",
-                    json=diff_item.desired,
+                    f"{entity_type}/{update_id}",
+                    json=entity_data,
                 )
+
+            # Handle nested targets for upstreams
+            if entity_type == "upstreams" and diff_item.desired:
+                self._apply_nested_targets(diff_item.id_or_name, diff_item.desired)
+
+            # Handle nested credentials for consumers
+            if entity_type == "consumers" and diff_item.desired:
+                self._apply_consumer_credentials(diff_item.id_or_name, diff_item.desired)
 
             self._log.debug(
                 "entity_applied",
@@ -631,6 +866,209 @@ class ConfigManager:
                 error=str(e),
             )
 
+    def _get_entity_endpoint(
+        self,
+        entity_type: str,
+        entity_data: dict[str, Any],
+    ) -> str:
+        """Get the correct API endpoint for an entity.
+
+        For plugins, routes, and other entities that can be scoped to a parent,
+        uses nested endpoints when a parent reference is present.
+
+        Examples:
+        - Plugin with service ref -> /services/{name}/plugins
+        - Plugin with route ref -> /routes/{name}/plugins
+        - Route with service ref -> /services/{name}/routes
+        - Regular entity -> /{entity_type}
+
+        Args:
+            entity_type: Type of entity.
+            entity_data: Entity data (may contain parent references).
+
+        Returns:
+            API endpoint path.
+        """
+        if entity_type == "plugins":
+            # Plugins can be scoped to service, route, or consumer
+            # Check for parent references and use nested endpoint
+            if "service" in entity_data:
+                service_name = self._extract_ref_name(entity_data.get("service"))
+                if service_name:
+                    # Remove the service ref from entity_data since we're using nested endpoint
+                    entity_data.pop("service", None)
+                    return f"services/{service_name}/plugins"
+
+            if "route" in entity_data:
+                route_name = self._extract_ref_name(entity_data.get("route"))
+                if route_name:
+                    entity_data.pop("route", None)
+                    return f"routes/{route_name}/plugins"
+
+            if "consumer" in entity_data:
+                consumer_ref = entity_data.get("consumer")
+                consumer_name = self._extract_ref_name(consumer_ref, prefer_username=True)
+                if consumer_name:
+                    entity_data.pop("consumer", None)
+                    return f"consumers/{consumer_name}/plugins"
+
+        elif entity_type == "routes":
+            # Routes can be scoped to a service
+            if "service" in entity_data:
+                service_name = self._extract_ref_name(entity_data.get("service"))
+                if service_name:
+                    entity_data.pop("service", None)
+                    return f"services/{service_name}/routes"
+
+        # Default: use the entity type as endpoint
+        return entity_type
+
+    def _extract_ref_name(
+        self,
+        ref: str | dict[str, Any] | None,
+        prefer_username: bool = False,
+    ) -> str | None:
+        """Extract entity name/id from a reference.
+
+        References can be:
+        - A string (the name/id directly)
+        - A dict with 'name', 'id', or 'username' key
+
+        Args:
+            ref: Reference value (string or dict).
+            prefer_username: If True, check 'username' before 'name' (for consumers).
+
+        Returns:
+            The extracted name/id, or None if not found.
+        """
+        if ref is None:
+            return None
+
+        if isinstance(ref, str):
+            return ref
+
+        if isinstance(ref, dict):
+            if prefer_username:
+                return ref.get("username") or ref.get("name") or ref.get("id")
+            return ref.get("name") or ref.get("id")
+
+        return None
+
+    def _prepare_entity_for_api(
+        self,
+        entity_type: str,
+        entity: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        """Prepare entity data for Kong Admin API.
+
+        Removes nested entity fields that aren't accepted by the REST API.
+        These nested fields are valid in declarative config but must be
+        handled separately when using individual entity endpoints.
+
+        Args:
+            entity_type: Type of entity.
+            entity: Entity data to prepare.
+
+        Returns:
+            Cleaned entity data suitable for REST API.
+        """
+        if entity is None:
+            return {}
+
+        # Fields to strip based on entity type
+        nested_fields = self.NESTED_ENTITIES.get(entity_type, {})
+
+        # Create a copy without nested fields
+        cleaned = {k: v for k, v in entity.items() if k not in nested_fields}
+
+        return cleaned
+
+    def _apply_nested_targets(
+        self,
+        upstream_name: str,
+        upstream_data: dict[str, Any],
+    ) -> None:
+        """Apply nested targets to an upstream.
+
+        Targets in declarative config are nested under upstreams but must
+        be created via the /upstreams/{name}/targets endpoint.
+
+        Args:
+            upstream_name: Name of the upstream.
+            upstream_data: Upstream data that may contain nested targets.
+        """
+        targets = upstream_data.get("targets", [])
+        if not targets:
+            return
+
+        for target in targets:
+            target_data = {k: v for k, v in target.items() if k not in ("id", "created_at")}
+            try:
+                self._client.post(f"upstreams/{upstream_name}/targets", json=target_data)
+                self._log.debug(
+                    "target_applied",
+                    upstream=upstream_name,
+                    target=target_data.get("target"),
+                )
+            except Exception as e:
+                self._log.warning(
+                    "target_apply_failed",
+                    upstream=upstream_name,
+                    target=target_data.get("target"),
+                    error=str(e),
+                )
+
+    def _apply_consumer_credentials(
+        self,
+        consumer_name: str,
+        consumer_data: dict[str, Any],
+    ) -> None:
+        """Apply nested credentials to a consumer.
+
+        Credentials in declarative config are nested under consumers but must
+        be created via specific endpoints like /consumers/{name}/key-auth.
+
+        Args:
+            consumer_name: Username or ID of the consumer.
+            consumer_data: Consumer data that may contain nested credentials.
+        """
+        # Map of declarative config field names to API endpoint suffixes
+        credential_endpoints = {
+            "keyauth_credentials": "key-auth",
+            "basicauth_credentials": "basic-auth",
+            "jwt_secrets": "jwt",
+            "oauth2_credentials": "oauth2",
+            "acls": "acls",
+            "hmacauth_credentials": "hmac-auth",
+        }
+
+        for field_name, endpoint_suffix in credential_endpoints.items():
+            credentials = consumer_data.get(field_name, [])
+            if not credentials:
+                continue
+
+            for credential in credentials:
+                cred_data = {
+                    k: v for k, v in credential.items() if k not in ("id", "created_at", "consumer")
+                }
+                try:
+                    self._client.post(
+                        f"consumers/{consumer_name}/{endpoint_suffix}",
+                        json=cred_data,
+                    )
+                    self._log.debug(
+                        "credential_applied",
+                        consumer=consumer_name,
+                        credential_type=endpoint_suffix,
+                    )
+                except Exception as e:
+                    self._log.warning(
+                        "credential_apply_failed",
+                        consumer=consumer_name,
+                        credential_type=endpoint_suffix,
+                        error=str(e),
+                    )
+
     def _delete_entity(
         self,
         entity_type: str,
@@ -646,7 +1084,15 @@ class ConfigManager:
             ApplyOperation result.
         """
         try:
-            self._client.delete(f"{entity_type}/{diff_item.id_or_name}")
+            # Use ID from current state if available (for plugins with compound keys)
+            delete_id = diff_item.id_or_name
+            if diff_item.current:
+                delete_id = (
+                    diff_item.current.get("id")
+                    or diff_item.current.get("name")
+                    or diff_item.id_or_name
+                )
+            self._client.delete(f"{entity_type}/{delete_id}")
 
             self._log.debug(
                 "entity_deleted",
