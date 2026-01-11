@@ -1422,6 +1422,199 @@ Launches an interactive wizard to build configuration.
 
 ---
 
+### Service Registry
+
+Manage services locally and deploy them to Kong in batch. The registry provides
+a local configuration file for defining services with optional OpenAPI integration.
+
+#### Configuration
+
+The registry stores service definitions in `~/.config/ops/kong/services.yaml`:
+
+```yaml
+services:
+  - name: auth-service
+    host: auth-service.auth-service.svc.cluster.local
+    port: 8080
+    protocol: http
+    tags: [microservice, auth]
+    openapi_spec: ~/repos/auth-service/openapi.yaml # Optional
+    path_prefix: /api/v1/auth # For route sync
+
+  - name: recipe-management-service
+    host: recipe-management.recipe-management.svc.cluster.local
+    port: 8080
+    openapi_spec: ~/repos/recipe-service/openapi.yaml
+    path_prefix: /api/v1/recipes
+
+  - name: admin-ui-service
+    host: admin-ui.admin-ui.svc.cluster.local
+    port: 4000
+    # No openapi_spec - static UI, routes added separately
+```
+
+#### `ops kong registry list`
+
+List all services in the registry.
+
+```bash
+ops kong registry list
+ops kong registry list --output json
+ops kong registry list --output yaml
+```
+
+**Output:**
+
+```text
+Service Registry
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━┓
+┃ Name                     ┃ Host                                         ┃ Port  ┃ Protocol ┃ OpenAPI Spec ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━┩
+│ auth-service             │ auth-service.auth-service.svc.cluster.local  │ 8080  │ http     │ openapi.yaml │
+│ recipe-management-service│ recipe-management.svc.cluster.local          │ 8080  │ http     │ openapi.yaml │
+│ admin-ui-service         │ admin-ui.admin-ui.svc.cluster.local          │ 4000  │ http     │ -            │
+└──────────────────────────┴──────────────────────────────────────────────┴───────┴──────────┴──────────────┘
+
+Total: 3 services
+Registry: ~/.config/ops/kong/services.yaml
+```
+
+#### `ops kong registry show <name>`
+
+Show details for a single service.
+
+```bash
+ops kong registry show auth-service
+```
+
+#### `ops kong registry add <name>`
+
+Add a new service to the registry.
+
+```bash
+# Basic service
+ops kong registry add auth-service --host auth.local --port 8080
+
+# With tags
+ops kong registry add api-service --host api.local --tag prod --tag api
+
+# With OpenAPI spec for route sync
+ops kong registry add users-service --host users.local \
+  --openapi-spec ./specs/users.yaml \
+  --path-prefix /api/v1/users
+```
+
+**Options:**
+
+| Option           | Description                                      |
+| ---------------- | ------------------------------------------------ |
+| `--host`         | Upstream host (required)                         |
+| `--port`         | Upstream port (default: 80)                      |
+| `--protocol`     | Protocol: http, https, grpc (default: http)      |
+| `--tag`          | Tags (can be repeated)                           |
+| `--openapi-spec` | Path to OpenAPI spec for route sync              |
+| `--path-prefix`  | Route path prefix for OpenAPI sync               |
+| `--strip-path`   | Strip matched path when proxying (default: true) |
+
+#### `ops kong registry remove <name>`
+
+Remove a service from the registry.
+
+```bash
+ops kong registry remove auth-service
+ops kong registry remove auth-service --force  # Skip confirmation
+```
+
+#### `ops kong registry import <file>`
+
+Import services from a YAML file into the registry.
+
+```bash
+ops kong registry import services.yaml
+```
+
+Services with existing names are updated; new services are added.
+
+#### `ops kong registry deploy`
+
+Deploy all services from registry to Kong and optionally sync routes from OpenAPI specs.
+
+```bash
+# Preview changes
+ops kong registry deploy --dry-run
+
+# Deploy all services
+ops kong registry deploy
+
+# Deploy without route sync
+ops kong registry deploy --skip-routes
+
+# Deploy specific service only
+ops kong registry deploy --service auth-service
+
+# Skip confirmation
+ops kong registry deploy --no-confirm
+```
+
+**Options:**
+
+| Option          | Description                        |
+| --------------- | ---------------------------------- |
+| `--dry-run`     | Preview changes without applying   |
+| `--skip-routes` | Skip OpenAPI route synchronization |
+| `--service`     | Deploy only this service           |
+| `--no-confirm`  | Skip confirmation prompt           |
+
+**Output:**
+
+```text
+Service Deployment Preview
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Total: 3  Create: 2  Update: 1  Unchanged: 0                 ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+Services to Create
+┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━┳━━━━━━━━━━┓
+┃ Service Name   ┃ Host                  ┃ Port ┃ Protocol ┃
+┡━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━╇━━━━━━━━━━┩
+│ auth-service   │ auth.local            │ 8080 │ http     │
+│ users-service  │ users.local           │ 8080 │ http     │
+└────────────────┴───────────────────────┴──────┴──────────┘
+
+Services to Update
+┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Service Name   ┃ Changes                                   ┃
+┡━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ api-service    │ host: old.local -> new.local              │
+└────────────────┴───────────────────────────────────────────┘
+
+2 service(s) have OpenAPI specs - routes will be synced after service creation
+
+Apply these changes? [y/N]:
+```
+
+#### Workflow Example
+
+```bash
+# 1. Add services to registry
+ops kong registry add auth-service --host auth.local --port 8080 \
+  --openapi-spec ./auth-api.yaml --path-prefix /api/v1/auth
+
+ops kong registry add users-service --host users.local --port 8080 \
+  --openapi-spec ./users-api.yaml --path-prefix /api/v1/users
+
+# 2. Preview deployment
+ops kong registry deploy --dry-run
+
+# 3. Deploy services to Kong
+ops kong registry deploy
+
+# 4. Verify services in Kong
+ops kong services list
+```
+
+---
+
 ### Enterprise Features
 
 Features available only with Kong Enterprise license.

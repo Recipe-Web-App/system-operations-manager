@@ -554,6 +554,9 @@ def create_kong_app(kong_url: str) -> typer.Typer:
     from system_operations_manager.plugins.kong.commands.plugins import (
         register_plugin_commands,
     )
+    from system_operations_manager.plugins.kong.commands.registry import (
+        register_registry_commands,
+    )
     from system_operations_manager.plugins.kong.commands.routes import (
         register_route_commands,
     )
@@ -578,6 +581,7 @@ def create_kong_app(kong_url: str) -> typer.Typer:
         ServiceManager,
         UpstreamManager,
     )
+    from system_operations_manager.services.kong.registry_manager import RegistryManager
 
     # Create the Kong Admin client
     connection_config = KongConnectionConfig(
@@ -615,6 +619,13 @@ def create_kong_app(kong_url: str) -> typer.Typer:
             get_service_manager(),
         )
 
+    def get_registry_manager() -> RegistryManager:
+        # Dynamically compute config_dir based on current HOME env var
+        # This allows tests to override HOME and get a fresh registry
+        home = Path(os.environ.get("HOME", str(Path.home())))
+        config_dir = home / ".config" / "ops" / "kong"
+        return RegistryManager(config_dir=config_dir)
+
     # Create the main app
     app = typer.Typer(
         name="ops",
@@ -643,6 +654,12 @@ def create_kong_app(kong_url: str) -> typer.Typer:
         get_openapi_sync_manager,
         get_service_manager,
         get_route_manager,
+    )
+    register_registry_commands(
+        kong_app,
+        get_registry_manager,
+        get_service_manager,
+        get_openapi_sync_manager,
     )
 
     # Add Kong sub-app to main app

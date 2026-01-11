@@ -129,6 +129,9 @@ class KongPlugin(Plugin):
         from system_operations_manager.plugins.kong.commands.plugins import (
             register_plugin_commands,
         )
+        from system_operations_manager.plugins.kong.commands.registry import (
+            register_registry_commands,
+        )
         from system_operations_manager.plugins.kong.commands.routes import (
             register_route_commands,
         )
@@ -157,6 +160,7 @@ class KongPlugin(Plugin):
             ServiceManager,
             UpstreamManager,
         )
+        from system_operations_manager.services.kong.registry_manager import RegistryManager
 
         # Create manager factory functions that use the current client
         def get_service_manager() -> ServiceManager:
@@ -202,6 +206,9 @@ class KongPlugin(Plugin):
                 get_route_manager(),
                 get_service_manager(),
             )
+
+        def get_registry_manager() -> RegistryManager:
+            return RegistryManager()
 
         # Register all command groups
         register_service_commands(app, get_service_manager)
@@ -283,6 +290,14 @@ class KongPlugin(Plugin):
             return KongDeploymentManager()
 
         register_deployment_commands(app, get_deployment_manager)
+
+        # Register service registry commands
+        register_registry_commands(
+            app,
+            get_registry_manager,
+            get_service_manager,
+            get_openapi_sync_manager,
+        )
 
         # Register Konnect integration commands (talks to Konnect, not Kong)
         register_konnect_commands(app)
