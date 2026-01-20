@@ -1,0 +1,87 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":separateMajorReleases"],
+  "timezone": "US/Eastern",
+  "schedule": ["before 10am on monday"],
+  "assignees": ["jsamuelsen11"],
+  "labels": ["dependencies"],
+  "rebaseWhen": "auto",
+  "platformAutomerge": true,
+  "dependencyDashboard": true,
+  "dependencyDashboardLabels": ["dependencies", "renovate"],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security", "dependencies"]
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 10am on the first day of the month"],
+    "automerge": true
+  },
+  "packageRules": [
+    {
+      "description": "Python patch updates - auto-merge",
+      "matchManagers": ["poetry", "pip_requirements"],
+      "matchUpdateTypes": ["patch"],
+      "groupName": "python-patch-updates",
+      "labels": ["dependencies", "python"],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash"
+    },
+    {
+      "description": "Python minor updates - group together, no auto-merge",
+      "matchManagers": ["poetry", "pip_requirements"],
+      "matchUpdateTypes": ["minor"],
+      "groupName": "python-minor-updates",
+      "labels": ["dependencies", "python"],
+      "automerge": false
+    },
+    {
+      "description": "Python major updates - manual review",
+      "matchManagers": ["poetry", "pip_requirements"],
+      "matchUpdateTypes": ["major"],
+      "labels": ["dependencies", "python", "major-update"],
+      "automerge": false,
+      "prBodyNotes": [
+        ":warning: **Major version update** - This PR requires manual review before merging."
+      ]
+    },
+    {
+      "description": "Production dependencies commit prefix",
+      "matchManagers": ["poetry", "pip_requirements"],
+      "matchDepTypes": ["dependencies"],
+      "semanticCommitType": "deps",
+      "semanticCommitScope": "deps"
+    },
+    {
+      "description": "Dev dependencies commit prefix",
+      "matchManagers": ["poetry", "pip_requirements"],
+      "matchDepTypes": ["devDependencies", "dev"],
+      "semanticCommitType": "deps-dev",
+      "semanticCommitScope": "deps-dev"
+    },
+    {
+      "description": "GitHub Actions - group and auto-merge",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions",
+      "labels": ["dependencies", "github-actions"],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash",
+      "semanticCommitType": "ci",
+      "semanticCommitScope": "deps"
+    },
+    {
+      "description": "GitHub Actions major - manual review",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["major"],
+      "groupName": null,
+      "automerge": false,
+      "prBodyNotes": [
+        ":warning: **Major version update** - This PR requires manual review before merging."
+      ]
+    }
+  ],
+  "rangeStrategy": "bump"
+}
