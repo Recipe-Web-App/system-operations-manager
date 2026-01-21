@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", ":separateMajorReleases"],
+  "extends": ["config:recommended", ":separateMajorReleases", ":enablePreCommit"],
   "timezone": "US/Eastern",
   "schedule": ["before 10am on monday"],
   "assignees": ["jsamuelsen11"],
@@ -81,6 +81,17 @@
       "prBodyNotes": [
         ":warning: **Major version update** - This PR requires manual review before merging."
       ]
+    },
+    {
+      "description": "Pre-commit hooks - group and auto-merge",
+      "matchManagers": ["pre-commit"],
+      "groupName": "pre-commit-hooks",
+      "labels": ["dependencies", "pre-commit"],
+      "automerge": true,
+      "automergeType": "pr",
+      "automergeStrategy": "squash",
+      "semanticCommitType": "ci",
+      "semanticCommitScope": "deps"
     }
   ],
   "rangeStrategy": "bump"
