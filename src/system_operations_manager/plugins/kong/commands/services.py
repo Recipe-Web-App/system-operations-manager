@@ -1,7 +1,7 @@
 """CLI commands for Kong Services.
 
 This module provides commands for managing Kong Service entities:
-- list: List all services
+- list: List all services (unified view from Gateway and Konnect if configured)
 - get: Get service details
 - create: Create a new service
 - update: Update an existing service
@@ -32,6 +32,7 @@ from system_operations_manager.plugins.kong.formatters import OutputFormat, get_
 
 if TYPE_CHECKING:
     from system_operations_manager.services.kong.service_manager import ServiceManager
+    from system_operations_manager.services.kong.unified_query import UnifiedQueryService
 
 
 # Column definitions for service listings
@@ -48,12 +49,15 @@ SERVICE_COLUMNS = [
 def register_service_commands(
     app: typer.Typer,
     get_manager: Callable[[], ServiceManager],
+    get_unified_query_service: Callable[[], UnifiedQueryService | None] | None = None,
 ) -> None:
     """Register service commands with the Kong app.
 
     Args:
         app: Typer app to register commands on.
         get_manager: Factory function that returns a ServiceManager instance.
+        get_unified_query_service: Optional factory that returns a UnifiedQueryService
+            for querying both Gateway and Konnect.
     """
     services_app = typer.Typer(
         name="services",
@@ -67,20 +71,71 @@ def register_service_commands(
         tags: TagsOption = None,
         limit: LimitOption = None,
         offset: OffsetOption = None,
+        source: Annotated[
+            str | None,
+            typer.Option(
+                "--source",
+                "-s",
+                help="Filter by source: gateway, konnect (only when Konnect is configured)",
+            ),
+        ] = None,
+        compare: Annotated[
+            bool,
+            typer.Option(
+                "--compare",
+                help="Show drift details between Gateway and Konnect",
+            ),
+        ] = False,
     ) -> None:
         """List all services.
+
+        When Konnect is configured, shows services from both Gateway and Konnect
+        with a Source column indicating where each service exists.
 
         Examples:
             ops kong services list
             ops kong services list --tag production
             ops kong services list --output json
-            ops kong services list --limit 10
+            ops kong services list --source gateway
+            ops kong services list --compare
         """
+        formatter = get_formatter(output, console)
+
+        # Try unified query first if available
+        unified_service = get_unified_query_service() if get_unified_query_service else None
+
+        if unified_service is not None:
+            try:
+                results = unified_service.list_services(tags=tags)
+
+                # Filter by source if specified
+                if source:
+                    results = results.filter_by_source(source)
+
+                formatter.format_unified_list(
+                    results,
+                    SERVICE_COLUMNS,
+                    title="Kong Services",
+                    show_drift=compare,
+                )
+                return
+            except Exception as e:
+                # Fall back to gateway-only if unified query fails
+                console.print(
+                    f"[dim]Note: Unified query unavailable ({e}), showing gateway only[/dim]\n"
+                )
+
+        # Fall back to gateway-only query
+        if source == "konnect":
+            console.print(
+                "[yellow]Konnect not configured. Use 'ops kong konnect login' to configure.[/yellow]"
+            )
+            raise typer.Exit(1)
+
         try:
             manager = get_manager()
             services, next_offset = manager.list(tags=tags, limit=limit, offset=offset)
 
-            formatter = get_formatter(output, console)
             formatter.format_list(services, SERVICE_COLUMNS, title="Kong Services")
 
             if next_offset:

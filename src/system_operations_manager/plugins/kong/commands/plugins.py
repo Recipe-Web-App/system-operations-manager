@@ -36,6 +36,7 @@ from system_operations_manager.plugins.kong.formatters import OutputFormat, get_
 
 if TYPE_CHECKING:
     from system_operations_manager.services.kong.plugin_manager import KongPluginManager
+    from system_operations_manager.services.kong.unified_query import UnifiedQueryService
 
 
 # Column definitions for plugin listings
@@ -52,12 +53,15 @@ PLUGIN_COLUMNS = [
 def register_plugin_commands(
     app: typer.Typer,
     get_manager: Callable[[], KongPluginManager],
+    get_unified_query_service: Callable[[], UnifiedQueryService | None] | None = None,
 ) -> None:
     """Register plugin commands with the Kong app.
 
     Args:
         app: Typer app to register commands on.
         get_manager: Factory function that returns a KongPluginManager instance.
+        get_unified_query_service: Optional factory that returns a UnifiedQueryService
+            for querying both Gateway and Konnect.
     """
     plugins_app = typer.Typer(
         name="plugins",
@@ -78,17 +82,76 @@ def register_plugin_commands(
         tags: TagsOption = None,
         limit: LimitOption = None,
         offset: OffsetOption = None,
+        source: Annotated[
+            str | None,
+            typer.Option(
+                "--source",
+                "-s",
+                help="Filter by source: gateway, konnect (only when Konnect is configured)",
+            ),
+        ] = None,
+        compare: Annotated[
+            bool,
+            typer.Option(
+                "--compare",
+                help="Show drift details between Gateway and Konnect",
+            ),
+        ] = False,
     ) -> None:
         """List enabled plugins.
 
         Can filter by scope (service, route, consumer) or plugin name.
+        When Konnect is configured, shows plugins from both Gateway and Konnect.
 
         Examples:
             ops kong plugins list
             ops kong plugins list --service my-api
             ops kong plugins list --name rate-limiting
             ops kong plugins list --output json
+            ops kong plugins list --source gateway
+            ops kong plugins list --compare
         """
+        formatter = get_formatter(output, console)
+
+        # Try unified query first if available and no scope filter
+        unified_service = get_unified_query_service() if get_unified_query_service else None
+
+        if unified_service is not None and not service and not route and not consumer:
+            try:
+                results = unified_service.list_plugins(tags=tags)
+
+                # Filter by source if specified
+                if source:
+                    results = results.filter_by_source(source)
+
+                # Filter by name if specified
+                if name:
+                    results.entities = [e for e in results.entities if e.entity.name == name]
+
+                title = "Kong Plugins"
+                if name:
+                    title = f"{title} (name={name})"
+
+                formatter.format_unified_list(
+                    results,
+                    PLUGIN_COLUMNS,
+                    title=title,
+                    show_drift=compare,
+                )
+                return
+            except Exception as e:
+                # Fall back to gateway-only if unified query fails
+                console.print(
+                    f"[dim]Note: Unified query unavailable ({e}), showing gateway only[/dim]\n"
+                )
+
+        # Fall back to gateway-only query
+        if source == "konnect":
+            console.print(
+                "[yellow]Konnect not configured. Use 'ops kong konnect login' to configure.[/yellow]"
+            )
+            raise typer.Exit(1)
+
         try:
             manager = get_manager()
 

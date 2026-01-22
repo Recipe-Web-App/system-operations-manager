@@ -385,3 +385,312 @@ class TestKonnectClientHelpers:
         assert "-----BEGIN CERTIFICATE-----" in cert_pem
         assert "-----END CERTIFICATE-----" in cert_pem
         assert "PRIVATE KEY" in key_pem
+
+
+class TestKonnectClientServices:
+    """Tests for service management methods."""
+
+    @pytest.fixture
+    def client(
+        self,
+        konnect_config: KonnectConfig,
+        mock_httpx_client: MagicMock,
+    ) -> KonnectClient:
+        """Create a client with mocked httpx."""
+        return KonnectClient(konnect_config)
+
+    @pytest.mark.unit
+    def test_list_services(
+        self,
+        client: KonnectClient,
+        mock_httpx_client: MagicMock,
+    ) -> None:
+        """list_services should return list of services."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": [
+                {
+                    "id": "svc-1",
+                    "name": "test-service",
+                    "host": "test.local",
+                    "port": 8080,
+                    "protocol": "http",
+                }
+            ],
+            "offset": None,
+        }
+        mock_httpx_client.request.return_value = mock_response
+
+        services, next_offset = client.list_services("cp-123")
+
+        assert len(services) == 1
+        assert services[0].name == "test-service"
+        assert services[0].host == "test.local"
+        assert next_offset is None
+        mock_httpx_client.request.assert_called_once()
+
+    @pytest.mark.unit
+    def test_get_service(
+        self,
+        client: KonnectClient,
+        mock_httpx_client: MagicMock,
+    ) -> None:
+        """get_service should return service details."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "id": "svc-1",
+            "name": "test-service",
+            "host": "test.local",
+            "port": 8080,
+            "protocol": "http",
+        }
+        mock_httpx_client.request.return_value = mock_response
+
+        service = client.get_service("cp-123", "test-service")
+
+        assert service.name == "test-service"
+        assert service.host == "test.local"
+
+    @pytest.mark.unit
+    def test_get_service_not_found(
+        self,
+        client: KonnectClient,
+        mock_httpx_client: MagicMock,
+    ) -> None:
+        """get_service should raise NotFoundError when not found."""
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_response.json.return_value = {"message": "Not found"}
+        mock_httpx_client.request.return_value = mock_response
+
+        with pytest.raises(KonnectNotFoundError):
+            client.get_service("cp-123", "nonexistent")
+
+    @pytest.mark.unit
+    def test_create_service(
+        self,
+        client: KonnectClient,
+        mock_httpx_client: MagicMock,
+    ) -> None:
+        """create_service should create and return service."""
+        from system_operations_manager.integrations.kong.models.service import Service
+
+        mock_response = MagicMock()
+        mock_response.status_code = 201
+        mock_response.json.return_value = {
+            "id": "svc-new",
+            "name": "new-service",
+            "host": "new.local",
+            "port": 80,
+            "protocol": "http",
+        }
+        mock_httpx_client.request.return_value = mock_response
+
+        service = Service(name="new-service", host="new.local")
+        result = client.create_service("cp-123", service)
+
+        assert result.id == "svc-new"
+        assert result.name == "new-service"
+
+    @pytest.mark.unit
+    def test_update_service(
+        self,
+        client: KonnectClient,
+        mock_httpx_client: MagicMock,
+    ) -> None:
+        """update_service should update and return service."""
+        from system_operations_manager.integrations.kong.models.service import Service
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "id": "svc-1",
+            "name": "test-service",
+            "host": "updated.local",
+            "port": 8080,
+            "protocol": "http",
+        }
+        mock_httpx_client.request.return_value = mock_response
+
+        service = Service(name="test-service", host="updated.local")
+        result = client.update_service("cp-123", "svc-1", service)
+
+        assert result.host == "updated.local"
+
+    @pytest.mark.unit
+    def test_delete_service(
+        self,
+        client: KonnectClient,
+        mock_httpx_client: MagicMock,
+    ) -> None:
+        """delete_service should delete service."""
+        mock_response = MagicMock()
+        mock_response.status_code = 204
+        mock_httpx_client.request.return_value = mock_response
+
+        # Should not raise
+        client.delete_service("cp-123", "svc-1")
+        mock_httpx_client.request.assert_called_once()
+
+
+class TestKonnectClientRoutes:
+    """Tests for route management methods."""
+
+    @pytest.fixture
+    def client(
+        self,
+        konnect_config: KonnectConfig,
+        mock_httpx_client: MagicMock,
+    ) -> KonnectClient:
+        """Create a client with mocked httpx."""
+        return KonnectClient(konnect_config)
+
+    @pytest.mark.unit
+    def test_list_routes(
+        self,
+        client: KonnectClient,
+        mock_httpx_client: MagicMock,
+    ) -> None:
+        """list_routes should return list of routes."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": [
+                {
+                    "id": "route-1",
+                    "name": "test-route",
+                    "paths": ["/api"],
+                    "methods": ["GET", "POST"],
+                }
+            ],
+            "offset": None,
+        }
+        mock_httpx_client.request.return_value = mock_response
+
+        routes, _next_offset = client.list_routes("cp-123")
+
+        assert len(routes) == 1
+        assert routes[0].name == "test-route"
+        assert routes[0].paths == ["/api"]
+
+    @pytest.mark.unit
+    def test_list_routes_by_service(
+        self,
+        client: KonnectClient,
+        mock_httpx_client: MagicMock,
+    ) -> None:
+        """list_routes should filter by service when specified."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": [
+                {
+                    "id": "route-1",
+                    "name": "svc-route",
+                    "paths": ["/api"],
+                    "methods": ["GET"],
+                }
+            ],
+            "offset": None,
+        }
+        mock_httpx_client.request.return_value = mock_response
+
+        routes, _ = client.list_routes("cp-123", service_name_or_id="test-service")
+
+        assert len(routes) == 1
+        # Verify the service-specific endpoint was called
+        call_args = mock_httpx_client.request.call_args
+        # endpoint is second positional argument
+        assert "services/test-service/routes" in call_args[0][1]
+
+    @pytest.mark.unit
+    def test_create_route(
+        self,
+        client: KonnectClient,
+        mock_httpx_client: MagicMock,
+    ) -> None:
+        """create_route should create and return route."""
+        from system_operations_manager.integrations.kong.models.route import Route
+
+        mock_response = MagicMock()
+        mock_response.status_code = 201
+        mock_response.json.return_value = {
+            "id": "route-new",
+            "name": "new-route",
+            "paths": ["/new"],
+            "methods": ["GET"],
+        }
+        mock_httpx_client.request.return_value = mock_response
+
+        route = Route(name="new-route", paths=["/new"], methods=["GET"])
+        result = client.create_route("cp-123", route)
+
+        assert result.id == "route-new"
+        assert result.name == "new-route"
+
+    @pytest.mark.unit
+    def test_create_route_for_service(
+        self,
+        client: KonnectClient,
+        mock_httpx_client: MagicMock,
+    ) -> None:
+        """create_route should use service endpoint when service specified."""
+        from system_operations_manager.integrations.kong.models.route import Route
+
+        mock_response = MagicMock()
+        mock_response.status_code = 201
+        mock_response.json.return_value = {
+            "id": "route-new",
+            "name": "new-route",
+            "paths": ["/new"],
+            "methods": ["GET"],
+        }
+        mock_httpx_client.request.return_value = mock_response
+
+        route = Route(name="new-route", paths=["/new"], methods=["GET"])
+        client.create_route("cp-123", route, service_name_or_id="test-service")
+
+        call_args = mock_httpx_client.request.call_args
+        # endpoint is second positional argument
+        assert "services/test-service/routes" in call_args[0][1]
+
+    @pytest.mark.unit
+    def test_update_route(
+        self,
+        client: KonnectClient,
+        mock_httpx_client: MagicMock,
+    ) -> None:
+        """update_route should update and return route."""
+        from system_operations_manager.integrations.kong.models.route import Route
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "id": "route-1",
+            "name": "test-route",
+            "paths": ["/updated"],
+            "methods": ["GET", "POST"],
+        }
+        mock_httpx_client.request.return_value = mock_response
+
+        route = Route(name="test-route", paths=["/updated"], methods=["GET", "POST"])
+        result = client.update_route("cp-123", "route-1", route)
+
+        assert result.paths == ["/updated"]
+
+    @pytest.mark.unit
+    def test_delete_route(
+        self,
+        client: KonnectClient,
+        mock_httpx_client: MagicMock,
+    ) -> None:
+        """delete_route should delete route."""
+        mock_response = MagicMock()
+        mock_response.status_code = 204
+        mock_httpx_client.request.return_value = mock_response
+
+        # Should not raise
+        client.delete_route("cp-123", "route-1")
+        mock_httpx_client.request.assert_called_once()

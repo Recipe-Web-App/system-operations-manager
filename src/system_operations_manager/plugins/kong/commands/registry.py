@@ -25,6 +25,7 @@ from rich.table import Table
 
 from system_operations_manager.integrations.kong.exceptions import KongAPIError
 from system_operations_manager.integrations.kong.models.service_registry import (
+    DeploymentResult,
     ServiceAlreadyExistsError,
     ServiceDeployResult,
     ServiceDeploySummary,
@@ -32,6 +33,9 @@ from system_operations_manager.integrations.kong.models.service_registry import 
     ServiceProtocol,
     ServiceRegistryEntry,
 )
+from system_operations_manager.integrations.konnect.client import KonnectClient
+from system_operations_manager.integrations.konnect.config import KonnectConfig
+from system_operations_manager.integrations.konnect.exceptions import KonnectConfigError
 from system_operations_manager.plugins.kong.commands.base import (
     ForceOption,
     OutputOption,
@@ -380,16 +384,26 @@ def register_registry_commands(
             bool,
             typer.Option("--confirm/--no-confirm", help="Require confirmation"),
         ] = True,
+        gateway_only: Annotated[
+            bool,
+            typer.Option("--gateway-only", help="Deploy to Kong Gateway only, skip Konnect"),
+        ] = False,
+        control_plane: Annotated[
+            str | None,
+            typer.Option("--control-plane", "-cp", help="Konnect control plane name or ID"),
+        ] = None,
         output: OutputOption = OutputFormat.TABLE,
     ) -> None:
-        """Deploy services from registry to Kong.
+        """Deploy services from registry to Kong Gateway and Konnect.
 
-        Creates or updates services based on the registry configuration.
-        Optionally syncs routes from OpenAPI specs.
+        By default, deploys to both Kong Gateway and the configured Konnect
+        control plane. Use --gateway-only to skip Konnect synchronization.
 
         Examples:
             ops kong registry deploy --dry-run
             ops kong registry deploy
+            ops kong registry deploy --gateway-only
+            ops kong registry deploy --control-plane production
             ops kong registry deploy --skip-routes
             ops kong registry deploy --service auth-service
             ops kong registry deploy --no-confirm
@@ -409,6 +423,41 @@ def register_registry_commands(
             console.print(f"[red]Error:[/red] Service '{service}' not found in registry")
             raise typer.Exit(1)
 
+        # Setup Konnect client if not gateway_only
+        konnect_client: KonnectClient | None = None
+        control_plane_id: str | None = None
+        konnect_cp_name: str | None = None
+
+        if not gateway_only:
+            try:
+                konnect_config = KonnectConfig.load()
+                konnect_client = KonnectClient(konnect_config)
+
+                # Resolve control plane
+                cp_identifier = control_plane or konnect_config.default_control_plane
+                if cp_identifier:
+                    cp = konnect_client.find_control_plane(cp_identifier)
+                    control_plane_id = cp.id
+                    konnect_cp_name = cp.name
+                else:
+                    console.print(
+                        "[yellow]Warning:[/yellow] No control plane configured. "
+                        "Deploying to Gateway only.\n"
+                        "[dim]Set default_control_plane in ~/.config/ops/konnect.yaml "
+                        "or use --control-plane[/dim]"
+                    )
+            except KonnectConfigError:
+                console.print(
+                    "[yellow]Warning:[/yellow] Konnect not configured. "
+                    "Deploying to Gateway only.\n"
+                    "[dim]Run 'ops kong konnect login' to configure Konnect[/dim]"
+                )
+            except Exception as e:
+                console.print(
+                    f"[yellow]Warning:[/yellow] Could not connect to Konnect: {e}\n"
+                    "[dim]Deploying to Gateway only.[/dim]"
+                )
+
         try:
             # Calculate diff
             console.print("[dim]Calculating changes...[/dim]\n")
@@ -420,6 +469,16 @@ def register_registry_commands(
 
             # Display diff
             _display_deploy_summary(summary, output)
+
+            # Show deployment targets
+            console.print("\n[bold]Deployment targets:[/bold]")
+            console.print("  • Kong Gateway (Admin API)")
+            if konnect_client and control_plane_id:
+                console.print(f"  • Konnect (control-plane: {konnect_cp_name})")
+            elif gateway_only:
+                console.print("  • [dim]Konnect: skipped (--gateway-only)[/dim]")
+            else:
+                console.print("  • [dim]Konnect: skipped (not configured)[/dim]")
 
             # Check for OpenAPI specs
             services_with_specs = sum(
@@ -445,18 +504,24 @@ def register_registry_commands(
 
             # Deploy
             console.print("\n[dim]Deploying services...[/dim]")
-            results = registry_manager.deploy(
+            deployment_result = registry_manager.deploy(
                 service_manager,
                 openapi_manager,
                 skip_routes=skip_routes,
                 service_names=service_names,
+                konnect_client=konnect_client,
+                control_plane_id=control_plane_id,
+                gateway_only=gateway_only or konnect_client is None,
             )
 
             # Display results
-            _display_deploy_results(results, output)
+            _display_deployment_results(deployment_result, konnect_cp_name, output)
 
         except KongAPIError as e:
             handle_kong_error(e)
+        finally:
+            if konnect_client:
+                konnect_client.close()
 
     app.add_typer(registry_app, name="registry")
 
@@ -553,3 +618,99 @@ def _display_deploy_results(
         console.print(f"  Services: {created} created, {updated} updated, {unchanged} unchanged")
         if routes_synced > 0:
             console.print(f"  Routes synced: {routes_synced}")
+
+
+def _display_deployment_results(
+    result: DeploymentResult,
+    konnect_cp_name: str | None,
+    output: OutputFormat,
+) -> None:
+    """Display deployment results for both Gateway and Konnect."""
+
+    if output != OutputFormat.TABLE:
+        formatter = get_formatter(output, console)
+        data = {
+            "gateway": [r.model_dump() for r in result.gateway],
+            "konnect": [r.model_dump() for r in result.konnect] if result.konnect else None,
+            "konnect_skipped": result.konnect_skipped,
+            "konnect_error": result.konnect_error,
+        }
+        formatter.format_dict(data, title="Deployment Results")
+        return
+
+    # Gateway results
+    console.print("\n[bold cyan]Gateway Deployment:[/bold cyan]")
+    _display_target_results(result.gateway, "Gateway")
+
+    # Konnect results
+    if result.konnect_skipped:
+        console.print("\n[dim]Konnect: skipped (--gateway-only)[/dim]")
+    elif result.konnect_error:
+        console.print(f"\n[red]Konnect Error:[/red] {result.konnect_error}")
+    elif result.konnect:
+        console.print(f"\n[bold cyan]Konnect Deployment ({konnect_cp_name}):[/bold cyan]")
+        _display_target_results(result.konnect, "Konnect")
+
+    # Summary
+    console.print("\n[bold]Summary:[/bold]")
+    gw_summary = result.gateway_summary
+    console.print(
+        f"  Gateway: {len(result.gateway)} services "
+        f"({gw_summary['created']} created, {gw_summary['updated']} updated, "
+        f"{gw_summary['unchanged']} unchanged, {gw_summary['failed']} failed)"
+    )
+
+    if result.konnect:
+        kn_summary = result.konnect_summary
+        if kn_summary:
+            console.print(
+                f"  Konnect: {len(result.konnect)} services "
+                f"({kn_summary['created']} created, {kn_summary['updated']} updated, "
+                f"{kn_summary['unchanged']} unchanged, {kn_summary['failed']} failed)"
+            )
+
+    # Check for any failures
+    gateway_failed = any(not r.success for r in result.gateway)
+    konnect_failed = result.konnect and any(not r.success for r in result.konnect)
+
+    if gateway_failed or konnect_failed or result.konnect_error:
+        console.print("\n[yellow]Deployment completed with errors[/yellow]")
+        raise typer.Exit(1)
+    else:
+        console.print("\n[green]Deployment successful![/green]")
+
+
+def _display_target_results(results: list[ServiceDeployResult], target: str) -> None:
+    """Display results for a single deployment target."""
+    table = Table()
+    table.add_column("Service", style="cyan")
+    table.add_column("Status")
+    table.add_column("Routes")
+    table.add_column("Error", style="red")
+
+    for r in results:
+        status_style = {
+            "created": "[green]created[/green]",
+            "updated": "[blue]updated[/blue]",
+            "unchanged": "[dim]unchanged[/dim]",
+            "failed": "[red]failed[/red]",
+        }.get(r.service_status, r.service_status)
+
+        routes_display = ""
+        if r.routes_status == "synced":
+            routes_display = f"[green]{r.routes_synced} synced[/green]"
+        elif r.routes_status == "skipped":
+            routes_display = "[dim]skipped[/dim]"
+        elif r.routes_status == "failed":
+            routes_display = "[red]failed[/red]"
+        elif r.routes_status == "no_spec":
+            routes_display = "[dim]-[/dim]"
+
+        table.add_row(
+            r.service_name,
+            status_style,
+            routes_display,
+            r.error or "",
+        )
+
+    console.print(table)

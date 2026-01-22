@@ -11,7 +11,7 @@ import json
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import yaml
 from rich.console import Console
@@ -20,6 +20,12 @@ from system_operations_manager.cli.output import Table
 
 if TYPE_CHECKING:
     from system_operations_manager.integrations.kong.models.base import KongEntityBase
+    from system_operations_manager.integrations.kong.models.unified import (
+        UnifiedEntityList,
+    )
+
+# TypeVar for entity types (used in format_unified_list)
+T = TypeVar("T")
 
 
 class OutputFormat(str, Enum):
@@ -78,6 +84,23 @@ class OutputFormatter(ABC):
         Args:
             data: Dictionary data to display.
             title: Optional title for the output.
+        """
+
+    @abstractmethod
+    def format_unified_list(
+        self,
+        unified: UnifiedEntityList[Any],
+        columns: list[tuple[str, str]],
+        title: str = "",
+        show_drift: bool = False,
+    ) -> None:
+        """Format and display a unified entity list with source information.
+
+        Args:
+            unified: Unified entity list with source tracking.
+            columns: List of (field_name, display_header) tuples.
+            title: Optional title for the output.
+            show_drift: Whether to show drift details for entities in both sources.
         """
 
     def format_success(self, message: str) -> None:
@@ -153,6 +176,79 @@ class TableFormatter(OutputFormatter):
             table.add_row(key, formatted_value)
 
         self.console.print(table)
+
+    def format_unified_list(
+        self,
+        unified: UnifiedEntityList[Any],
+        columns: list[tuple[str, str]],
+        title: str = "",
+        show_drift: bool = False,
+    ) -> None:
+        """Format unified entity list with source column."""
+        from system_operations_manager.integrations.kong.models.unified import (
+            EntitySource,
+        )
+
+        table = Table(title=title, show_header=True)
+
+        # Add Source column first
+        table.add_column("Source", style="magenta")
+
+        # Add entity columns
+        for _field_name, header in columns:
+            style = "cyan" if header.lower() in ("name", "id") else None
+            table.add_column(header, style=style)
+
+        # Add Drift column if showing drift
+        if show_drift:
+            table.add_column("Drift", style="yellow")
+
+        # Add rows
+        for unified_entity in unified.entities:
+            entity = unified_entity.entity
+            data = entity.model_dump()
+
+            # Source indicator with color
+            if unified_entity.source == EntitySource.GATEWAY:
+                source_cell = "[blue]gateway[/blue]"
+            elif unified_entity.source == EntitySource.KONNECT:
+                source_cell = "[green]konnect[/green]"
+            else:
+                source_cell = "[cyan]both[/cyan]"
+
+            row = [source_cell]
+
+            # Entity fields
+            for field_name, _ in columns:
+                value = self._get_nested_value(data, field_name)
+                row.append(self._format_cell_value(value))
+
+            # Drift indicator
+            if show_drift:
+                if unified_entity.has_drift and unified_entity.drift_fields:
+                    drift_str = ", ".join(unified_entity.drift_fields)
+                    row.append(f"[yellow]{drift_str}[/yellow]")
+                elif unified_entity.source == EntitySource.BOTH:
+                    row.append("[green]✓[/green]")
+                else:
+                    row.append("-")
+
+            table.add_row(*row)
+
+        self.console.print(table)
+
+        # Summary
+        summary_parts = [f"Total: {len(unified)}"]
+        if unified.gateway_only_count > 0:
+            summary_parts.append(f"Gateway only: {unified.gateway_only_count}")
+        if unified.konnect_only_count > 0:
+            summary_parts.append(f"Konnect only: {unified.konnect_only_count}")
+        if unified.in_both_count > 0:
+            summary_parts.append(f"Both: {unified.in_both_count}")
+        if show_drift and unified.drift_count > 0:
+            summary_parts.append(f"With drift: {unified.drift_count}")
+
+        self.console.print(f"\n[dim]{' | '.join(summary_parts)}[/dim]")
 
     def _format_value(self, value: Any) -> str:
         """Format a value for display in a table cell.
@@ -259,6 +355,41 @@ class JsonFormatter(OutputFormatter):
         """Format dictionary as JSON."""
         self.console.print(json.dumps(data, indent=2, default=str))
 
+    def format_unified_list(
+        self,
+        unified: UnifiedEntityList[Any],
+        columns: list[tuple[str, str]],
+        title: str = "",
+        show_drift: bool = False,
+    ) -> None:
+        """Format unified entity list as JSON with source information."""
+        items: list[dict[str, Any]] = []
+        for unified_entity in unified.entities:
+            entity_data = unified_entity.entity.model_dump(exclude_none=True)
+            item: dict[str, Any] = {
+                "source": unified_entity.source.value,
+                "gateway_id": unified_entity.gateway_id,
+                "konnect_id": unified_entity.konnect_id,
+                "entity": entity_data,
+            }
+            if show_drift and unified_entity.has_drift:
+                item["has_drift"] = True
+                item["drift_fields"] = unified_entity.drift_fields
+            items.append(item)
+
+        output = {
+            "data": items,
+            "summary": {
+                "total": len(unified),
+                "gateway_only": unified.gateway_only_count,
+                "konnect_only": unified.konnect_only_count,
+                "in_both": unified.in_both_count,
+                "synced": unified.synced_count,
+                "with_drift": unified.drift_count,
+            },
+        }
+        self.console.print(json.dumps(output, indent=2, default=str))
+
 
 class YamlFormatter(OutputFormatter):
     """YAML output formatter.
@@ -290,6 +421,41 @@ class YamlFormatter(OutputFormatter):
     def format_dict(self, data: dict[str, Any], title: str = "") -> None:
         """Format dictionary as YAML."""
         self.console.print(yaml.dump(data, default_flow_style=False, sort_keys=False))
+
+    def format_unified_list(
+        self,
+        unified: UnifiedEntityList[Any],
+        columns: list[tuple[str, str]],
+        title: str = "",
+        show_drift: bool = False,
+    ) -> None:
+        """Format unified entity list as YAML with source information."""
+        items: list[dict[str, Any]] = []
+        for unified_entity in unified.entities:
+            entity_data = unified_entity.entity.model_dump(exclude_none=True)
+            item: dict[str, Any] = {
+                "source": unified_entity.source.value,
+                "gateway_id": unified_entity.gateway_id,
+                "konnect_id": unified_entity.konnect_id,
+                "entity": entity_data,
+            }
+            if show_drift and unified_entity.has_drift:
+                item["has_drift"] = True
+                item["drift_fields"] = unified_entity.drift_fields
+            items.append(item)
+
+        output = {
+            "data": items,
+            "summary": {
+                "total": len(unified),
+                "gateway_only": unified.gateway_only_count,
+                "konnect_only": unified.konnect_only_count,
+                "in_both": unified.in_both_count,
+                "synced": unified.synced_count,
+                "with_drift": unified.drift_count,
+            },
+        }
+        self.console.print(yaml.dump(output, default_flow_style=False, sort_keys=False))
 
 
 def get_formatter(format_type: OutputFormat, console: Console | None = None) -> OutputFormatter:

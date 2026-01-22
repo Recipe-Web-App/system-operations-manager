@@ -66,6 +66,13 @@ from system_operations_manager.integrations.kong.models.service import (
     Service,
     ServiceSummary,
 )
+from system_operations_manager.integrations.kong.models.unified import (
+    EntitySource,
+    UnifiedEntity,
+    UnifiedEntityList,
+    detect_drift,
+    merge_entities,
+)
 from system_operations_manager.integrations.kong.models.upstream import (
     Target,
     Upstream,
@@ -73,13 +80,9 @@ from system_operations_manager.integrations.kong.models.upstream import (
 )
 
 __all__ = [
-    # Consumer credentials
     "ACLGroup",
-    # Enterprise: Vaults
     "AWSSecretsConfig",
-    # Declarative config
     "ApplyOperation",
-    # Plugins
     "AvailablePlugin",
     "AzureVaultConfig",
     "BasicAuthCredential",
@@ -87,15 +90,14 @@ __all__ = [
     "ConfigDiffSummary",
     "ConfigValidationError",
     "ConfigValidationResult",
-    # Core entities
     "Consumer",
     "Credential",
     "DeclarativeConfig",
     "DevPortalFile",
     "DevPortalSpec",
     "DevPortalStatus",
-    # Enterprise: Developer Portal
     "Developer",
+    "EntitySource",
     "EnvVaultConfig",
     "GCPSecretsConfig",
     "HMACAuthCredential",
@@ -103,11 +105,9 @@ __all__ = [
     "HealthFailure",
     "JWTCredential",
     "KeyAuthCredential",
-    # Base models
     "KongEntityBase",
     "KongEntityReference",
     "KongPluginEntity",
-    # Observability
     "MetricsSummary",
     "NodeStatus",
     "OAuth2Credential",
@@ -115,7 +115,6 @@ __all__ = [
     "PercentileMetrics",
     "PluginSchema",
     "PrometheusMetric",
-    # Enterprise: RBAC
     "RBACEndpointPermission",
     "RBACRole",
     "RBACUser",
@@ -126,11 +125,14 @@ __all__ = [
     "ServiceSummary",
     "Target",
     "TargetHealthDetail",
+    "UnifiedEntity",
+    "UnifiedEntityList",
     "Upstream",
     "UpstreamHealth",
     "UpstreamHealthSummary",
     "Vault",
-    # Enterprise: Workspaces
     "Workspace",
     "WorkspaceConfig",
+    "detect_drift",
+    "merge_entities",
 ]

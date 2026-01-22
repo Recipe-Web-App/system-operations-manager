@@ -287,6 +287,53 @@ class ServiceDeployResult(BaseModel):
         return self.service_status in ("created", "updated", "unchanged")
 
 
+class DeploymentResult(BaseModel):
+    """Combined result of deploying to Gateway and Konnect.
+
+    Aggregates deployment results from both targets, providing a unified
+    view of the deployment status.
+
+    Attributes:
+        gateway: Results from Kong Gateway deployment.
+        konnect: Results from Konnect deployment (None if skipped).
+        konnect_skipped: Whether Konnect deployment was skipped.
+        konnect_error: Error message if Konnect deployment failed entirely.
+    """
+
+    gateway: list[ServiceDeployResult]
+    konnect: list[ServiceDeployResult] | None = None
+    konnect_skipped: bool = False
+    konnect_error: str | None = None
+
+    @property
+    def all_success(self) -> bool:
+        """Check if all deployments were successful."""
+        gateway_ok = all(r.success for r in self.gateway)
+        konnect_ok = self.konnect is None or all(r.success for r in self.konnect)
+        return gateway_ok and konnect_ok and self.konnect_error is None
+
+    @property
+    def gateway_summary(self) -> dict[str, int]:
+        """Get summary counts for Gateway deployment."""
+        return self._summarize(self.gateway)
+
+    @property
+    def konnect_summary(self) -> dict[str, int] | None:
+        """Get summary counts for Konnect deployment."""
+        if self.konnect is None:
+            return None
+        return self._summarize(self.konnect)
+
+    @staticmethod
+    def _summarize(results: list[ServiceDeployResult]) -> dict[str, int]:
+        """Summarize deployment results by status."""
+        summary = {"created": 0, "updated": 0, "unchanged": 0, "failed": 0}
+        for r in results:
+            if r.service_status in summary:
+                summary[r.service_status] += 1
+        return summary
+
+
 class RegistryNotFoundError(Exception):
     """Raised when the registry file does not exist."""
 

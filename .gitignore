@@ -63,3 +63,6 @@ Thumbs.db
 temp/
 .tmp/
 tmp/
+
+# Serena
+.serena/

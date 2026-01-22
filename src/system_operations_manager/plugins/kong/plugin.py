@@ -27,7 +27,7 @@ from system_operations_manager.plugins.kong.commands.base import (
 from system_operations_manager.plugins.kong.formatters import OutputFormat, get_formatter
 
 if TYPE_CHECKING:
-    pass
+    from system_operations_manager.integrations.konnect import KonnectClient
 
 logger = structlog.get_logger()
 console = Console()
@@ -141,6 +141,9 @@ class KongPlugin(Plugin):
         from system_operations_manager.plugins.kong.commands.services import (
             register_service_commands,
         )
+        from system_operations_manager.plugins.kong.commands.sync import (
+            register_sync_commands,
+        )
         from system_operations_manager.plugins.kong.commands.traffic import (
             register_traffic_commands,
         )
@@ -161,6 +164,16 @@ class KongPlugin(Plugin):
             UpstreamManager,
         )
         from system_operations_manager.services.kong.registry_manager import RegistryManager
+        from system_operations_manager.services.kong.unified_query import UnifiedQueryService
+
+        # Import Konnect managers
+        from system_operations_manager.services.konnect import (
+            KonnectConsumerManager,
+            KonnectPluginManager,
+            KonnectRouteManager,
+            KonnectServiceManager,
+            KonnectUpstreamManager,
+        )
 
         # Create manager factory functions that use the current client
         def get_service_manager() -> ServiceManager:
@@ -210,12 +223,96 @@ class KongPlugin(Plugin):
         def get_registry_manager() -> RegistryManager:
             return RegistryManager()
 
+        # Konnect manager factory functions (return None if not configured)
+        def _get_konnect_client_and_cp_id() -> tuple[KonnectClient, str] | tuple[None, None]:
+            """Get Konnect client and default control plane ID if configured."""
+            from system_operations_manager.integrations.konnect import (
+                KonnectClient,
+                KonnectConfig,
+            )
+            from system_operations_manager.integrations.konnect.exceptions import (
+                KonnectConfigError,
+            )
+
+            if not KonnectConfig.exists():
+                return None, None
+
+            try:
+                config = KonnectConfig.load()
+            except KonnectConfigError:
+                return None, None
+
+            if not config.default_control_plane:
+                return None, None
+
+            try:
+                client = KonnectClient(config)
+                # Find control plane ID from name
+                cp = client.find_control_plane(config.default_control_plane)
+                return client, cp.id
+            except Exception:
+                return None, None
+
+        def get_konnect_service_manager() -> KonnectServiceManager | None:
+            client, cp_id = _get_konnect_client_and_cp_id()
+            if client is None or cp_id is None:
+                return None
+            return KonnectServiceManager(client, cp_id)
+
+        def get_konnect_route_manager() -> KonnectRouteManager | None:
+            client, cp_id = _get_konnect_client_and_cp_id()
+            if client is None or cp_id is None:
+                return None
+            return KonnectRouteManager(client, cp_id)
+
+        def get_konnect_consumer_manager() -> KonnectConsumerManager | None:
+            client, cp_id = _get_konnect_client_and_cp_id()
+            if client is None or cp_id is None:
+                return None
+            return KonnectConsumerManager(client, cp_id)
+
+        def get_konnect_plugin_manager() -> KonnectPluginManager | None:
+            client, cp_id = _get_konnect_client_and_cp_id()
+            if client is None or cp_id is None:
+                return None
+            return KonnectPluginManager(client, cp_id)
+
+        def get_konnect_upstream_manager() -> KonnectUpstreamManager | None:
+            client, cp_id = _get_konnect_client_and_cp_id()
+            if client is None or cp_id is None:
+                return None
+            return KonnectUpstreamManager(client, cp_id)
+
+        def get_unified_query_service() -> UnifiedQueryService | None:
+            """Create unified query service if both Gateway and Konnect are available."""
+            if not self._client:
+                return None
+
+            konnect_service_mgr = get_konnect_service_manager()
+            # If no Konnect, we can still return a unified service for gateway-only queries
+            # but the sync commands specifically need Konnect
+            if konnect_service_mgr is None:
+                return None
+
+            return UnifiedQueryService(
+                gateway_service_manager=get_service_manager(),
+                gateway_route_manager=get_route_manager(),
+                gateway_consumer_manager=get_consumer_manager(),
+                gateway_plugin_manager=get_plugin_manager(),
+                gateway_upstream_manager=get_upstream_manager(),
+                konnect_service_manager=konnect_service_mgr,
+                konnect_route_manager=get_konnect_route_manager(),
+                konnect_consumer_manager=get_konnect_consumer_manager(),
+                konnect_plugin_manager=get_konnect_plugin_manager(),
+                konnect_upstream_manager=get_konnect_upstream_manager(),
+            )
+
         # Register all command groups
-        register_service_commands(app, get_service_manager)
-        register_route_commands(app, get_route_manager)
-        register_consumer_commands(app, get_consumer_manager)
-        register_upstream_commands(app, get_upstream_manager)
-        register_plugin_commands(app, get_plugin_manager)
+        register_service_commands(app, get_service_manager, get_unified_query_service)
+        register_route_commands(app, get_route_manager, get_unified_query_service)
+        register_consumer_commands(app, get_consumer_manager, get_unified_query_service)
+        register_upstream_commands(app, get_upstream_manager, get_unified_query_service)
+        register_plugin_commands(app, get_plugin_manager, get_unified_query_service)
 
         # Register security commands
         register_security_commands(app, get_plugin_manager, get_consumer_manager)
@@ -301,6 +398,9 @@ class KongPlugin(Plugin):
 
         # Register Konnect integration commands (talks to Konnect, not Kong)
         register_konnect_commands(app)
+
+        # Register sync commands (requires both Gateway and Konnect)
+        register_sync_commands(app, get_unified_query_service)
 
     def _register_status_commands(self, app: typer.Typer) -> None:
         """Register status and info commands."""

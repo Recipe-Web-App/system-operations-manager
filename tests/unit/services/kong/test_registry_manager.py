@@ -445,11 +445,12 @@ class TestRegistryManagerDeploy:
             mock_service_manager,
             mock_openapi_manager,
             skip_routes=True,
+            gateway_only=True,
         )
 
-        assert len(results) == 1
-        assert results[0].service_status == "created"
-        assert results[0].success is True
+        assert len(results.gateway) == 1
+        assert results.gateway[0].service_status == "created"
+        assert results.gateway[0].success is True
         mock_service_manager.create.assert_called_once()
 
     @pytest.mark.unit
@@ -470,10 +471,11 @@ class TestRegistryManagerDeploy:
             mock_service_manager,
             mock_openapi_manager,
             skip_routes=True,
+            gateway_only=True,
         )
 
-        assert len(results) == 1
-        assert results[0].service_status == "updated"
+        assert len(results.gateway) == 1
+        assert results.gateway[0].service_status == "updated"
         mock_service_manager.update.assert_called_once()
 
     @pytest.mark.unit
@@ -494,10 +496,11 @@ class TestRegistryManagerDeploy:
             mock_service_manager,
             mock_openapi_manager,
             skip_routes=True,
+            gateway_only=True,
         )
 
-        assert len(results) == 1
-        assert results[0].service_status == "unchanged"
+        assert len(results.gateway) == 1
+        assert results.gateway[0].service_status == "unchanged"
         mock_service_manager.create.assert_not_called()
         mock_service_manager.update.assert_not_called()
 
@@ -520,9 +523,10 @@ class TestRegistryManagerDeploy:
             mock_service_manager,
             mock_openapi_manager,
             skip_routes=True,
+            gateway_only=True,
         )
 
-        assert results[0].routes_status == "skipped"
+        assert results.gateway[0].routes_status == "skipped"
         mock_openapi_manager.parse_openapi.assert_not_called()
 
     @pytest.mark.unit
@@ -543,9 +547,220 @@ class TestRegistryManagerDeploy:
             mock_service_manager,
             mock_openapi_manager,
             skip_routes=True,
+            gateway_only=True,
         )
 
-        assert len(results) == 1
-        assert results[0].service_status == "failed"
-        assert results[0].success is False
-        assert "Connection refused" in (results[0].error or "")
+        assert len(results.gateway) == 1
+        assert results.gateway[0].service_status == "failed"
+        assert results.gateway[0].success is False
+        assert "Connection refused" in (results.gateway[0].error or "")
+
+
+class TestRegistryManagerDualDeploy:
+    """Tests for dual deployment (Gateway + Konnect)."""
+
+    @pytest.fixture
+    def registry_manager(self, tmp_path: Path) -> RegistryManager:
+        """Create registry manager with temp config path."""
+        config_dir = tmp_path / "ops" / "kong"
+        config_dir.mkdir(parents=True)
+        return RegistryManager(config_dir)
+
+    @pytest.fixture
+    def mock_service_manager(self) -> MagicMock:
+        """Create mock service manager for Gateway."""
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_openapi_manager(self) -> MagicMock:
+        """Create mock OpenAPI sync manager."""
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_konnect_client(self) -> MagicMock:
+        """Create mock Konnect client."""
+        return MagicMock()
+
+    @pytest.mark.unit
+    def test_deploy_returns_deployment_result(
+        self,
+        registry_manager: RegistryManager,
+        mock_service_manager: MagicMock,
+        mock_openapi_manager: MagicMock,
+    ) -> None:
+        """deploy should return DeploymentResult."""
+        from system_operations_manager.integrations.kong.models.service_registry import (
+            DeploymentResult,
+        )
+
+        entry = ServiceRegistryEntry(name="api", host="api.local")
+        registry_manager.add_service(entry)
+
+        mock_service_manager.get.side_effect = KongNotFoundError("service", "api", "Not found")
+
+        result = registry_manager.deploy(
+            mock_service_manager,
+            mock_openapi_manager,
+            skip_routes=True,
+            gateway_only=True,
+        )
+
+        assert isinstance(result, DeploymentResult)
+        assert result.gateway is not None
+        assert result.konnect is None
+        assert result.konnect_skipped is True
+
+    @pytest.mark.unit
+    def test_deploy_gateway_only_skips_konnect(
+        self,
+        registry_manager: RegistryManager,
+        mock_service_manager: MagicMock,
+        mock_openapi_manager: MagicMock,
+        mock_konnect_client: MagicMock,
+    ) -> None:
+        """deploy with gateway_only=True should skip Konnect."""
+        entry = ServiceRegistryEntry(name="api", host="api.local")
+        registry_manager.add_service(entry)
+
+        mock_service_manager.get.side_effect = KongNotFoundError("service", "api", "Not found")
+
+        result = registry_manager.deploy(
+            mock_service_manager,
+            mock_openapi_manager,
+            skip_routes=True,
+            gateway_only=True,
+            konnect_client=mock_konnect_client,
+            control_plane_id="cp-123",
+        )
+
+        assert result.konnect_skipped is True
+        assert result.konnect is None
+        # Konnect client should not be called
+        mock_konnect_client.list_services.assert_not_called()
+        mock_konnect_client.create_service.assert_not_called()
+
+    @pytest.mark.unit
+    def test_deploy_to_both_targets(
+        self,
+        registry_manager: RegistryManager,
+        mock_service_manager: MagicMock,
+        mock_openapi_manager: MagicMock,
+        mock_konnect_client: MagicMock,
+    ) -> None:
+        """deploy should deploy to both Gateway and Konnect."""
+        entry = ServiceRegistryEntry(name="api", host="api.local")
+        registry_manager.add_service(entry)
+
+        # Gateway: service doesn't exist
+        mock_service_manager.get.side_effect = KongNotFoundError("service", "api", "Not found")
+
+        # Konnect: simulate service doesn't exist
+        from system_operations_manager.integrations.konnect.exceptions import (
+            KonnectNotFoundError,
+        )
+
+        mock_konnect_client.get_service.side_effect = KonnectNotFoundError(
+            "Not found", status_code=404
+        )
+
+        result = registry_manager.deploy(
+            mock_service_manager,
+            mock_openapi_manager,
+            skip_routes=True,
+            gateway_only=False,
+            konnect_client=mock_konnect_client,
+            control_plane_id="cp-123",
+        )
+
+        # Gateway should have results
+        assert len(result.gateway) == 1
+        assert result.gateway[0].service_status == "created"
+
+        # Konnect should have results
+        assert result.konnect is not None
+        assert len(result.konnect) == 1
+        assert result.konnect[0].service_status == "created"
+
+    @pytest.mark.unit
+    def test_deploy_without_konnect_client(
+        self,
+        registry_manager: RegistryManager,
+        mock_service_manager: MagicMock,
+        mock_openapi_manager: MagicMock,
+    ) -> None:
+        """deploy without konnect_client should only deploy to Gateway."""
+        entry = ServiceRegistryEntry(name="api", host="api.local")
+        registry_manager.add_service(entry)
+
+        mock_service_manager.get.side_effect = KongNotFoundError("service", "api", "Not found")
+
+        result = registry_manager.deploy(
+            mock_service_manager,
+            mock_openapi_manager,
+            skip_routes=True,
+            gateway_only=False,  # Not gateway_only, but no konnect_client
+            konnect_client=None,
+            control_plane_id=None,
+        )
+
+        assert len(result.gateway) == 1
+        assert result.konnect is None
+        assert result.konnect_skipped is False  # Not explicitly skipped
+
+    @pytest.mark.unit
+    def test_deployment_result_all_success(
+        self,
+        registry_manager: RegistryManager,
+        mock_service_manager: MagicMock,
+        mock_openapi_manager: MagicMock,
+        mock_konnect_client: MagicMock,
+    ) -> None:
+        """DeploymentResult.all_success should return True when all succeed."""
+        entry = ServiceRegistryEntry(name="api", host="api.local")
+        registry_manager.add_service(entry)
+
+        mock_service_manager.get.side_effect = KongNotFoundError("service", "api", "Not found")
+
+        from system_operations_manager.integrations.konnect.exceptions import (
+            KonnectNotFoundError,
+        )
+
+        mock_konnect_client.get_service.side_effect = KonnectNotFoundError(
+            "Not found", status_code=404
+        )
+
+        result = registry_manager.deploy(
+            mock_service_manager,
+            mock_openapi_manager,
+            skip_routes=True,
+            konnect_client=mock_konnect_client,
+            control_plane_id="cp-123",
+        )
+
+        assert result.all_success is True
+
+    @pytest.mark.unit
+    def test_deployment_result_gateway_summary(
+        self,
+        registry_manager: RegistryManager,
+        mock_service_manager: MagicMock,
+        mock_openapi_manager: MagicMock,
+    ) -> None:
+        """DeploymentResult should provide gateway summary."""
+        entry = ServiceRegistryEntry(name="api", host="api.local")
+        registry_manager.add_service(entry)
+
+        mock_service_manager.get.side_effect = KongNotFoundError("service", "api", "Not found")
+
+        result = registry_manager.deploy(
+            mock_service_manager,
+            mock_openapi_manager,
+            skip_routes=True,
+            gateway_only=True,
+        )
+
+        summary = result.gateway_summary
+        assert summary["created"] == 1
+        assert summary["updated"] == 0
+        assert summary["unchanged"] == 0
+        assert summary["failed"] == 0

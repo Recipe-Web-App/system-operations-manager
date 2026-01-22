@@ -35,6 +35,7 @@ from system_operations_manager.plugins.kong.formatters import OutputFormat, get_
 
 if TYPE_CHECKING:
     from system_operations_manager.services.kong.consumer_manager import ConsumerManager
+    from system_operations_manager.services.kong.unified_query import UnifiedQueryService
 
 
 # Column definitions for consumer listings
@@ -82,12 +83,15 @@ ACL_COLUMNS = [
 def register_consumer_commands(
     app: typer.Typer,
     get_manager: Callable[[], ConsumerManager],
+    get_unified_query_service: Callable[[], UnifiedQueryService | None] | None = None,
 ) -> None:
     """Register consumer commands with the Kong app.
 
     Args:
         app: Typer app to register commands on.
         get_manager: Factory function that returns a ConsumerManager instance.
+        get_unified_query_service: Optional factory that returns a UnifiedQueryService
+            for querying both Gateway and Konnect.
     """
     consumers_app = typer.Typer(
         name="consumers",
@@ -105,19 +109,71 @@ def register_consumer_commands(
         tags: TagsOption = None,
         limit: LimitOption = None,
         offset: OffsetOption = None,
+        source: Annotated[
+            str | None,
+            typer.Option(
+                "--source",
+                "-s",
+                help="Filter by source: gateway, konnect (only when Konnect is configured)",
+            ),
+        ] = None,
+        compare: Annotated[
+            bool,
+            typer.Option(
+                "--compare",
+                help="Show drift details between Gateway and Konnect",
+            ),
+        ] = False,
     ) -> None:
         """List all consumers.
+
+        When Konnect is configured, shows consumers from both Gateway and Konnect
+        with a Source column indicating where each consumer exists.
 
         Examples:
             ops kong consumers list
             ops kong consumers list --tag production
             ops kong consumers list --output json
+            ops kong consumers list --source gateway
+            ops kong consumers list --compare
         """
+        formatter = get_formatter(output, console)
+
+        # Try unified query first if available
+        unified_service = get_unified_query_service() if get_unified_query_service else None
+
+        if unified_service is not None:
+            try:
+                results = unified_service.list_consumers(tags=tags)
+
+                # Filter by source if specified
+                if source:
+                    results = results.filter_by_source(source)
+
+                formatter.format_unified_list(
+                    results,
+                    CONSUMER_COLUMNS,
+                    title="Kong Consumers",
+                    show_drift=compare,
+                )
+                return
+            except Exception as e:
+                # Fall back to gateway-only if unified query fails
+                console.print(
+                    f"[dim]Note: Unified query unavailable ({e}), showing gateway only[/dim]\n"
+                )
+
+        # Fall back to gateway-only query
+        if source == "konnect":
+            console.print(
+                "[yellow]Konnect not configured. Use 'ops kong konnect login' to configure.[/yellow]"
+            )
+            raise typer.Exit(1)
+
         try:
             manager = get_manager()
             consumers, next_offset = manager.list(tags=tags, limit=limit, offset=offset)
 
-            formatter = get_formatter(output, console)
             formatter.format_list(consumers, CONSUMER_COLUMNS, title="Kong Consumers")
 
             if next_offset:

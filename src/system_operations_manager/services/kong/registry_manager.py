@@ -17,6 +17,7 @@ import yaml
 from system_operations_manager.integrations.kong.exceptions import KongNotFoundError
 from system_operations_manager.integrations.kong.models.service import Service
 from system_operations_manager.integrations.kong.models.service_registry import (
+    DeploymentResult,
     ServiceAlreadyExistsError,
     ServiceDeployDiff,
     ServiceDeployResult,
@@ -27,8 +28,11 @@ from system_operations_manager.integrations.kong.models.service_registry import 
 )
 
 if TYPE_CHECKING:
+    from system_operations_manager.integrations.konnect.client import KonnectClient
     from system_operations_manager.services.kong.openapi_sync_manager import OpenAPISyncManager
     from system_operations_manager.services.kong.service_manager import ServiceManager
+    from system_operations_manager.services.konnect.route_manager import KonnectRouteManager
+    from system_operations_manager.services.konnect.service_manager import KonnectServiceManager
 
 logger = structlog.get_logger()
 
@@ -340,25 +344,33 @@ class RegistryManager:
         *,
         skip_routes: bool = False,
         service_names: list[str] | None = None,
-    ) -> list[ServiceDeployResult]:
-        """Deploy services from registry to Kong.
+        konnect_client: KonnectClient | None = None,
+        control_plane_id: str | None = None,
+        gateway_only: bool = False,
+    ) -> DeploymentResult:
+        """Deploy services from registry to Kong Gateway and optionally Konnect.
 
         Creates or updates services based on the calculated diff,
-        and optionally syncs routes from OpenAPI specs.
+        and optionally syncs routes from OpenAPI specs. By default, deploys
+        to both Kong Gateway and Konnect control plane.
 
         Args:
-            service_manager: ServiceManager for Kong API calls.
+            service_manager: ServiceManager for Kong Gateway API calls.
             openapi_sync_manager: Optional manager for OpenAPI route sync.
             skip_routes: If True, skip OpenAPI route synchronization.
             service_names: Optional list of specific services to deploy.
+            konnect_client: Optional KonnectClient for Konnect deployment.
+            control_plane_id: Control plane ID for Konnect deployment.
+            gateway_only: If True, skip Konnect deployment.
 
         Returns:
-            List of ServiceDeployResult for each service.
+            DeploymentResult with results from both Gateway and Konnect.
         """
         summary = self.calculate_diff(service_manager, service_names)
         registry = self.load()
-        results: list[ServiceDeployResult] = []
+        gateway_results: list[ServiceDeployResult] = []
 
+        # Phase 1: Deploy to Gateway
         for diff in summary.diffs:
             entry = registry.get_service(diff.service_name)
             if entry is None:
@@ -371,9 +383,50 @@ class RegistryManager:
                 openapi_sync_manager,
                 skip_routes=skip_routes,
             )
-            results.append(result)
+            gateway_results.append(result)
 
-        return results
+        # Phase 2: Deploy to Konnect (if enabled)
+        konnect_results: list[ServiceDeployResult] | None = None
+        konnect_error: str | None = None
+
+        if not gateway_only and konnect_client is not None and control_plane_id is not None:
+            konnect_results = []
+            try:
+                # Import here to avoid circular imports
+                from system_operations_manager.services.konnect.route_manager import (
+                    KonnectRouteManager,
+                )
+                from system_operations_manager.services.konnect.service_manager import (
+                    KonnectServiceManager,
+                )
+
+                konnect_service_manager = KonnectServiceManager(konnect_client, control_plane_id)
+                konnect_route_manager = KonnectRouteManager(konnect_client, control_plane_id)
+
+                for diff in summary.diffs:
+                    entry = registry.get_service(diff.service_name)
+                    if entry is None:
+                        continue
+
+                    result = self._deploy_single_service_to_konnect(
+                        diff,
+                        entry,
+                        konnect_service_manager,
+                        konnect_route_manager,
+                        skip_routes=skip_routes,
+                    )
+                    konnect_results.append(result)
+
+            except Exception as e:
+                self._log.error("konnect_deployment_failed", error=str(e))
+                konnect_error = f"Konnect deployment failed: {e}"
+
+        return DeploymentResult(
+            gateway=gateway_results,
+            konnect=konnect_results,
+            konnect_skipped=gateway_only,
+            konnect_error=konnect_error,
+        )
 
     def _deploy_single_service(
         self,
@@ -451,6 +504,203 @@ class RegistryManager:
             routes_status=routes_status,  # type: ignore[arg-type]
             error=error,
         )
+
+    def _deploy_single_service_to_konnect(
+        self,
+        diff: ServiceDeployDiff,
+        entry: ServiceRegistryEntry,
+        konnect_service_manager: KonnectServiceManager,
+        konnect_route_manager: KonnectRouteManager,
+        *,
+        skip_routes: bool,
+    ) -> ServiceDeployResult:
+        """Deploy a single service to Konnect control plane.
+
+        Args:
+            diff: The diff for this service.
+            entry: The registry entry for this service.
+            konnect_service_manager: KonnectServiceManager for Konnect API calls.
+            konnect_route_manager: KonnectRouteManager for route operations.
+            skip_routes: If True, skip OpenAPI route synchronization.
+
+        Returns:
+            ServiceDeployResult for this service.
+        """
+        service_status: str = "unchanged"
+        routes_synced = 0
+        routes_status: str = "no_spec"
+        error: str | None = None
+
+        # Check if service exists in Konnect (may differ from Gateway state)
+        konnect_exists = konnect_service_manager.exists(entry.name)
+
+        # Handle service creation/update
+        if diff.operation == "unchanged" and konnect_exists:
+            service_status = "unchanged"
+        elif not konnect_exists:
+            # Create in Konnect (even if "unchanged" in Gateway, might not exist in Konnect)
+            try:
+                service = Service(**entry.to_kong_service_dict())
+                konnect_service_manager.create(service)
+                service_status = "created"
+                self._log.info("konnect_service_created", name=entry.name)
+            except Exception as e:
+                self._log.error("konnect_service_create_failed", name=entry.name, error=str(e))
+                return ServiceDeployResult(
+                    service_name=entry.name,
+                    service_status="failed",
+                    error=f"Konnect: {e}",
+                )
+        else:
+            # Update in Konnect
+            try:
+                service = Service(**entry.to_kong_service_dict())
+                konnect_service_manager.update(entry.name, service)
+                service_status = "updated"
+                self._log.info("konnect_service_updated", name=entry.name)
+            except Exception as e:
+                self._log.error("konnect_service_update_failed", name=entry.name, error=str(e))
+                return ServiceDeployResult(
+                    service_name=entry.name,
+                    service_status="failed",
+                    error=f"Konnect: {e}",
+                )
+
+        # Handle OpenAPI route sync to Konnect
+        if skip_routes:
+            routes_status = "skipped"
+        elif not entry.has_openapi_spec:
+            routes_status = "no_spec"
+        else:
+            try:
+                routes_synced, routes_status = self._sync_routes_to_konnect(
+                    entry, konnect_service_manager, konnect_route_manager
+                )
+            except Exception as e:
+                self._log.error("konnect_route_sync_failed", name=entry.name, error=str(e))
+                routes_status = "failed"
+                error = f"Konnect route sync failed: {e}"
+
+        return ServiceDeployResult(
+            service_name=entry.name,
+            service_status=service_status,  # type: ignore[arg-type]
+            routes_synced=routes_synced,
+            routes_status=routes_status,  # type: ignore[arg-type]
+            error=error,
+        )
+
+    def _sync_routes_to_konnect(
+        self,
+        entry: ServiceRegistryEntry,
+        konnect_service_manager: KonnectServiceManager,
+        konnect_route_manager: KonnectRouteManager,
+    ) -> tuple[int, str]:
+        """Sync routes from OpenAPI spec to Konnect.
+
+        Args:
+            entry: The registry entry with OpenAPI spec.
+            konnect_service_manager: KonnectServiceManager for service lookup.
+            konnect_route_manager: KonnectRouteManager for route operations.
+
+        Returns:
+            Tuple of (routes synced count, status string).
+        """
+        import json
+
+        import yaml
+
+        from system_operations_manager.integrations.kong.models.base import (
+            KongEntityReference,
+        )
+        from system_operations_manager.integrations.kong.models.route import Route
+
+        # Parse OpenAPI spec
+        spec_path = entry.openapi_spec_path
+        if spec_path is None or not spec_path.exists():
+            return 0, "no_spec"
+
+        try:
+            content = spec_path.read_text()
+            if spec_path.suffix.lower() in (".yaml", ".yml"):
+                data = yaml.safe_load(content)
+            else:
+                data = json.loads(content)
+        except Exception as e:
+            self._log.error("konnect_openapi_parse_failed", error=str(e))
+            return 0, "failed"
+
+        # Extract paths from OpenAPI spec
+        paths = data.get("paths", {})
+        if not paths:
+            return 0, "synced"
+
+        # Get existing routes for this service in Konnect
+        existing_routes, _ = konnect_route_manager.list_by_service(entry.name)
+        existing_by_name = {r.name: r for r in existing_routes if r.name}
+
+        routes_synced = 0
+        for path, methods in paths.items():
+            if not isinstance(methods, dict):
+                continue
+
+            # Collect HTTP methods for this path
+            http_methods = []
+            for method in ["get", "post", "put", "patch", "delete", "head", "options"]:
+                if method in methods:
+                    http_methods.append(method.upper())
+
+            if not http_methods:
+                continue
+
+            # Generate route name
+            safe_path = path.replace("/", "-").replace("{", "").replace("}", "").strip("-")
+            route_name = f"{entry.name}{safe_path}" if safe_path else entry.name
+
+            # Apply path prefix if specified
+            final_path = path
+            if entry.path_prefix:
+                final_path = f"{entry.path_prefix.rstrip('/')}{path}"
+
+            # Build tags
+            tags = [f"service:{entry.name}"]
+            if entry.tags:
+                tags.extend(entry.tags)
+
+            # Create route
+            route = Route(
+                name=route_name,
+                paths=[final_path],
+                methods=http_methods,
+                tags=tags,
+                strip_path=entry.strip_path,
+                service=KongEntityReference.from_name(entry.name),
+            )
+
+            try:
+                if route_name in existing_by_name:
+                    # Update existing route
+                    existing = existing_by_name[route_name]
+                    if existing.id:
+                        konnect_route_manager.update(existing.id, route)
+                else:
+                    # Create new route
+                    konnect_route_manager.create(route, service_name_or_id=entry.name)
+
+                routes_synced += 1
+            except Exception as e:
+                self._log.error(
+                    "konnect_route_sync_failed",
+                    route=route_name,
+                    error=str(e),
+                )
+
+        self._log.info(
+            "konnect_routes_synced",
+            service=entry.name,
+            routes_synced=routes_synced,
+        )
+
+        return routes_synced, "synced"
 
     def _sync_routes(
         self,

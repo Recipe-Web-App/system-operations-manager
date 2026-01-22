@@ -141,17 +141,18 @@ class TestRegistryDeploy:
             service_manager,
             openapi_sync_manager=None,
             skip_routes=True,
+            gateway_only=True,  # Skip Konnect for this test
         )
 
         # The deploy should return results (possibly with failures)
-        assert len(results) == 1
+        assert len(results.gateway) == 1
         # In DB-less mode, the create will fail
-        if results[0].service_status == "failed":
-            assert results[0].error is not None
+        if results.gateway[0].service_status == "failed":
+            assert results.gateway[0].error is not None
             # Error should mention DB-less or read-only
             assert (
                 any(
-                    term in (results[0].error or "").lower()
+                    term in (results.gateway[0].error or "").lower()
                     for term in ["db-less", "read-only", "declarative"]
                 )
                 or True
