@@ -4,11 +4,14 @@ This module provides commands for checking sync status between
 Kong Gateway (data plane) and Konnect (control plane):
 - status: Show drift report between Gateway and Konnect
 - push: Push Gateway configuration to Konnect
+- pull: Pull Konnect configuration to Gateway
+- history: View sync operation history
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Annotated, Any
 
 import typer
@@ -20,6 +23,12 @@ from system_operations_manager.plugins.kong.commands.base import (
     console,
 )
 from system_operations_manager.plugins.kong.formatters import OutputFormat, get_formatter
+from system_operations_manager.services.kong.sync_audit import (
+    SyncAuditEntry,
+    SyncAuditService,
+    SyncSummary,
+    parse_since,
+)
 
 if TYPE_CHECKING:
     from system_operations_manager.services.kong.consumer_manager import ConsumerManager
@@ -177,6 +186,8 @@ def _push_entity_type(
     unified_service: UnifiedQueryService,
     konnect_managers: dict[str, Any],
     dry_run: bool,
+    audit_service: SyncAuditService | None = None,
+    sync_id: str | None = None,
 ) -> tuple[int, int, int]:
     """Push entities of a specific type to Konnect.
 
@@ -185,6 +196,8 @@ def _push_entity_type(
         unified_service: UnifiedQueryService instance
         konnect_managers: Dict mapping entity type to Konnect manager
         dry_run: If True, show what would be pushed without changes
+        audit_service: Optional audit service for logging operations
+        sync_id: Optional sync operation ID for grouping audit entries
 
     Returns:
         Tuple of (created_count, updated_count, error_count)
@@ -224,14 +237,69 @@ def _push_entity_type(
         if dry_run:
             console.print(f"  [cyan]Would create:[/cyan] {unified.identifier}")
             created += 1
+            # Record audit entry
+            if audit_service and sync_id:
+                audit_service.record(
+                    SyncAuditEntry(
+                        sync_id=sync_id,
+                        timestamp=datetime.now(UTC).isoformat(),
+                        operation="push",
+                        dry_run=True,
+                        entity_type=entity_type,
+                        entity_id=unified.gateway_id,
+                        entity_name=unified.identifier,
+                        action="create",
+                        source="gateway",
+                        target="konnect",
+                        status="would_create",
+                    )
+                )
         else:
             try:
-                manager.create(entity)
+                result = manager.create(entity)
                 console.print(f"  [green]Created:[/green] {unified.identifier}")
                 created += 1
+                # Record audit entry
+                if audit_service and sync_id:
+                    audit_service.record(
+                        SyncAuditEntry(
+                            sync_id=sync_id,
+                            timestamp=datetime.now(UTC).isoformat(),
+                            operation="push",
+                            dry_run=False,
+                            entity_type=entity_type,
+                            entity_id=unified.gateway_id,
+                            entity_name=unified.identifier,
+                            action="create",
+                            source="gateway",
+                            target="konnect",
+                            status="success",
+                            after_state=result.model_dump()
+                            if hasattr(result, "model_dump")
+                            else None,
+                        )
+                    )
             except Exception as e:
                 console.print(f"  [red]Failed to create:[/red] {unified.identifier} - {e}")
                 errors += 1
+                # Record error in audit
+                if audit_service and sync_id:
+                    audit_service.record(
+                        SyncAuditEntry(
+                            sync_id=sync_id,
+                            timestamp=datetime.now(UTC).isoformat(),
+                            operation="push",
+                            dry_run=False,
+                            entity_type=entity_type,
+                            entity_id=unified.gateway_id,
+                            entity_name=unified.identifier,
+                            action="create",
+                            source="gateway",
+                            target="konnect",
+                            status="failed",
+                            error=str(e),
+                        )
+                    )
 
     # Update entities with drift
     for unified in entities.with_drift:
@@ -240,20 +308,86 @@ def _push_entity_type(
         if entity is None or konnect_id is None:
             continue
 
+        drift_fields = unified.drift_fields or []
+
         if dry_run:
             console.print(f"  [cyan]Would update:[/cyan] {unified.identifier}")
-            drift_fields = unified.drift_fields or []
             if drift_fields:
                 console.print(f"    [dim]Drift fields: {', '.join(drift_fields)}[/dim]")
             updated += 1
+            # Record audit entry
+            if audit_service and sync_id:
+                audit_service.record(
+                    SyncAuditEntry(
+                        sync_id=sync_id,
+                        timestamp=datetime.now(UTC).isoformat(),
+                        operation="push",
+                        dry_run=True,
+                        entity_type=entity_type,
+                        entity_id=unified.gateway_id,
+                        entity_name=unified.identifier,
+                        action="update",
+                        source="gateway",
+                        target="konnect",
+                        status="would_update",
+                        drift_fields=drift_fields if drift_fields else None,
+                        before_state=unified.konnect_entity.model_dump()
+                        if unified.konnect_entity and hasattr(unified.konnect_entity, "model_dump")
+                        else None,
+                    )
+                )
         else:
             try:
-                manager.update(konnect_id, entity)
+                result = manager.update(konnect_id, entity)
                 console.print(f"  [green]Updated:[/green] {unified.identifier}")
                 updated += 1
+                # Record audit entry
+                if audit_service and sync_id:
+                    audit_service.record(
+                        SyncAuditEntry(
+                            sync_id=sync_id,
+                            timestamp=datetime.now(UTC).isoformat(),
+                            operation="push",
+                            dry_run=False,
+                            entity_type=entity_type,
+                            entity_id=unified.gateway_id,
+                            entity_name=unified.identifier,
+                            action="update",
+                            source="gateway",
+                            target="konnect",
+                            status="success",
+                            drift_fields=drift_fields if drift_fields else None,
+                            before_state=unified.konnect_entity.model_dump()
+                            if unified.konnect_entity
+                            and hasattr(unified.konnect_entity, "model_dump")
+                            else None,
+                            after_state=result.model_dump()
+                            if hasattr(result, "model_dump")
+                            else None,
+                        )
+                    )
             except Exception as e:
                 console.print(f"  [red]Failed to update:[/red] {unified.identifier} - {e}")
                 errors += 1
+                # Record error in audit
+                if audit_service and sync_id:
+                    audit_service.record(
+                        SyncAuditEntry(
+                            sync_id=sync_id,
+                            timestamp=datetime.now(UTC).isoformat(),
+                            operation="push",
+                            dry_run=False,
+                            entity_type=entity_type,
+                            entity_id=unified.gateway_id,
+                            entity_name=unified.identifier,
+                            action="update",
+                            source="gateway",
+                            target="konnect",
+                            status="failed",
+                            error=str(e),
+                            drift_fields=drift_fields if drift_fields else None,
+                        )
+                    )
 
     return created, updated, errors
 
@@ -264,6 +398,8 @@ def _pull_entity_type(
     gateway_managers: dict[str, Any],
     dry_run: bool,
     with_drift: bool = False,
+    audit_service: SyncAuditService | None = None,
+    sync_id: str | None = None,
 ) -> tuple[int, int, int]:
     """Pull entities of a specific type from Konnect to Gateway.
 
@@ -273,6 +409,8 @@ def _pull_entity_type(
         gateway_managers: Dict mapping entity type to Gateway manager
         dry_run: If True, show what would be pulled without changes
         with_drift: If True, also update entities with drift (Gateway to match Konnect)
+        audit_service: Optional audit service for logging operations
+        sync_id: Optional sync operation ID for grouping audit entries
 
     Returns:
         Tuple of (created_count, updated_count, error_count)
@@ -312,14 +450,69 @@ def _pull_entity_type(
         if dry_run:
             console.print(f"  [cyan]Would create:[/cyan] {unified.identifier}")
             created += 1
+            # Record audit entry
+            if audit_service and sync_id:
+                audit_service.record(
+                    SyncAuditEntry(
+                        sync_id=sync_id,
+                        timestamp=datetime.now(UTC).isoformat(),
+                        operation="pull",
+                        dry_run=True,
+                        entity_type=entity_type,
+                        entity_id=unified.konnect_id,
+                        entity_name=unified.identifier,
+                        action="create",
+                        source="konnect",
+                        target="gateway",
+                        status="would_create",
+                    )
+                )
         else:
             try:
-                manager.create(entity)
+                result = manager.create(entity)
                 console.print(f"  [green]Created:[/green] {unified.identifier}")
                 created += 1
+                # Record audit entry
+                if audit_service and sync_id:
+                    audit_service.record(
+                        SyncAuditEntry(
+                            sync_id=sync_id,
+                            timestamp=datetime.now(UTC).isoformat(),
+                            operation="pull",
+                            dry_run=False,
+                            entity_type=entity_type,
+                            entity_id=unified.konnect_id,
+                            entity_name=unified.identifier,
+                            action="create",
+                            source="konnect",
+                            target="gateway",
+                            status="success",
+                            after_state=result.model_dump()
+                            if hasattr(result, "model_dump")
+                            else None,
+                        )
+                    )
             except Exception as e:
                 console.print(f"  [red]Failed to create:[/red] {unified.identifier} - {e}")
                 errors += 1
+                # Record error in audit
+                if audit_service and sync_id:
+                    audit_service.record(
+                        SyncAuditEntry(
+                            sync_id=sync_id,
+                            timestamp=datetime.now(UTC).isoformat(),
+                            operation="pull",
+                            dry_run=False,
+                            entity_type=entity_type,
+                            entity_id=unified.konnect_id,
+                            entity_name=unified.identifier,
+                            action="create",
+                            source="konnect",
+                            target="gateway",
+                            status="failed",
+                            error=str(e),
+                        )
+                    )
 
     # Update entities with drift (if requested)
     if with_drift:
@@ -329,20 +522,87 @@ def _pull_entity_type(
             if entity is None or gateway_id is None:
                 continue
 
+            drift_fields = unified.drift_fields or []
+
             if dry_run:
                 console.print(f"  [cyan]Would update:[/cyan] {unified.identifier}")
-                drift_fields = unified.drift_fields or []
                 if drift_fields:
                     console.print(f"    [dim]Drift fields: {', '.join(drift_fields)}[/dim]")
                 updated += 1
+                # Record audit entry
+                if audit_service and sync_id:
+                    audit_service.record(
+                        SyncAuditEntry(
+                            sync_id=sync_id,
+                            timestamp=datetime.now(UTC).isoformat(),
+                            operation="pull",
+                            dry_run=True,
+                            entity_type=entity_type,
+                            entity_id=unified.konnect_id,
+                            entity_name=unified.identifier,
+                            action="update",
+                            source="konnect",
+                            target="gateway",
+                            status="would_update",
+                            drift_fields=drift_fields if drift_fields else None,
+                            before_state=unified.gateway_entity.model_dump()
+                            if unified.gateway_entity
+                            and hasattr(unified.gateway_entity, "model_dump")
+                            else None,
+                        )
+                    )
             else:
                 try:
-                    manager.update(gateway_id, entity)
+                    result = manager.update(gateway_id, entity)
                     console.print(f"  [green]Updated:[/green] {unified.identifier}")
                     updated += 1
+                    # Record audit entry
+                    if audit_service and sync_id:
+                        audit_service.record(
+                            SyncAuditEntry(
+                                sync_id=sync_id,
+                                timestamp=datetime.now(UTC).isoformat(),
+                                operation="pull",
+                                dry_run=False,
+                                entity_type=entity_type,
+                                entity_id=unified.konnect_id,
+                                entity_name=unified.identifier,
+                                action="update",
+                                source="konnect",
+                                target="gateway",
+                                status="success",
+                                drift_fields=drift_fields if drift_fields else None,
+                                before_state=unified.gateway_entity.model_dump()
+                                if unified.gateway_entity
+                                and hasattr(unified.gateway_entity, "model_dump")
+                                else None,
+                                after_state=result.model_dump()
+                                if hasattr(result, "model_dump")
+                                else None,
+                            )
+                        )
                 except Exception as e:
                     console.print(f"  [red]Failed to update:[/red] {unified.identifier} - {e}")
                     errors += 1
+                    # Record error in audit
+                    if audit_service and sync_id:
+                        audit_service.record(
+                            SyncAuditEntry(
+                                sync_id=sync_id,
+                                timestamp=datetime.now(UTC).isoformat(),
+                                operation="pull",
+                                dry_run=False,
+                                entity_type=entity_type,
+                                entity_id=unified.konnect_id,
+                                entity_name=unified.identifier,
+                                action="update",
+                                source="konnect",
+                                target="gateway",
+                                status="failed",
+                                error=str(e),
+                                drift_fields=drift_fields if drift_fields else None,
+                            )
+                        )
 
     return created, updated, errors
 
@@ -660,6 +920,10 @@ def register_sync_commands(
                 console.print("[yellow]Cancelled[/yellow]")
                 raise typer.Exit(0)
 
+        # Initialize audit service
+        audit_service = SyncAuditService()
+        sync_id = audit_service.start_sync("push", dry_run)
+
         # Push each entity type
         total_created = 0
         total_updated = 0
@@ -675,7 +939,12 @@ def register_sync_commands(
 
             console.print(f"\n[cyan]{etype.capitalize()}:[/cyan]")
             created, updated, errors = _push_entity_type(
-                etype, unified_service, konnect_managers, dry_run
+                etype,
+                unified_service,
+                konnect_managers,
+                dry_run,
+                audit_service=audit_service,
+                sync_id=sync_id,
             )
             total_created += created
             total_updated += updated
@@ -836,6 +1105,10 @@ def register_sync_commands(
                 console.print("[yellow]Cancelled[/yellow]")
                 raise typer.Exit(0)
 
+        # Initialize audit service
+        audit_service = SyncAuditService()
+        sync_id = audit_service.start_sync("pull", dry_run)
+
         # Pull each entity type
         total_created = 0
         total_updated = 0
@@ -851,7 +1124,13 @@ def register_sync_commands(
 
             console.print(f"\n[cyan]{etype.capitalize()}:[/cyan]")
             created, updated, errors = _pull_entity_type(
-                etype, unified_service, gateway_managers, dry_run, with_drift
+                etype,
+                unified_service,
+                gateway_managers,
+                dry_run,
+                with_drift,
+                audit_service=audit_service,
+                sync_id=sync_id,
             )
             total_created += created
             total_updated += updated
@@ -887,5 +1166,272 @@ def register_sync_commands(
                 console.print(f"  [red]Errors: {total_errors}[/red]")
             else:
                 console.print("\n[green]✓ Sync complete[/green]")
+
+    @sync_app.command("history")
+    def sync_history(
+        sync_id: Annotated[
+            str | None,
+            typer.Option(
+                "--sync-id",
+                "-s",
+                help="Show details for a specific sync operation",
+            ),
+        ] = None,
+        entity_type: Annotated[
+            str | None,
+            typer.Option(
+                "--entity-type",
+                "-t",
+                help="Filter by entity type (services, routes, etc.)",
+            ),
+        ] = None,
+        entity_name: Annotated[
+            str | None,
+            typer.Option(
+                "--entity-name",
+                "-e",
+                help="Filter by entity name (requires --entity-type)",
+            ),
+        ] = None,
+        limit: Annotated[
+            int,
+            typer.Option(
+                "--limit",
+                "-l",
+                help="Maximum number of results to show",
+            ),
+        ] = 20,
+        since: Annotated[
+            str | None,
+            typer.Option(
+                "--since",
+                help="Show syncs since time (e.g., '7d', '24h', '2026-01-15')",
+            ),
+        ] = None,
+        output: OutputOption = OutputFormat.TABLE,
+    ) -> None:
+        """Show sync operation history.
+
+        View the history of sync operations between Gateway and Konnect.
+        Each sync operation is tracked with details about what was created,
+        updated, or failed.
+
+        Examples:
+            ops kong sync history                     # Recent syncs
+            ops kong sync history --sync-id <id>     # Details of specific sync
+            ops kong sync history --since 7d         # Last 7 days
+            ops kong sync history --entity-type services --entity-name api-svc
+            ops kong sync history --output json      # JSON format
+        """
+        from rich.table import Table
+
+        from system_operations_manager.services.kong.sync_audit import (
+            SyncAuditService,
+        )
+
+        audit_service = SyncAuditService()
+
+        # Parse since parameter
+        since_dt = None
+        if since:
+            try:
+                since_dt = parse_since(since)
+            except ValueError as e:
+                console.print(f"[red]Error:[/red] {e}")
+                raise typer.Exit(1) from None
+
+        # Show entity history if entity_type and entity_name provided
+        if entity_type and entity_name:
+            entries = audit_service.get_entity_history(entity_type, entity_name, limit)
+
+            if not entries:
+                console.print(
+                    f"[yellow]No sync history found for {entity_type}/{entity_name}[/yellow]"
+                )
+                raise typer.Exit(0)
+
+            if output == OutputFormat.JSON:
+                import json
+
+                data = [e.model_dump() for e in entries]
+                console.print(json.dumps(data, indent=2, default=str))
+                raise typer.Exit(0)
+
+            # Table output for entity history
+            console.print(f"\n[bold]Sync History for {entity_type}/{entity_name}[/bold]\n")
+
+            table = Table(show_header=True, header_style="bold")
+            table.add_column("Timestamp")
+            table.add_column("Operation")
+            table.add_column("Action")
+            table.add_column("Status")
+            table.add_column("Details")
+
+            for entry in entries:
+                # Format timestamp
+                try:
+                    ts = datetime.fromisoformat(entry.timestamp.replace("Z", "+00:00"))
+                    ts_str = ts.strftime("%Y-%m-%d %H:%M")
+                except Exception:
+                    ts_str = entry.timestamp[:16]
+
+                details = ""
+                if entry.drift_fields:
+                    details = f"drift: {', '.join(entry.drift_fields)}"
+                if entry.error:
+                    details = entry.error[:40]
+
+                status_style = {
+                    "success": "green",
+                    "failed": "red",
+                    "would_create": "cyan",
+                    "would_update": "cyan",
+                }.get(entry.status, "")
+
+                table.add_row(
+                    ts_str,
+                    entry.operation,
+                    entry.action,
+                    f"[{status_style}]{entry.status}[/{status_style}]"
+                    if status_style
+                    else entry.status,
+                    details,
+                )
+
+            console.print(table)
+            raise typer.Exit(0)
+
+        # Show specific sync details
+        if sync_id:
+            entries = audit_service.get_sync_details(sync_id)
+
+            if not entries:
+                console.print(f"[yellow]No sync found with ID: {sync_id}[/yellow]")
+                raise typer.Exit(1)
+
+            if output == OutputFormat.JSON:
+                import json
+
+                data = [e.model_dump() for e in entries]
+                console.print(json.dumps(data, indent=2, default=str))
+                raise typer.Exit(0)
+
+            # Table output for sync details
+            first = entries[0]
+            direction = "Gateway → Konnect" if first.operation == "push" else "Konnect → Gateway"
+
+            console.print(f"\n[bold]Sync Operation: {sync_id[:12]}...[/bold]")
+            console.print(f"Timestamp: {first.timestamp}")
+            console.print(f"Operation: {first.operation} ({direction})")
+            console.print(f"Dry Run: {'Yes' if first.dry_run else 'No'}")
+
+            console.print("\n[bold]Operations:[/bold]")
+
+            table = Table(show_header=True, header_style="bold")
+            table.add_column("Entity Type")
+            table.add_column("Name")
+            table.add_column("Action")
+            table.add_column("Status")
+            table.add_column("Details")
+
+            created = updated = errors = 0
+            for entry in entries:
+                details = ""
+                if entry.drift_fields:
+                    details = f"drift: {', '.join(entry.drift_fields)}"
+                if entry.error:
+                    details = entry.error[:40]
+
+                status_style = {
+                    "success": "green",
+                    "failed": "red",
+                    "would_create": "cyan",
+                    "would_update": "cyan",
+                }.get(entry.status, "")
+
+                table.add_row(
+                    entry.entity_type,
+                    entry.entity_name,
+                    entry.action,
+                    f"[{status_style}]{entry.status}[/{status_style}]"
+                    if status_style
+                    else entry.status,
+                    details,
+                )
+
+                if entry.status in ("success", "would_create") and entry.action == "create":
+                    created += 1
+                elif entry.status in ("success", "would_update") and entry.action == "update":
+                    updated += 1
+                elif entry.status == "failed":
+                    errors += 1
+
+            console.print(table)
+            console.print(
+                f"\n[dim]Summary: {created} created, {updated} updated, {errors} errors[/dim]"
+            )
+            raise typer.Exit(0)
+
+        # List recent syncs
+        syncs: list[SyncSummary] = audit_service.list_syncs(limit=limit, since=since_dt)
+
+        if not syncs:
+            console.print("[yellow]No sync operations found.[/yellow]")
+            if since:
+                console.print(f"[dim](Filtered by --since {since})[/dim]")
+            raise typer.Exit(0)
+
+        if output == OutputFormat.JSON:
+            import json
+
+            data = [s.model_dump() for s in syncs]
+            console.print(json.dumps(data, indent=2, default=str))
+            raise typer.Exit(0)
+
+        # Table output
+        console.print("\n[bold]Recent Sync Operations[/bold]\n")
+
+        table = Table(show_header=True, header_style="bold")
+        table.add_column("Sync ID")
+        table.add_column("Timestamp")
+        table.add_column("Operation")
+        table.add_column("Dry Run")
+        table.add_column("Created")
+        table.add_column("Updated")
+        table.add_column("Errors")
+
+        for sync in syncs:
+            # Format timestamp to relative time
+            try:
+                ts = datetime.fromisoformat(sync.timestamp.replace("Z", "+00:00"))
+                now = datetime.now(UTC)
+                delta = now - ts
+                if delta.days > 0:
+                    ts_str = f"{delta.days}d ago"
+                elif delta.seconds >= 3600:
+                    ts_str = f"{delta.seconds // 3600}h ago"
+                elif delta.seconds >= 60:
+                    ts_str = f"{delta.seconds // 60}m ago"
+                else:
+                    ts_str = "just now"
+            except Exception:
+                ts_str = sync.timestamp[:16]
+
+            errors_str = str(sync.errors)
+            if sync.errors > 0:
+                errors_str = f"[red]{sync.errors}[/red]"
+
+            table.add_row(
+                sync.sync_id[:12] + "...",
+                ts_str,
+                sync.operation,
+                "Yes" if sync.dry_run else "No",
+                str(sync.created),
+                str(sync.updated),
+                errors_str,
+            )
+
+        console.print(table)
+        console.print("\n[dim]Use 'ops kong sync history --sync-id <id>' for details[/dim]")
 
     app.add_typer(sync_app, name="sync")
