@@ -103,6 +103,16 @@ ConsumerFilterOption = Annotated[
     ),
 ]
 
+DataPlaneOnlyOption = Annotated[
+    bool,
+    typer.Option(
+        "--data-plane-only",
+        "--gateway-only",
+        help="Write to Gateway only, skip Konnect sync",
+        envvar="KONG_DATA_PLANE_ONLY",
+    ),
+]
+
 
 # =============================================================================
 # Error Handling

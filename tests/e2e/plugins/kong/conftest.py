@@ -10,7 +10,7 @@ import os
 import uuid
 from collections.abc import Callable, Generator
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 import typer
@@ -581,6 +581,7 @@ def create_kong_app(kong_url: str) -> typer.Typer:
         ServiceManager,
         UpstreamManager,
     )
+    from system_operations_manager.services.kong.dual_write import DualWriteService
     from system_operations_manager.services.kong.registry_manager import RegistryManager
 
     # Create the Kong Admin client
@@ -626,6 +627,42 @@ def create_kong_app(kong_url: str) -> typer.Typer:
         config_dir = home / ".config" / "ops" / "kong"
         return RegistryManager(config_dir=config_dir)
 
+    # Create dual-write service factories (with Konnect=None since not available in CI)
+    def get_dual_write_service_manager() -> DualWriteService[Any]:
+        return DualWriteService(
+            gateway_manager=get_service_manager(),
+            konnect_manager=None,  # No Konnect in CI
+            entity_name="service",
+        )
+
+    def get_dual_write_route_manager() -> DualWriteService[Any]:
+        return DualWriteService(
+            gateway_manager=get_route_manager(),
+            konnect_manager=None,
+            entity_name="route",
+        )
+
+    def get_dual_write_consumer_manager() -> DualWriteService[Any]:
+        return DualWriteService(
+            gateway_manager=get_consumer_manager(),
+            konnect_manager=None,
+            entity_name="consumer",
+        )
+
+    def get_dual_write_upstream_manager() -> DualWriteService[Any]:
+        return DualWriteService(
+            gateway_manager=get_upstream_manager(),
+            konnect_manager=None,
+            entity_name="upstream",
+        )
+
+    def get_dual_write_plugin_manager() -> DualWriteService[Any]:
+        return DualWriteService(
+            gateway_manager=get_plugin_manager(),
+            konnect_manager=None,
+            entity_name="plugin",
+        )
+
     # Create the main app
     app = typer.Typer(
         name="ops",
@@ -641,11 +678,32 @@ def create_kong_app(kong_url: str) -> typer.Typer:
     )
 
     # Register entity commands (avoiding observability due to Python 3.14 type annotation issues)
-    register_service_commands(kong_app, get_service_manager)
-    register_route_commands(kong_app, get_route_manager)
-    register_consumer_commands(kong_app, get_consumer_manager)
-    register_upstream_commands(kong_app, get_upstream_manager)
-    register_plugin_commands(kong_app, get_plugin_manager)
+    # Pass dual-write factories for commands that support the --data-plane-only flag
+    register_service_commands(
+        kong_app,
+        get_service_manager,
+        get_dual_write_service=get_dual_write_service_manager,
+    )
+    register_route_commands(
+        kong_app,
+        get_route_manager,
+        get_dual_write_service=get_dual_write_route_manager,
+    )
+    register_consumer_commands(
+        kong_app,
+        get_consumer_manager,
+        get_dual_write_service=get_dual_write_consumer_manager,
+    )
+    register_upstream_commands(
+        kong_app,
+        get_upstream_manager,
+        get_dual_write_service=get_dual_write_upstream_manager,
+    )
+    register_plugin_commands(
+        kong_app,
+        get_plugin_manager,
+        get_dual_write_service=get_dual_write_plugin_manager,
+    )
     register_security_commands(kong_app, get_plugin_manager, get_consumer_manager)
     register_traffic_commands(kong_app, get_plugin_manager)
     register_config_commands(kong_app, get_config_manager)

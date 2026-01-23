@@ -19,6 +19,7 @@ import typer
 from system_operations_manager.integrations.kong.exceptions import KongAPIError
 from system_operations_manager.integrations.kong.models.service import Service
 from system_operations_manager.plugins.kong.commands.base import (
+    DataPlaneOnlyOption,
     ForceOption,
     LimitOption,
     OffsetOption,
@@ -31,6 +32,7 @@ from system_operations_manager.plugins.kong.commands.base import (
 from system_operations_manager.plugins.kong.formatters import OutputFormat, get_formatter
 
 if TYPE_CHECKING:
+    from system_operations_manager.services.kong.dual_write import DualWriteService
     from system_operations_manager.services.kong.service_manager import ServiceManager
     from system_operations_manager.services.kong.unified_query import UnifiedQueryService
 
@@ -50,6 +52,7 @@ def register_service_commands(
     app: typer.Typer,
     get_manager: Callable[[], ServiceManager],
     get_unified_query_service: Callable[[], UnifiedQueryService | None] | None = None,
+    get_dual_write_service: Callable[[], DualWriteService[Any]] | None = None,
 ) -> None:
     """Register service commands with the Kong app.
 
@@ -58,6 +61,8 @@ def register_service_commands(
         get_manager: Factory function that returns a ServiceManager instance.
         get_unified_query_service: Optional factory that returns a UnifiedQueryService
             for querying both Gateway and Konnect.
+        get_dual_write_service: Optional factory that returns a DualWriteService
+            for writing to both Gateway and Konnect.
     """
     services_app = typer.Typer(
         name="services",
@@ -213,24 +218,25 @@ def register_service_commands(
             list[str] | None,
             typer.Option("--tag", "-t", help="Tags (can be repeated)"),
         ] = None,
+        data_plane_only: DataPlaneOnlyOption = False,
         output: OutputOption = OutputFormat.TABLE,
     ) -> None:
         """Create a new service.
 
-        Either --host or --url must be provided.
+        Either --host or --url must be provided. By default, creates the service
+        in both Gateway and Konnect (if configured).
 
         Examples:
             ops kong services create --name my-api --host api.example.com
             ops kong services create --name my-api --url http://api.example.com:8080
             ops kong services create --host api.example.com --port 8080 --tag production
+            ops kong services create --name my-api --host api.example.com --data-plane-only
         """
         if not url and not host:
             console.print("[red]Error:[/red] Either --host or --url is required")
             raise typer.Exit(1)
 
         try:
-            manager = get_manager()
-
             # Build service data, only including non-None values
             service_data: dict[str, Any] = {}
             if name is not None:
@@ -258,12 +264,37 @@ def register_service_commands(
 
             service = Service(**service_data)
 
-            created = manager.create(service)
+            # Use dual-write service if available
+            if get_dual_write_service is not None:
+                dual_write = get_dual_write_service()
+                result = dual_write.create(service, data_plane_only=data_plane_only)
 
-            formatter = get_formatter(output, console)
-            console.print("[green]Service created successfully[/green]\n")
-            title = f"Service: {created.name or created.id}"
-            formatter.format_entity(created, title=title)
+                formatter = get_formatter(output, console)
+                console.print("[green]Service created successfully[/green]\n")
+                title = f"Service: {result.gateway_result.name or result.gateway_result.id}"
+                formatter.format_entity(result.gateway_result, title=title)
+
+                # Show Konnect sync status
+                if result.is_fully_synced:
+                    console.print("\n[green]✓ Synced to Konnect[/green]")
+                elif result.partial_success:
+                    console.print(
+                        f"\n[yellow]⚠ Konnect sync failed: {result.konnect_error}[/yellow]"
+                    )
+                    console.print("[dim]Run 'ops kong sync push' to retry[/dim]")
+                elif result.konnect_skipped:
+                    console.print("\n[dim]Konnect sync skipped (--data-plane-only)[/dim]")
+                elif result.konnect_not_configured:
+                    console.print("\n[dim]Konnect not configured[/dim]")
+            else:
+                # Fallback to gateway-only (legacy behavior)
+                manager = get_manager()
+                created = manager.create(service)
+
+                formatter = get_formatter(output, console)
+                console.print("[green]Service created successfully[/green]\n")
+                title = f"Service: {created.name or created.id}"
+                formatter.format_entity(created, title=title)
 
         except KongAPIError as e:
             handle_kong_error(e)
@@ -315,16 +346,19 @@ def register_service_commands(
             list[str] | None,
             typer.Option("--tag", "-t", help="Tags (replaces existing)"),
         ] = None,
+        data_plane_only: DataPlaneOnlyOption = False,
         output: OutputOption = OutputFormat.TABLE,
     ) -> None:
         """Update an existing service.
 
-        Only specified fields will be updated.
+        Only specified fields will be updated. By default, updates the service
+        in both Gateway and Konnect (if configured).
 
         Examples:
             ops kong services update my-api --host new-api.example.com
             ops kong services update my-api --disabled
             ops kong services update my-api --port 8080 --tag staging
+            ops kong services update my-api --host new.example.com --data-plane-only
         """
         # Build update data from non-None values
         update_data: dict[str, Any] = {}
@@ -356,14 +390,39 @@ def register_service_commands(
             raise typer.Exit(0)
 
         try:
-            manager = get_manager()
             service = Service(**update_data)
-            updated = manager.update(name_or_id, service)
 
-            formatter = get_formatter(output, console)
-            console.print("[green]Service updated successfully[/green]\n")
-            title = f"Service: {updated.name or updated.id}"
-            formatter.format_entity(updated, title=title)
+            # Use dual-write service if available
+            if get_dual_write_service is not None:
+                dual_write = get_dual_write_service()
+                result = dual_write.update(name_or_id, service, data_plane_only=data_plane_only)
+
+                formatter = get_formatter(output, console)
+                console.print("[green]Service updated successfully[/green]\n")
+                title = f"Service: {result.gateway_result.name or result.gateway_result.id}"
+                formatter.format_entity(result.gateway_result, title=title)
+
+                # Show Konnect sync status
+                if result.is_fully_synced:
+                    console.print("\n[green]✓ Synced to Konnect[/green]")
+                elif result.partial_success:
+                    console.print(
+                        f"\n[yellow]⚠ Konnect sync failed: {result.konnect_error}[/yellow]"
+                    )
+                    console.print("[dim]Run 'ops kong sync push' to retry[/dim]")
+                elif result.konnect_skipped:
+                    console.print("\n[dim]Konnect sync skipped (--data-plane-only)[/dim]")
+                elif result.konnect_not_configured:
+                    console.print("\n[dim]Konnect not configured[/dim]")
+            else:
+                # Fallback to gateway-only (legacy behavior)
+                manager = get_manager()
+                updated = manager.update(name_or_id, service)
+
+                formatter = get_formatter(output, console)
+                console.print("[green]Service updated successfully[/green]\n")
+                title = f"Service: {updated.name or updated.id}"
+                formatter.format_entity(updated, title=title)
 
         except KongAPIError as e:
             handle_kong_error(e)
@@ -372,15 +431,18 @@ def register_service_commands(
     def delete_service(
         name_or_id: Annotated[str, typer.Argument(help="Service name or ID to delete")],
         force: ForceOption = False,
+        data_plane_only: DataPlaneOnlyOption = False,
     ) -> None:
         """Delete a service.
 
         This will fail if the service has associated routes. Delete the
-        routes first, or use --force to skip confirmation.
+        routes first, or use --force to skip confirmation. By default,
+        deletes from both Gateway and Konnect (if configured).
 
         Examples:
             ops kong services delete my-api
             ops kong services delete my-api --force
+            ops kong services delete my-api --data-plane-only
         """
         try:
             manager = get_manager()
@@ -393,8 +455,29 @@ def register_service_commands(
                 console.print("[yellow]Cancelled[/yellow]")
                 raise typer.Exit(0)
 
-            manager.delete(name_or_id)
-            console.print(f"[green]Service '{display_name}' deleted successfully[/green]")
+            # Use dual-write service if available
+            if get_dual_write_service is not None:
+                dual_write = get_dual_write_service()
+                result = dual_write.delete(name_or_id, data_plane_only=data_plane_only)
+
+                console.print(f"[green]Service '{display_name}' deleted successfully[/green]")
+
+                # Show Konnect sync status
+                if result.is_fully_synced:
+                    console.print("[green]✓ Deleted from Konnect[/green]")
+                elif result.partial_success:
+                    console.print(
+                        f"[yellow]⚠ Konnect delete failed: {result.konnect_error}[/yellow]"
+                    )
+                    console.print("[dim]Run 'ops kong sync push' to retry[/dim]")
+                elif result.konnect_skipped:
+                    console.print("[dim]Konnect delete skipped (--data-plane-only)[/dim]")
+                elif result.konnect_not_configured:
+                    console.print("[dim]Konnect not configured[/dim]")
+            else:
+                # Fallback to gateway-only (legacy behavior)
+                manager.delete(name_or_id)
+                console.print(f"[green]Service '{display_name}' deleted successfully[/green]")
 
         except KongAPIError as e:
             handle_kong_error(e)

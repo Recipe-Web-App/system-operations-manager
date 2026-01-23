@@ -20,6 +20,7 @@ import typer
 from system_operations_manager.integrations.kong.exceptions import KongAPIError
 from system_operations_manager.plugins.kong.commands.base import (
     ConsumerFilterOption,
+    DataPlaneOnlyOption,
     ForceOption,
     LimitOption,
     OffsetOption,
@@ -35,6 +36,7 @@ from system_operations_manager.plugins.kong.commands.base import (
 from system_operations_manager.plugins.kong.formatters import OutputFormat, get_formatter
 
 if TYPE_CHECKING:
+    from system_operations_manager.services.kong.dual_write import DualWriteService
     from system_operations_manager.services.kong.plugin_manager import KongPluginManager
     from system_operations_manager.services.kong.unified_query import UnifiedQueryService
 
@@ -54,6 +56,7 @@ def register_plugin_commands(
     app: typer.Typer,
     get_manager: Callable[[], KongPluginManager],
     get_unified_query_service: Callable[[], UnifiedQueryService | None] | None = None,
+    get_dual_write_service: Callable[[], DualWriteService[Any]] | None = None,
 ) -> None:
     """Register plugin commands with the Kong app.
 
@@ -62,6 +65,8 @@ def register_plugin_commands(
         get_manager: Factory function that returns a KongPluginManager instance.
         get_unified_query_service: Optional factory that returns a UnifiedQueryService
             for querying both Gateway and Konnect.
+        get_dual_write_service: Optional factory that returns a DualWriteService
+            for writing to both Gateway and Konnect.
     """
     plugins_app = typer.Typer(
         name="plugins",
@@ -292,17 +297,20 @@ def register_plugin_commands(
             str | None,
             typer.Option("--instance-name", help="Unique instance name"),
         ] = None,
+        data_plane_only: DataPlaneOnlyOption = False,
         output: OutputOption = OutputFormat.TABLE,
     ) -> None:
         """Enable a plugin.
 
-        If no scope is specified, the plugin is enabled globally.
+        If no scope is specified, the plugin is enabled globally. By default,
+        enables the plugin in both Gateway and Konnect (if configured).
 
         Examples:
             ops kong plugins enable key-auth --service my-api
             ops kong plugins enable rate-limiting --config minute=100 --config hour=5000
             ops kong plugins enable jwt --route my-route
             ops kong plugins enable acl --service my-api --config-json '{"allow": ["admin"]}'
+            ops kong plugins enable key-auth --service my-api --data-plane-only
         """
         # Build config
         plugin_config: dict[str, Any] = {}
@@ -334,6 +342,29 @@ def register_plugin_commands(
             console.print("[green]Plugin enabled successfully[/green]\n")
             formatter.format_entity(plugin, title=f"Plugin: {plugin.name}")
 
+            # Handle Konnect sync for dual-write
+            if get_dual_write_service is not None and not data_plane_only:
+                dual_write = get_dual_write_service()
+                if dual_write.konnect_configured and dual_write._konnect is not None:
+                    try:
+                        dual_write._konnect.enable(
+                            plugin_name,
+                            service=service,
+                            route=route,
+                            consumer=consumer,
+                            config=plugin_config if plugin_config else None,
+                            protocols=protocols,
+                            instance_name=instance_name,
+                        )
+                        console.print("\n[green]✓ Synced to Konnect[/green]")
+                    except Exception as e:
+                        console.print(f"\n[yellow]⚠ Konnect sync failed: {e}[/yellow]")
+                        console.print("[dim]Run 'ops kong sync push' to retry[/dim]")
+                else:
+                    console.print("\n[dim]Konnect not configured[/dim]")
+            elif data_plane_only:
+                console.print("\n[dim]Konnect sync skipped (--data-plane-only)[/dim]")
+
         except KongAPIError as e:
             handle_kong_error(e)
 
@@ -359,14 +390,18 @@ def register_plugin_commands(
             bool | None,
             typer.Option("--enabled/--disabled", help="Enable or disable"),
         ] = None,
+        data_plane_only: DataPlaneOnlyOption = False,
         output: OutputOption = OutputFormat.TABLE,
     ) -> None:
         """Update a plugin's configuration.
+
+        By default, updates the plugin in both Gateway and Konnect (if configured).
 
         Examples:
             ops kong plugins update abc-123 --config minute=200
             ops kong plugins update abc-123 --disabled
             ops kong plugins update abc-123 --config-json '{"minute": 500}'
+            ops kong plugins update abc-123 --config minute=200 --data-plane-only
         """
         # Build config
         plugin_config: dict[str, Any] = {}
@@ -400,6 +435,24 @@ def register_plugin_commands(
             console.print("[green]Plugin updated successfully[/green]\n")
             formatter.format_entity(plugin, title=f"Plugin: {plugin.name}")
 
+            # Handle Konnect sync for dual-write
+            if get_dual_write_service is not None and not data_plane_only:
+                dual_write = get_dual_write_service()
+                if dual_write.konnect_configured and dual_write._konnect is not None:
+                    try:
+                        if plugin_config:
+                            dual_write._konnect.update_config(plugin_id, plugin_config, enabled)
+                        else:
+                            dual_write._konnect.toggle(plugin_id, enabled)
+                        console.print("\n[green]✓ Synced to Konnect[/green]")
+                    except Exception as e:
+                        console.print(f"\n[yellow]⚠ Konnect sync failed: {e}[/yellow]")
+                        console.print("[dim]Run 'ops kong sync push' to retry[/dim]")
+                else:
+                    console.print("\n[dim]Konnect not configured[/dim]")
+            elif data_plane_only:
+                console.print("\n[dim]Konnect sync skipped (--data-plane-only)[/dim]")
+
         except KongAPIError as e:
             handle_kong_error(e)
 
@@ -407,12 +460,16 @@ def register_plugin_commands(
     def disable_plugin(
         plugin_id: Annotated[str, typer.Argument(help="Plugin ID to disable")],
         force: ForceOption = False,
+        data_plane_only: DataPlaneOnlyOption = False,
     ) -> None:
         """Disable (delete) a plugin.
+
+        By default, disables the plugin in both Gateway and Konnect (if configured).
 
         Examples:
             ops kong plugins disable abc-123
             ops kong plugins disable abc-123 --force
+            ops kong plugins disable abc-123 --data-plane-only
         """
         try:
             manager = get_manager()
@@ -426,6 +483,21 @@ def register_plugin_commands(
 
             manager.disable(plugin_id)
             console.print(f"[green]Plugin '{plugin.name}' disabled successfully[/green]")
+
+            # Handle Konnect sync for dual-write
+            if get_dual_write_service is not None and not data_plane_only:
+                dual_write = get_dual_write_service()
+                if dual_write.konnect_configured and dual_write._konnect is not None:
+                    try:
+                        dual_write._konnect.disable(plugin_id)
+                        console.print("[green]✓ Deleted from Konnect[/green]")
+                    except Exception as e:
+                        console.print(f"[yellow]⚠ Konnect delete failed: {e}[/yellow]")
+                        console.print("[dim]Run 'ops kong sync push' to retry[/dim]")
+                else:
+                    console.print("[dim]Konnect not configured[/dim]")
+            elif data_plane_only:
+                console.print("[dim]Konnect delete skipped (--data-plane-only)[/dim]")
 
         except KongAPIError as e:
             handle_kong_error(e)

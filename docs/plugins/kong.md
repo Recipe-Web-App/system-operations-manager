@@ -12,6 +12,7 @@ The Kong plugin provides full integration with Kong Gateway's Admin API, enablin
 - **Security**: Authentication (key-auth, JWT, OAuth2), ACLs, IP restrictions, mTLS
 - **Observability**: Logging, Prometheus metrics, health checks, distributed tracing
 - **Declarative Config**: Export, validate, and apply Kong configuration as code
+- **Konnect Integration**: Dual-write to both Gateway (data plane) and Konnect (control plane)
 
 ### Supported Kong Editions
 
@@ -192,6 +193,47 @@ auth:
 
 For production environments with certificate-based authentication.
 
+### Konnect Integration
+
+Connect to Kong Konnect for centralized control plane management. When configured,
+write operations (create, update, delete) sync to both Gateway and Konnect.
+
+#### Konnect Configuration
+
+```yaml
+plugins:
+  kong:
+    # ... existing connection settings ...
+
+    # Konnect Control Plane settings
+    konnect:
+      api_key: "${KONNECT_API_KEY}"
+      default_control_plane: "my-control-plane"
+      region: "us" # Options: us, eu, au
+```
+
+#### Konnect Environment Variables
+
+| Variable                | Description                      |
+| ----------------------- | -------------------------------- |
+| `KONNECT_API_KEY`       | Konnect API authentication token |
+| `KONNECT_CONTROL_PLANE` | Default control plane name       |
+| `KONNECT_REGION`        | Konnect region (us, eu, au)      |
+
+#### Dual-Write Behavior
+
+When Konnect is configured:
+
+- **Create/Update/Delete**: Writes to Gateway first, then syncs to Konnect
+- **Error Handling**: Gateway-first with Konnect best-effort (no rollback on Konnect failure)
+- **Graceful Degradation**: Works when Konnect is unavailable
+
+Use `--data-plane-only` (or `--gateway-only`) to skip Konnect sync:
+
+```bash
+ops kong services create --name test-svc --host test.local --data-plane-only
+```
+
 ---
 
 ## CLI Command Reference
@@ -318,6 +360,8 @@ ops kong services create \
 | `--write-timeout`      | Write timeout (ms)                                 | 60000   |
 | `--tag`                | Tag (repeatable)                                   | -       |
 | `--enabled/--disabled` | Enable or disable service                          | enabled |
+| `--data-plane-only`    | Write to Gateway only, skip Konnect sync           | false   |
+| `--gateway-only`       | Alias for `--data-plane-only`                      | false   |
 
 #### `ops kong services update <name-or-id>`
 
@@ -336,6 +380,10 @@ Delete a service.
 ops kong services delete payment-api
 ops kong services delete payment-api --force  # Skip confirmation
 ```
+
+> **Note:** The `--data-plane-only` (or `--gateway-only`) option is available for `create`, `update`,
+> and `delete` operations. This flag skips Konnect sync when you want to make changes only to the
+> Gateway.
 
 #### `ops kong services routes <name-or-id>`
 
@@ -426,6 +474,8 @@ Delete a route.
 ops kong routes delete payment-route
 ```
 
+> **Note:** The `--data-plane-only` option is available for route `create`, `update`, and `delete` operations.
+
 ---
 
 ### Consumer Commands
@@ -486,6 +536,8 @@ Delete a consumer.
 ```bash
 ops kong consumers delete mobile-app
 ```
+
+> **Note:** The `--data-plane-only` option is available for consumer `create`, `update`, and `delete` operations.
 
 #### `ops kong consumers credentials list <consumer>`
 
@@ -623,6 +675,8 @@ Delete an upstream.
 ```bash
 ops kong upstreams delete payment-cluster
 ```
+
+> **Note:** The `--data-plane-only` option is available for upstream `create`, `update`, and `delete` operations.
 
 #### `ops kong upstreams targets list <upstream>`
 
@@ -825,6 +879,8 @@ Disable a plugin (without deleting).
 ```bash
 ops kong plugins disable abc123-plugin-id
 ```
+
+> **Note:** The `--data-plane-only` option is available for plugin `enable`, `update`, and `disable` operations.
 
 ---
 
@@ -1611,6 +1667,304 @@ ops kong registry deploy
 
 # 4. Verify services in Kong
 ops kong services list
+```
+
+---
+
+### Konnect Commands
+
+Commands for configuring and managing Kong Konnect integration.
+
+#### `ops kong konnect login`
+
+Configure Konnect credentials.
+
+```bash
+# Interactive login
+ops kong konnect login
+
+# Login with token and region
+ops kong konnect login --token $KONNECT_TOKEN --region us
+
+# Force overwrite existing config
+ops kong konnect login --force
+```
+
+**Options:**
+
+| Option           | Description                              |
+| ---------------- | ---------------------------------------- |
+| `--token`, `-t`  | Konnect Personal Access Token            |
+| `--region`, `-r` | Konnect region (us, eu, au). Default: us |
+| `--force`, `-f`  | Overwrite existing configuration         |
+
+#### `ops kong konnect setup`
+
+Set up Konnect data plane connection. Creates TLS certificates and Kubernetes secrets
+needed for Kong Gateway to connect to Konnect control plane.
+
+```bash
+# Interactive setup (prompts for control plane)
+ops kong konnect setup
+
+# Specify control plane
+ops kong konnect setup --control-plane my-control-plane
+
+# Update Helm values file with Konnect endpoints
+ops kong konnect setup --control-plane my-cp --update-values
+
+# Custom values file path
+ops kong konnect setup --control-plane my-cp --update-values --values-file ./custom-values.yaml
+
+# Custom secret name and namespace
+ops kong konnect setup --control-plane my-cp --namespace kong-system --secret-name my-tls
+```
+
+**Options:**
+
+| Option              | Description                                                 |
+| ------------------- | ----------------------------------------------------------- |
+| `--control-plane`   | Control plane name or ID                                    |
+| `--namespace`, `-n` | Kubernetes namespace for the secret (default: kong)         |
+| `--secret-name`     | Name for the TLS secret (default: konnect-client-tls)       |
+| `--update-values`   | Update Helm values file with Konnect endpoints              |
+| `--values-file`     | Path to values file (default: k8s/gateway/kong-values.yaml) |
+| `--force`, `-f`     | Overwrite existing certificate/secret                       |
+
+#### `ops kong konnect status`
+
+Show Konnect configuration status.
+
+```bash
+ops kong konnect status
+```
+
+**Output:**
+
+```text
+Konnect Configuration
+
+Region: us
+API URL: https://us.api.konghq.com
+Default Control Plane: my-control-plane
+Config File: ~/.config/ops/konnect.yaml
+
+✓ Authenticated
+```
+
+---
+
+### Sync Commands
+
+Monitor and synchronize state between Kong Gateway and Konnect control plane.
+
+#### `ops kong sync status`
+
+Show drift between Gateway and Konnect configurations.
+
+```bash
+# Check all entity types
+ops kong sync status
+
+# Check specific entity type
+ops kong sync status --type services
+
+# Output as JSON
+ops kong sync status --output json
+```
+
+**Output:**
+
+```text
+Sync Status Report
+==================================================
+
+Entity Sync Summary
+┌─────────────┬───────┬──────────────┬──────────────┬────────┬────────────┐
+│ Entity Type │ Total │ Gateway Only │ Konnect Only │ Synced │ With Drift │
+├─────────────┼───────┼──────────────┼──────────────┼────────┼────────────┤
+│ Services    │     5 │            1 │            - │      3 │          1 │
+│ Routes      │     8 │            2 │            - │      6 │          - │
+│ Consumers   │     3 │            - │            - │      3 │          - │
+│ Plugins     │     4 │            - │            - │      4 │          - │
+│ Upstreams   │     2 │            - │            - │      2 │          - │
+├─────────────┼───────┼──────────────┼──────────────┼────────┼────────────┤
+│ Total       │    22 │            3 │            - │     18 │          1 │
+└─────────────┴───────┴──────────────┴──────────────┴────────┴────────────┘
+
+Entities with Configuration Drift:
+  Services:
+    - payment-api: host, port
+
+Entities only in Gateway (not in Konnect):
+  Services:
+    - new-api-service
+  Routes:
+    - new-api-route
+    - test-route
+```
+
+**Options:**
+
+| Option            | Description                                                            |
+| ----------------- | ---------------------------------------------------------------------- |
+| `--type`, `-t`    | Entity type to check (services, routes, consumers, plugins, upstreams) |
+| `--output FORMAT` | Output format (table, json, yaml)                                      |
+
+#### `ops kong sync push`
+
+Push Gateway configuration to Konnect.
+
+```bash
+# Push all entity types
+ops kong sync push
+
+# Push specific entity type
+ops kong sync push --type services
+
+# Preview changes without applying
+ops kong sync push --dry-run
+
+# Push without confirmation
+ops kong sync push --force
+```
+
+**Output (dry run):**
+
+```text
+Sync Preview (dry run)
+
+Services:
+  Would create: new-api-service
+  Would update: payment-api
+    Drift fields: host, port
+
+Routes:
+  Would create: new-api-route
+  Would create: test-route
+
+Summary:
+  Would create: 3 entity(s)
+  Would update: 1 entity(s)
+```
+
+**Output (push):**
+
+```text
+Pushing Gateway -> Konnect
+
+Services:
+  Created: new-api-service
+  Updated: payment-api
+
+Routes:
+  Created: new-api-route
+  Created: test-route
+
+Summary:
+  Created: 3 entity(s)
+  Updated: 1 entity(s)
+  Errors: 0
+✓ Sync complete
+```
+
+**Options:**
+
+| Option              | Description                                                           |
+| ------------------- | --------------------------------------------------------------------- |
+| `--type`, `-t`      | Entity type to push (services, routes, consumers, plugins, upstreams) |
+| `--dry-run`, `-n`   | Show what would be pushed without making changes                      |
+| `--include-targets` | Also sync targets when syncing upstreams                              |
+| `--force`, `-f`     | Push without confirmation prompt                                      |
+
+**Examples:**
+
+```bash
+# Preview sync for services only
+ops kong sync push --type services --dry-run
+
+# Push all changes without confirmation
+ops kong sync push --force
+
+# Push only routes to Konnect
+ops kong sync push --type routes --force
+
+# Push upstreams with their targets
+ops kong sync push --type upstreams --include-targets --force
+```
+
+#### `ops kong sync pull`
+
+Pull Konnect configuration to Gateway.
+
+```bash
+# Pull all entity types
+ops kong sync pull
+
+# Pull specific entity type
+ops kong sync pull --type services
+
+# Preview changes without applying
+ops kong sync pull --dry-run
+
+# Pull and update drifted entities
+ops kong sync pull --with-drift --force
+
+# Pull without confirmation
+ops kong sync pull --force
+```
+
+**Output (dry run):**
+
+```text
+Sync Preview (dry run)
+
+Services:
+  Would create: konnect-only-service
+
+Summary:
+  Would create: 1 entity(s)
+```
+
+**Output (pull with drift):**
+
+```text
+Pulling Konnect -> Gateway
+
+Services:
+  Created: konnect-only-service
+  Updated: drifted-service
+
+Summary:
+  Created: 1 entity(s)
+  Updated: 1 entity(s)
+✓ Sync complete
+```
+
+**Options:**
+
+| Option              | Description                                                           |
+| ------------------- | --------------------------------------------------------------------- |
+| `--type`, `-t`      | Entity type to pull (services, routes, consumers, plugins, upstreams) |
+| `--dry-run`, `-n`   | Show what would be pulled without making changes                      |
+| `--with-drift`      | Also update entities with drift (Gateway to match Konnect)            |
+| `--include-targets` | Also sync targets when syncing upstreams                              |
+| `--force`, `-f`     | Pull without confirmation prompt                                      |
+
+**Examples:**
+
+```bash
+# Preview what would be pulled
+ops kong sync pull --dry-run
+
+# Pull only services from Konnect
+ops kong sync pull --type services --force
+
+# Pull and sync drifted entities
+ops kong sync pull --with-drift --force
+
+# Pull upstreams with their targets
+ops kong sync pull --type upstreams --include-targets --force
 ```
 
 ---

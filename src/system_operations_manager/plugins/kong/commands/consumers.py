@@ -21,6 +21,7 @@ import typer
 from system_operations_manager.integrations.kong.exceptions import KongAPIError
 from system_operations_manager.integrations.kong.models.consumer import Consumer
 from system_operations_manager.plugins.kong.commands.base import (
+    DataPlaneOnlyOption,
     ForceOption,
     LimitOption,
     OffsetOption,
@@ -35,6 +36,7 @@ from system_operations_manager.plugins.kong.formatters import OutputFormat, get_
 
 if TYPE_CHECKING:
     from system_operations_manager.services.kong.consumer_manager import ConsumerManager
+    from system_operations_manager.services.kong.dual_write import DualWriteService
     from system_operations_manager.services.kong.unified_query import UnifiedQueryService
 
 
@@ -84,6 +86,7 @@ def register_consumer_commands(
     app: typer.Typer,
     get_manager: Callable[[], ConsumerManager],
     get_unified_query_service: Callable[[], UnifiedQueryService | None] | None = None,
+    get_dual_write_service: Callable[[], DualWriteService[Any]] | None = None,
 ) -> None:
     """Register consumer commands with the Kong app.
 
@@ -92,6 +95,8 @@ def register_consumer_commands(
         get_manager: Factory function that returns a ConsumerManager instance.
         get_unified_query_service: Optional factory that returns a UnifiedQueryService
             for querying both Gateway and Konnect.
+        get_dual_write_service: Optional factory that returns a DualWriteService
+            for writing to both Gateway and Konnect.
     """
     consumers_app = typer.Typer(
         name="consumers",
@@ -218,36 +223,62 @@ def register_consumer_commands(
             list[str] | None,
             typer.Option("--tag", "-t", help="Tags (can be repeated)"),
         ] = None,
+        data_plane_only: DataPlaneOnlyOption = False,
         output: OutputOption = OutputFormat.TABLE,
     ) -> None:
         """Create a new consumer.
 
-        At least one of --username or --custom-id must be provided.
+        At least one of --username or --custom-id must be provided. By default,
+        creates the consumer in both Gateway and Konnect (if configured).
 
         Examples:
             ops kong consumers create --username my-user
             ops kong consumers create --custom-id user-123
             ops kong consumers create --username my-user --custom-id user-123 --tag production
+            ops kong consumers create --username test-user --data-plane-only
         """
         if not username and not custom_id:
             console.print("[red]Error:[/red] At least one of --username or --custom-id is required")
             raise typer.Exit(1)
 
         try:
-            manager = get_manager()
-
             consumer = Consumer(
                 username=username,
                 custom_id=custom_id,
                 tags=tags,
             )
 
-            created = manager.create(consumer)
+            # Use dual-write service if available
+            if get_dual_write_service is not None:
+                dual_write = get_dual_write_service()
+                result = dual_write.create(consumer, data_plane_only=data_plane_only)
 
-            formatter = get_formatter(output, console)
-            console.print("[green]Consumer created successfully[/green]\n")
-            title = f"Consumer: {created.username or created.id}"
-            formatter.format_entity(created, title=title)
+                formatter = get_formatter(output, console)
+                console.print("[green]Consumer created successfully[/green]\n")
+                title = f"Consumer: {result.gateway_result.username or result.gateway_result.id}"
+                formatter.format_entity(result.gateway_result, title=title)
+
+                # Show Konnect sync status
+                if result.is_fully_synced:
+                    console.print("\n[green]✓ Synced to Konnect[/green]")
+                elif result.partial_success:
+                    console.print(
+                        f"\n[yellow]⚠ Konnect sync failed: {result.konnect_error}[/yellow]"
+                    )
+                    console.print("[dim]Run 'ops kong sync push' to retry[/dim]")
+                elif result.konnect_skipped:
+                    console.print("\n[dim]Konnect sync skipped (--data-plane-only)[/dim]")
+                elif result.konnect_not_configured:
+                    console.print("\n[dim]Konnect not configured[/dim]")
+            else:
+                # Fallback to gateway-only (legacy behavior)
+                manager = get_manager()
+                created = manager.create(consumer)
+
+                formatter = get_formatter(output, console)
+                console.print("[green]Consumer created successfully[/green]\n")
+                title = f"Consumer: {created.username or created.id}"
+                formatter.format_entity(created, title=title)
 
         except KongAPIError as e:
             handle_kong_error(e)
@@ -267,16 +298,19 @@ def register_consumer_commands(
             list[str] | None,
             typer.Option("--tag", "-t", help="Tags (replaces existing)"),
         ] = None,
+        data_plane_only: DataPlaneOnlyOption = False,
         output: OutputOption = OutputFormat.TABLE,
     ) -> None:
         """Update an existing consumer.
 
-        Only specified fields will be updated.
+        Only specified fields will be updated. By default, updates the consumer
+        in both Gateway and Konnect (if configured).
 
         Examples:
             ops kong consumers update my-user --username new-username
             ops kong consumers update my-user --custom-id new-custom-id
             ops kong consumers update my-user --tag staging
+            ops kong consumers update my-user --username test --data-plane-only
         """
         update_data: dict[str, Any] = {}
         if username is not None:
@@ -291,14 +325,41 @@ def register_consumer_commands(
             raise typer.Exit(0)
 
         try:
-            manager = get_manager()
             consumer = Consumer(**update_data)
-            updated = manager.update(username_or_id, consumer)
 
-            formatter = get_formatter(output, console)
-            console.print("[green]Consumer updated successfully[/green]\n")
-            title = f"Consumer: {updated.username or updated.id}"
-            formatter.format_entity(updated, title=title)
+            # Use dual-write service if available
+            if get_dual_write_service is not None:
+                dual_write = get_dual_write_service()
+                result = dual_write.update(
+                    username_or_id, consumer, data_plane_only=data_plane_only
+                )
+
+                formatter = get_formatter(output, console)
+                console.print("[green]Consumer updated successfully[/green]\n")
+                title = f"Consumer: {result.gateway_result.username or result.gateway_result.id}"
+                formatter.format_entity(result.gateway_result, title=title)
+
+                # Show Konnect sync status
+                if result.is_fully_synced:
+                    console.print("\n[green]✓ Synced to Konnect[/green]")
+                elif result.partial_success:
+                    console.print(
+                        f"\n[yellow]⚠ Konnect sync failed: {result.konnect_error}[/yellow]"
+                    )
+                    console.print("[dim]Run 'ops kong sync push' to retry[/dim]")
+                elif result.konnect_skipped:
+                    console.print("\n[dim]Konnect sync skipped (--data-plane-only)[/dim]")
+                elif result.konnect_not_configured:
+                    console.print("\n[dim]Konnect not configured[/dim]")
+            else:
+                # Fallback to gateway-only (legacy behavior)
+                manager = get_manager()
+                updated = manager.update(username_or_id, consumer)
+
+                formatter = get_formatter(output, console)
+                console.print("[green]Consumer updated successfully[/green]\n")
+                title = f"Consumer: {updated.username or updated.id}"
+                formatter.format_entity(updated, title=title)
 
         except KongAPIError as e:
             handle_kong_error(e)
@@ -307,14 +368,17 @@ def register_consumer_commands(
     def delete_consumer(
         username_or_id: Annotated[str, typer.Argument(help="Consumer username or ID to delete")],
         force: ForceOption = False,
+        data_plane_only: DataPlaneOnlyOption = False,
     ) -> None:
         """Delete a consumer.
 
-        This will also delete all associated credentials.
+        This will also delete all associated credentials. By default, deletes
+        from both Gateway and Konnect (if configured).
 
         Examples:
             ops kong consumers delete my-user
             ops kong consumers delete my-user --force
+            ops kong consumers delete my-user --data-plane-only
         """
         try:
             manager = get_manager()
@@ -327,8 +391,29 @@ def register_consumer_commands(
                 console.print("[yellow]Cancelled[/yellow]")
                 raise typer.Exit(0)
 
-            manager.delete(username_or_id)
-            console.print(f"[green]Consumer '{display_name}' deleted successfully[/green]")
+            # Use dual-write service if available
+            if get_dual_write_service is not None:
+                dual_write = get_dual_write_service()
+                result = dual_write.delete(username_or_id, data_plane_only=data_plane_only)
+
+                console.print(f"[green]Consumer '{display_name}' deleted successfully[/green]")
+
+                # Show Konnect sync status
+                if result.is_fully_synced:
+                    console.print("[green]✓ Deleted from Konnect[/green]")
+                elif result.partial_success:
+                    console.print(
+                        f"[yellow]⚠ Konnect delete failed: {result.konnect_error}[/yellow]"
+                    )
+                    console.print("[dim]Run 'ops kong sync push' to retry[/dim]")
+                elif result.konnect_skipped:
+                    console.print("[dim]Konnect delete skipped (--data-plane-only)[/dim]")
+                elif result.konnect_not_configured:
+                    console.print("[dim]Konnect not configured[/dim]")
+            else:
+                # Fallback to gateway-only (legacy behavior)
+                manager.delete(username_or_id)
+                console.print(f"[green]Consumer '{display_name}' deleted successfully[/green]")
 
         except KongAPIError as e:
             handle_kong_error(e)

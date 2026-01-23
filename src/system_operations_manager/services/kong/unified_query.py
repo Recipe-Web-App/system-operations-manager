@@ -18,7 +18,7 @@ from system_operations_manager.integrations.kong.models.unified import (
     UnifiedEntityList,
     merge_entities,
 )
-from system_operations_manager.integrations.kong.models.upstream import Upstream
+from system_operations_manager.integrations.kong.models.upstream import Target, Upstream
 
 if TYPE_CHECKING:
     from system_operations_manager.services.kong.consumer_manager import ConsumerManager
@@ -559,6 +559,71 @@ class UnifiedQueryService:
             offset = next_offset
 
         return upstreams
+
+    def list_targets_for_upstream(
+        self,
+        upstream_name_or_id: str,
+    ) -> UnifiedEntityList[Target]:
+        """List and merge targets from Gateway and Konnect for an upstream.
+
+        Args:
+            upstream_name_or_id: Upstream name or ID.
+
+        Returns:
+            Unified list of targets with source information.
+        """
+        # Fetch from Gateway
+        gateway_targets = self._fetch_all_gateway_targets(upstream_name_or_id)
+
+        # Fetch from Konnect if configured
+        konnect_targets: list[Target] = []
+        if self._konnect_upstreams:
+            konnect_targets = self._fetch_all_konnect_targets(upstream_name_or_id)
+
+        return merge_entities(gateway_targets, konnect_targets, key_field="target")
+
+    def _fetch_all_gateway_targets(
+        self,
+        upstream_name_or_id: str,
+    ) -> list[Target]:
+        """Fetch all targets from Gateway for an upstream with pagination."""
+        targets: list[Target] = []
+        offset: str | None = None
+
+        while True:
+            batch, next_offset = self._gateway_upstreams.list_targets(
+                upstream_name_or_id,
+                offset=offset,
+            )
+            targets.extend(batch)
+            if not next_offset:
+                break
+            offset = next_offset
+
+        return targets
+
+    def _fetch_all_konnect_targets(
+        self,
+        upstream_name_or_id: str,
+    ) -> list[Target]:
+        """Fetch all targets from Konnect for an upstream with pagination."""
+        if not self._konnect_upstreams:
+            return []
+
+        targets: list[Target] = []
+        offset: str | None = None
+
+        while True:
+            batch, next_offset = self._konnect_upstreams.list_targets(
+                upstream_name_or_id,
+                offset=offset,
+            )
+            targets.extend(batch)
+            if not next_offset:
+                break
+            offset = next_offset
+
+        return targets
 
     # -------------------------------------------------------------------------
     # Summary Methods

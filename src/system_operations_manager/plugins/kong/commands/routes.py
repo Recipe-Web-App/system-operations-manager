@@ -19,6 +19,7 @@ from system_operations_manager.integrations.kong.exceptions import KongAPIError
 from system_operations_manager.integrations.kong.models.base import KongEntityReference
 from system_operations_manager.integrations.kong.models.route import Route
 from system_operations_manager.plugins.kong.commands.base import (
+    DataPlaneOnlyOption,
     ForceOption,
     LimitOption,
     OffsetOption,
@@ -32,6 +33,7 @@ from system_operations_manager.plugins.kong.commands.base import (
 from system_operations_manager.plugins.kong.formatters import OutputFormat, get_formatter
 
 if TYPE_CHECKING:
+    from system_operations_manager.services.kong.dual_write import DualWriteService
     from system_operations_manager.services.kong.route_manager import RouteManager
     from system_operations_manager.services.kong.unified_query import UnifiedQueryService
 
@@ -51,6 +53,7 @@ def register_route_commands(
     app: typer.Typer,
     get_manager: Callable[[], RouteManager],
     get_unified_query_service: Callable[[], UnifiedQueryService | None] | None = None,
+    get_dual_write_service: Callable[[], DualWriteService[Any]] | None = None,
 ) -> None:
     """Register route commands with the Kong app.
 
@@ -59,6 +62,8 @@ def register_route_commands(
         get_manager: Factory function that returns a RouteManager instance.
         get_unified_query_service: Optional factory that returns a UnifiedQueryService
             for querying both Gateway and Konnect.
+        get_dual_write_service: Optional factory that returns a DualWriteService
+            for writing to both Gateway and Konnect.
     """
     routes_app = typer.Typer(
         name="routes",
@@ -219,16 +224,19 @@ def register_route_commands(
             list[str] | None,
             typer.Option("--tag", "-t", help="Tags (can be repeated)"),
         ] = None,
+        data_plane_only: DataPlaneOnlyOption = False,
         output: OutputOption = OutputFormat.TABLE,
     ) -> None:
         """Create a new route.
 
         At least one matching criterion (--path, --method, --host) should be provided.
+        By default, creates the route in both Gateway and Konnect (if configured).
 
         Examples:
             ops kong routes create --service my-api --path /api/v1
             ops kong routes create --name my-route --service my-api --path /api --method GET
             ops kong routes create --service my-api --host api.example.com
+            ops kong routes create --service my-api --path /test --data-plane-only
         """
         if not service:
             console.print("[red]Error:[/red] --service is required")
@@ -241,8 +249,6 @@ def register_route_commands(
             raise typer.Exit(1)
 
         try:
-            manager = get_manager()
-
             # Build route data, only including non-None values
             route_data: dict[str, Any] = {
                 "service": KongEntityReference.from_id_or_name(service),
@@ -268,12 +274,37 @@ def register_route_commands(
 
             route = Route(**route_data)
 
-            created = manager.create(route)
+            # Use dual-write service if available
+            if get_dual_write_service is not None:
+                dual_write = get_dual_write_service()
+                result = dual_write.create(route, data_plane_only=data_plane_only)
 
-            formatter = get_formatter(output, console)
-            console.print("[green]Route created successfully[/green]\n")
-            title = f"Route: {created.name or created.id}"
-            formatter.format_entity(created, title=title)
+                formatter = get_formatter(output, console)
+                console.print("[green]Route created successfully[/green]\n")
+                title = f"Route: {result.gateway_result.name or result.gateway_result.id}"
+                formatter.format_entity(result.gateway_result, title=title)
+
+                # Show Konnect sync status
+                if result.is_fully_synced:
+                    console.print("\n[green]✓ Synced to Konnect[/green]")
+                elif result.partial_success:
+                    console.print(
+                        f"\n[yellow]⚠ Konnect sync failed: {result.konnect_error}[/yellow]"
+                    )
+                    console.print("[dim]Run 'ops kong sync push' to retry[/dim]")
+                elif result.konnect_skipped:
+                    console.print("\n[dim]Konnect sync skipped (--data-plane-only)[/dim]")
+                elif result.konnect_not_configured:
+                    console.print("\n[dim]Konnect not configured[/dim]")
+            else:
+                # Fallback to gateway-only (legacy behavior)
+                manager = get_manager()
+                created = manager.create(route)
+
+                formatter = get_formatter(output, console)
+                console.print("[green]Route created successfully[/green]\n")
+                title = f"Route: {created.name or created.id}"
+                formatter.format_entity(created, title=title)
 
         except KongAPIError as e:
             handle_kong_error(e)
@@ -321,16 +352,19 @@ def register_route_commands(
             list[str] | None,
             typer.Option("--tag", "-t", help="Tags (replaces existing)"),
         ] = None,
+        data_plane_only: DataPlaneOnlyOption = False,
         output: OutputOption = OutputFormat.TABLE,
     ) -> None:
         """Update an existing route.
 
-        Only specified fields will be updated.
+        Only specified fields will be updated. By default, updates the route
+        in both Gateway and Konnect (if configured).
 
         Examples:
             ops kong routes update my-route --path /api/v2
             ops kong routes update my-route --no-strip-path
             ops kong routes update my-route --method GET --method POST
+            ops kong routes update my-route --path /test --data-plane-only
         """
         # Build update data from non-None values
         update_data: dict[str, Any] = {}
@@ -360,14 +394,39 @@ def register_route_commands(
             raise typer.Exit(0)
 
         try:
-            manager = get_manager()
             route = Route(**update_data)
-            updated = manager.update(name_or_id, route)
 
-            formatter = get_formatter(output, console)
-            console.print("[green]Route updated successfully[/green]\n")
-            title = f"Route: {updated.name or updated.id}"
-            formatter.format_entity(updated, title=title)
+            # Use dual-write service if available
+            if get_dual_write_service is not None:
+                dual_write = get_dual_write_service()
+                result = dual_write.update(name_or_id, route, data_plane_only=data_plane_only)
+
+                formatter = get_formatter(output, console)
+                console.print("[green]Route updated successfully[/green]\n")
+                title = f"Route: {result.gateway_result.name or result.gateway_result.id}"
+                formatter.format_entity(result.gateway_result, title=title)
+
+                # Show Konnect sync status
+                if result.is_fully_synced:
+                    console.print("\n[green]✓ Synced to Konnect[/green]")
+                elif result.partial_success:
+                    console.print(
+                        f"\n[yellow]⚠ Konnect sync failed: {result.konnect_error}[/yellow]"
+                    )
+                    console.print("[dim]Run 'ops kong sync push' to retry[/dim]")
+                elif result.konnect_skipped:
+                    console.print("\n[dim]Konnect sync skipped (--data-plane-only)[/dim]")
+                elif result.konnect_not_configured:
+                    console.print("\n[dim]Konnect not configured[/dim]")
+            else:
+                # Fallback to gateway-only (legacy behavior)
+                manager = get_manager()
+                updated = manager.update(name_or_id, route)
+
+                formatter = get_formatter(output, console)
+                console.print("[green]Route updated successfully[/green]\n")
+                title = f"Route: {updated.name or updated.id}"
+                formatter.format_entity(updated, title=title)
 
         except KongAPIError as e:
             handle_kong_error(e)
@@ -376,12 +435,16 @@ def register_route_commands(
     def delete_route(
         name_or_id: Annotated[str, typer.Argument(help="Route name or ID to delete")],
         force: ForceOption = False,
+        data_plane_only: DataPlaneOnlyOption = False,
     ) -> None:
         """Delete a route.
+
+        By default, deletes from both Gateway and Konnect (if configured).
 
         Examples:
             ops kong routes delete my-route
             ops kong routes delete my-route --force
+            ops kong routes delete my-route --data-plane-only
         """
         try:
             manager = get_manager()
@@ -394,8 +457,29 @@ def register_route_commands(
                 console.print("[yellow]Cancelled[/yellow]")
                 raise typer.Exit(0)
 
-            manager.delete(name_or_id)
-            console.print(f"[green]Route '{display_name}' deleted successfully[/green]")
+            # Use dual-write service if available
+            if get_dual_write_service is not None:
+                dual_write = get_dual_write_service()
+                result = dual_write.delete(name_or_id, data_plane_only=data_plane_only)
+
+                console.print(f"[green]Route '{display_name}' deleted successfully[/green]")
+
+                # Show Konnect sync status
+                if result.is_fully_synced:
+                    console.print("[green]✓ Deleted from Konnect[/green]")
+                elif result.partial_success:
+                    console.print(
+                        f"[yellow]⚠ Konnect delete failed: {result.konnect_error}[/yellow]"
+                    )
+                    console.print("[dim]Run 'ops kong sync push' to retry[/dim]")
+                elif result.konnect_skipped:
+                    console.print("[dim]Konnect delete skipped (--data-plane-only)[/dim]")
+                elif result.konnect_not_configured:
+                    console.print("[dim]Konnect not configured[/dim]")
+            else:
+                # Fallback to gateway-only (legacy behavior)
+                manager.delete(name_or_id)
+                console.print(f"[green]Route '{display_name}' deleted successfully[/green]")
 
         except KongAPIError as e:
             handle_kong_error(e)

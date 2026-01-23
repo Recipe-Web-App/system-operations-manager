@@ -790,6 +790,278 @@ jobs:
 
 ---
 
+## Konnect Integration
+
+### Checking Sync Status
+
+**Context**: View drift between your Gateway (data plane) and Konnect (control plane).
+
+**Prerequisites**:
+
+- Konnect configured in your ops configuration
+- Gateway and Konnect both accessible
+
+**View Sync Status**:
+
+```bash
+$ ops kong sync status
+
+Sync Status Report
+==================================================
+
+Entity Sync Summary
+┌─────────────┬───────┬──────────────┬──────────────┬────────┬────────────┐
+│ Entity Type │ Total │ Gateway Only │ Konnect Only │ Synced │ With Drift │
+├─────────────┼───────┼──────────────┼──────────────┼────────┼────────────┤
+│ Services    │     5 │            1 │            - │      3 │          1 │
+│ Routes      │     8 │            2 │            - │      6 │          - │
+│ Consumers   │     3 │            - │            - │      3 │          - │
+│ Plugins     │     4 │            - │            - │      4 │          - │
+│ Upstreams   │     2 │            - │            - │      2 │          - │
+├─────────────┼───────┼──────────────┼──────────────┼────────┼────────────┤
+│ Total       │    22 │            3 │            - │     18 │          1 │
+└─────────────┴───────┴──────────────┴──────────────┴────────┴────────────┘
+
+Entities with Configuration Drift:
+  Services:
+    - payment-api: host, port
+
+Entities only in Gateway (not in Konnect):
+  Services:
+    - new-api-service
+  Routes:
+    - new-api-route
+    - test-route
+```
+
+**Filter by Entity Type**:
+
+```bash
+# Check only services
+ops kong sync status --type services
+
+# Check only routes
+ops kong sync status --type routes
+```
+
+### Syncing Gateway to Konnect
+
+**Context**: Push Gateway configuration to Konnect to bring them in sync.
+
+**Preview Changes (Dry Run)**:
+
+```bash
+$ ops kong sync push --dry-run
+
+Sync Preview (dry run)
+
+Services:
+  Would create: new-api-service
+  Would update: payment-api
+    Drift fields: host, port
+
+Routes:
+  Would create: new-api-route
+  Would create: test-route
+
+Summary:
+  Would create: 3 entity(s)
+  Would update: 1 entity(s)
+```
+
+**Push Changes**:
+
+```bash
+$ ops kong sync push --force
+
+Pushing Gateway -> Konnect
+
+Services:
+  Created: new-api-service
+  Updated: payment-api
+
+Routes:
+  Created: new-api-route
+  Created: test-route
+
+Summary:
+  Created: 3 entity(s)
+  Updated: 1 entity(s)
+  Errors: 0
+✓ Sync complete
+```
+
+**Push Specific Entity Types**:
+
+```bash
+# Push only services
+ops kong sync push --type services --force
+
+# Push only routes
+ops kong sync push --type routes --force
+
+# Push upstreams with targets
+ops kong sync push --type upstreams --include-targets --force
+```
+
+### Pulling from Konnect to Gateway
+
+**Context**: Pull configuration from Konnect to Gateway. Useful for:
+
+- Setting up a new Gateway instance from Konnect configuration
+- Recovering Gateway configuration after data loss
+- Synchronizing configuration across multiple environments
+
+**Preview Pull**:
+
+```bash
+$ ops kong sync pull --dry-run
+
+Sync Preview (dry run)
+
+Services:
+  Would create: konnect-only-service
+  Would create: production-api
+
+Routes:
+  Would create: api-route
+
+Summary:
+  Would create: 3 entity(s)
+```
+
+**Pull Entities from Konnect**:
+
+```bash
+$ ops kong sync pull --force
+
+Pulling Konnect -> Gateway
+
+Services:
+  Created: konnect-only-service
+  Created: production-api
+
+Routes:
+  Created: api-route
+
+Summary:
+  Created: 3 entity(s)
+✓ Sync complete
+```
+
+**Pull with Drift Sync**:
+
+```bash
+# Also update entities that exist in both but have different configurations
+$ ops kong sync pull --with-drift --force
+
+Pulling Konnect -> Gateway
+
+Services:
+  Created: new-service
+  Updated: existing-service
+    Drift fields: host, port
+
+Summary:
+  Created: 1 entity(s)
+  Updated: 1 entity(s)
+✓ Sync complete
+```
+
+**Pull Specific Entity Types**:
+
+```bash
+# Pull only services
+ops kong sync pull --type services --force
+
+# Pull only upstreams with their targets
+ops kong sync pull --type upstreams --include-targets --force
+```
+
+### Testing with Gateway Only
+
+**Context**: Use `--data-plane-only` to skip Konnect sync during testing or local development.
+
+**Create Service in Gateway Only**:
+
+```bash
+$ ops kong services create --name test-svc --host test.local --data-plane-only
+
+Service created successfully
+
+Service: test-svc
+┌──────────┬────────────┐
+│ Name     │ test-svc   │
+│ Host     │ test.local │
+│ Port     │ 80         │
+│ Protocol │ http       │
+└──────────┴────────────┘
+Konnect sync skipped (--data-plane-only)
+```
+
+**Update Without Konnect Sync**:
+
+```bash
+# Update service without syncing to Konnect
+ops kong services update test-svc --port 8080 --data-plane-only
+
+# Delete from Gateway only
+ops kong services delete test-svc --data-plane-only
+```
+
+**Later, Sync to Konnect**:
+
+```bash
+# Push all Gateway changes to Konnect
+ops kong sync push --force
+
+# Or push only services
+ops kong sync push --type services --force
+```
+
+### Handling Konnect Failures
+
+**Context**: When Konnect sync fails, Gateway operations still succeed. The system uses
+Gateway-first with Konnect best-effort.
+
+**Example Output with Konnect Failure**:
+
+```bash
+$ ops kong services create --name my-api --host api.local
+
+Service created successfully
+
+Service: my-api
+┌──────────┬───────────┐
+│ Name     │ my-api    │
+│ Host     │ api.local │
+│ Port     │ 80        │
+└──────────┴───────────┘
+⚠ Konnect sync failed: Connection timeout
+  Run 'ops kong sync push' to retry
+```
+
+**Retry Failed Syncs**:
+
+```bash
+# Check which entities need syncing
+ops kong sync status
+
+# Push any out-of-sync entities
+ops kong sync push --force
+```
+
+**Troubleshooting**:
+
+| Issue                   | Solution                                                |
+| ----------------------- | ------------------------------------------------------- |
+| Konnect not configured  | Add Konnect config to `~/.config/ops/config.yaml`       |
+| Connection timeout      | Check network connectivity to Konnect API               |
+| Authentication failed   | Verify `KONNECT_API_KEY` environment variable           |
+| Control plane not found | Check `default_control_plane` in config matches Konnect |
+
+---
+
 ## Troubleshooting Reference
 
 ### Common Issues

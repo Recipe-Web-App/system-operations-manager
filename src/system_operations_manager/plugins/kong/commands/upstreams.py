@@ -21,6 +21,7 @@ import typer
 from system_operations_manager.integrations.kong.exceptions import KongAPIError
 from system_operations_manager.integrations.kong.models.upstream import Upstream
 from system_operations_manager.plugins.kong.commands.base import (
+    DataPlaneOnlyOption,
     ForceOption,
     LimitOption,
     OffsetOption,
@@ -33,6 +34,7 @@ from system_operations_manager.plugins.kong.commands.base import (
 from system_operations_manager.plugins.kong.formatters import OutputFormat, get_formatter
 
 if TYPE_CHECKING:
+    from system_operations_manager.services.kong.dual_write import DualWriteService
     from system_operations_manager.services.kong.unified_query import UnifiedQueryService
     from system_operations_manager.services.kong.upstream_manager import UpstreamManager
 
@@ -58,6 +60,7 @@ def register_upstream_commands(
     app: typer.Typer,
     get_manager: Callable[[], UpstreamManager],
     get_unified_query_service: Callable[[], UnifiedQueryService | None] | None = None,
+    get_dual_write_service: Callable[[], DualWriteService[Any]] | None = None,
 ) -> None:
     """Register upstream commands with the Kong app.
 
@@ -66,6 +69,8 @@ def register_upstream_commands(
         get_manager: Factory function that returns an UpstreamManager instance.
         get_unified_query_service: Optional factory that returns a UnifiedQueryService
             for querying both Gateway and Konnect.
+        get_dual_write_service: Optional factory that returns a DualWriteService
+            for writing to both Gateway and Konnect.
     """
     upstreams_app = typer.Typer(
         name="upstreams",
@@ -223,18 +228,20 @@ def register_upstream_commands(
             list[str] | None,
             typer.Option("--tag", "-t", help="Tags (can be repeated)"),
         ] = None,
+        data_plane_only: DataPlaneOnlyOption = False,
         output: OutputOption = OutputFormat.TABLE,
     ) -> None:
         """Create a new upstream.
+
+        By default, creates the upstream in both Gateway and Konnect (if configured).
 
         Examples:
             ops kong upstreams create my-upstream
             ops kong upstreams create my-upstream --algorithm least-connections
             ops kong upstreams create my-upstream --algorithm consistent-hashing --hash-on ip
+            ops kong upstreams create my-upstream --data-plane-only
         """
         try:
-            manager = get_manager()
-
             # Build upstream data, only including non-None values
             upstream_data: dict[str, Any] = {"name": name}
             if algorithm is not None:
@@ -256,11 +263,37 @@ def register_upstream_commands(
 
             upstream = Upstream(**upstream_data)
 
-            created = manager.create(upstream)
+            # Use dual-write service if available
+            if get_dual_write_service is not None:
+                dual_write = get_dual_write_service()
+                result = dual_write.create(upstream, data_plane_only=data_plane_only)
 
-            formatter = get_formatter(output, console)
-            console.print("[green]Upstream created successfully[/green]\n")
-            formatter.format_entity(created, title=f"Upstream: {created.name}")
+                formatter = get_formatter(output, console)
+                console.print("[green]Upstream created successfully[/green]\n")
+                formatter.format_entity(
+                    result.gateway_result, title=f"Upstream: {result.gateway_result.name}"
+                )
+
+                # Show Konnect sync status
+                if result.is_fully_synced:
+                    console.print("\n[green]✓ Synced to Konnect[/green]")
+                elif result.partial_success:
+                    console.print(
+                        f"\n[yellow]⚠ Konnect sync failed: {result.konnect_error}[/yellow]"
+                    )
+                    console.print("[dim]Run 'ops kong sync push' to retry[/dim]")
+                elif result.konnect_skipped:
+                    console.print("\n[dim]Konnect sync skipped (--data-plane-only)[/dim]")
+                elif result.konnect_not_configured:
+                    console.print("\n[dim]Konnect not configured[/dim]")
+            else:
+                # Fallback to gateway-only (legacy behavior)
+                manager = get_manager()
+                created = manager.create(upstream)
+
+                formatter = get_formatter(output, console)
+                console.print("[green]Upstream created successfully[/green]\n")
+                formatter.format_entity(created, title=f"Upstream: {created.name}")
 
         except KongAPIError as e:
             handle_kong_error(e)
@@ -296,15 +329,18 @@ def register_upstream_commands(
             list[str] | None,
             typer.Option("--tag", "-t", help="Tags (replaces existing)"),
         ] = None,
+        data_plane_only: DataPlaneOnlyOption = False,
         output: OutputOption = OutputFormat.TABLE,
     ) -> None:
         """Update an existing upstream.
 
-        Only specified fields will be updated.
+        Only specified fields will be updated. By default, updates the upstream
+        in both Gateway and Konnect (if configured).
 
         Examples:
             ops kong upstreams update my-upstream --algorithm least-connections
             ops kong upstreams update my-upstream --slots 20000
+            ops kong upstreams update my-upstream --algorithm round-robin --data-plane-only
         """
         # Build update data
         update_data: dict[str, Any] = {"name": name_or_id}  # Name required for model
@@ -328,13 +364,39 @@ def register_upstream_commands(
             raise typer.Exit(0)
 
         try:
-            manager = get_manager()
             upstream = Upstream(**update_data)
-            updated = manager.update(name_or_id, upstream)
 
-            formatter = get_formatter(output, console)
-            console.print("[green]Upstream updated successfully[/green]\n")
-            formatter.format_entity(updated, title=f"Upstream: {updated.name}")
+            # Use dual-write service if available
+            if get_dual_write_service is not None:
+                dual_write = get_dual_write_service()
+                result = dual_write.update(name_or_id, upstream, data_plane_only=data_plane_only)
+
+                formatter = get_formatter(output, console)
+                console.print("[green]Upstream updated successfully[/green]\n")
+                formatter.format_entity(
+                    result.gateway_result, title=f"Upstream: {result.gateway_result.name}"
+                )
+
+                # Show Konnect sync status
+                if result.is_fully_synced:
+                    console.print("\n[green]✓ Synced to Konnect[/green]")
+                elif result.partial_success:
+                    console.print(
+                        f"\n[yellow]⚠ Konnect sync failed: {result.konnect_error}[/yellow]"
+                    )
+                    console.print("[dim]Run 'ops kong sync push' to retry[/dim]")
+                elif result.konnect_skipped:
+                    console.print("\n[dim]Konnect sync skipped (--data-plane-only)[/dim]")
+                elif result.konnect_not_configured:
+                    console.print("\n[dim]Konnect not configured[/dim]")
+            else:
+                # Fallback to gateway-only (legacy behavior)
+                manager = get_manager()
+                updated = manager.update(name_or_id, upstream)
+
+                formatter = get_formatter(output, console)
+                console.print("[green]Upstream updated successfully[/green]\n")
+                formatter.format_entity(updated, title=f"Upstream: {updated.name}")
 
         except KongAPIError as e:
             handle_kong_error(e)
@@ -343,14 +405,17 @@ def register_upstream_commands(
     def delete_upstream(
         name_or_id: Annotated[str, typer.Argument(help="Upstream name or ID to delete")],
         force: ForceOption = False,
+        data_plane_only: DataPlaneOnlyOption = False,
     ) -> None:
         """Delete an upstream.
 
-        This will also delete all associated targets.
+        This will also delete all associated targets. By default, deletes from
+        both Gateway and Konnect (if configured).
 
         Examples:
             ops kong upstreams delete my-upstream
             ops kong upstreams delete my-upstream --force
+            ops kong upstreams delete my-upstream --data-plane-only
         """
         try:
             manager = get_manager()
@@ -362,8 +427,29 @@ def register_upstream_commands(
                 console.print("[yellow]Cancelled[/yellow]")
                 raise typer.Exit(0)
 
-            manager.delete(name_or_id)
-            console.print(f"[green]Upstream '{upstream.name}' deleted successfully[/green]")
+            # Use dual-write service if available
+            if get_dual_write_service is not None:
+                dual_write = get_dual_write_service()
+                result = dual_write.delete(name_or_id, data_plane_only=data_plane_only)
+
+                console.print(f"[green]Upstream '{upstream.name}' deleted successfully[/green]")
+
+                # Show Konnect sync status
+                if result.is_fully_synced:
+                    console.print("[green]✓ Deleted from Konnect[/green]")
+                elif result.partial_success:
+                    console.print(
+                        f"[yellow]⚠ Konnect delete failed: {result.konnect_error}[/yellow]"
+                    )
+                    console.print("[dim]Run 'ops kong sync push' to retry[/dim]")
+                elif result.konnect_skipped:
+                    console.print("[dim]Konnect delete skipped (--data-plane-only)[/dim]")
+                elif result.konnect_not_configured:
+                    console.print("[dim]Konnect not configured[/dim]")
+            else:
+                # Fallback to gateway-only (legacy behavior)
+                manager.delete(name_or_id)
+                console.print(f"[green]Upstream '{upstream.name}' deleted successfully[/green]")
 
         except KongAPIError as e:
             handle_kong_error(e)

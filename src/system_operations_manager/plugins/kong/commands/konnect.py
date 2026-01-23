@@ -313,10 +313,23 @@ def register_konnect_commands(
             if not values_file:
                 values_file = "k8s/gateway/kong-values.yaml"
             console.print(f"\n[dim]Updating {values_file}...[/dim]")
-            # TODO: Implement values file update
-            console.print(
-                "[yellow]Values file update not yet implemented. Please update manually.[/yellow]"
-            )
+
+            if not cp.telemetry_endpoint or not cp.control_plane_endpoint:
+                console.print(
+                    "[yellow]Warning: Control plane missing endpoint information. "
+                    "Cannot update values file.[/yellow]"
+                )
+            else:
+                try:
+                    _update_values_file(
+                        values_path=values_file,
+                        telemetry_endpoint=cp.telemetry_endpoint,
+                        control_plane_endpoint=cp.control_plane_endpoint,
+                    )
+                    console.print(f"[green]✓ Updated {values_file}[/green]")
+                except Exception as e:
+                    console.print(f"[red]Failed to update values file: {e}[/red]")
+                    raise typer.Exit(1) from None
 
         console.print("\n[green]✓ Konnect setup complete![/green]")
         console.print(
@@ -495,3 +508,53 @@ def _create_tls_secret(
         key_pem=key_pem,
         force=force,
     )
+
+
+def _update_values_file(
+    values_path: str, telemetry_endpoint: str, control_plane_endpoint: str
+) -> None:
+    """Update Helm values file with Konnect endpoints.
+
+    Args:
+        values_path: Path to the Helm values file.
+        telemetry_endpoint: Konnect telemetry endpoint (e.g., "host.konghq.com:443").
+        control_plane_endpoint: Konnect control plane endpoint.
+    """
+    from pathlib import Path
+
+    import yaml
+
+    path = Path(values_path)
+
+    # Load existing values
+    if path.exists():
+        with path.open("r") as f:
+            values = yaml.safe_load(f) or {}
+    else:
+        values = {}
+
+    # Ensure nested structure exists
+    if "gateway" not in values:
+        values["gateway"] = {}
+    if "env" not in values["gateway"]:
+        values["gateway"]["env"] = {}
+
+    # Extract hostname from endpoint (e.g., "host.konghq.com:443" -> "host.konghq.com")
+    telemetry_host = (
+        telemetry_endpoint.split(":")[0] if ":" in telemetry_endpoint else telemetry_endpoint
+    )
+    control_plane_host = (
+        control_plane_endpoint.split(":")[0]
+        if ":" in control_plane_endpoint
+        else control_plane_endpoint
+    )
+
+    # Update values with Konnect endpoints
+    values["gateway"]["env"]["cluster_telemetry_endpoint"] = telemetry_endpoint
+    values["gateway"]["env"]["cluster_telemetry_server_name"] = telemetry_host
+    values["gateway"]["env"]["cluster_control_plane"] = control_plane_endpoint
+    values["gateway"]["env"]["cluster_server_name"] = control_plane_host
+
+    # Write back
+    with path.open("w") as f:
+        yaml.dump(values, f, default_flow_style=False, sort_keys=False)
