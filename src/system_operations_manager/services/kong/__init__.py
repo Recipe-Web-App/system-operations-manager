@@ -30,6 +30,12 @@ from system_operations_manager.services.kong.portal_manager import PortalManager
 from system_operations_manager.services.kong.rbac_manager import RBACManager
 from system_operations_manager.services.kong.route_manager import RouteManager
 from system_operations_manager.services.kong.service_manager import ServiceManager
+from system_operations_manager.services.kong.sync_rollback import (
+    RollbackAction,
+    RollbackPreview,
+    RollbackResult,
+    RollbackService,
+)
 from system_operations_manager.services.kong.upstream_manager import UpstreamManager
 from system_operations_manager.services.kong.vault_manager import VaultManager
 from system_operations_manager.services.kong.workspace_manager import WorkspaceManager
@@ -51,6 +57,10 @@ __all__ = [
     "OpenAPISyncManager",
     "PortalManager",
     "RBACManager",
+    "RollbackAction",
+    "RollbackPreview",
+    "RollbackResult",
+    "RollbackService",
     "RouteManager",
     "SNIManager",
     "ServiceManager",

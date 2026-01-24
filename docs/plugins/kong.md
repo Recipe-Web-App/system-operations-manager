@@ -2034,6 +2034,85 @@ ops kong sync pull --type keys --force
 ops kong sync pull --type vaults --force
 ```
 
+#### `ops kong sync rollback`
+
+Rollback a previous sync operation using the audit history.
+
+```bash
+# View sync history to find sync IDs
+ops kong sync history
+
+# Preview what would be rolled back (dry run)
+ops kong sync rollback <sync-id> --dry-run
+
+# Execute rollback
+ops kong sync rollback <sync-id>
+
+# Rollback without confirmation
+ops kong sync rollback <sync-id> --force
+
+# Rollback only specific entity type
+ops kong sync rollback <sync-id> --type services
+```
+
+**Options:**
+
+| Option      | Short | Description                             |
+| ----------- | ----- | --------------------------------------- |
+| `--dry-run` | `-n`  | Preview rollback without making changes |
+| `--type`    | `-t`  | Only rollback specific entity type      |
+| `--force`   | `-f`  | Execute without confirmation prompt     |
+
+**Output (dry run):**
+
+```text
+Rollback Preview: abc12345...
+Original sync: push (Konnect → Gateway)
+Timestamp: 2026-01-23T10:30:00Z
+
+┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┓
+┃ Entity Type  ┃ Name             ┃ Action  ┃ Target  ┃
+┡━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━┩
+│ services     │ api-service      │ delete  │ konnect │
+│ routes       │ api-route        │ delete  │ konnect │
+│ services     │ updated-service  │ restore │ konnect │
+└──────────────┴──────────────────┴─────────┴─────────┘
+
+Dry run: Would rollback 3 operation(s)
+```
+
+**Rollback Actions:**
+
+| Original Action | Rollback Action | Description                           |
+| --------------- | --------------- | ------------------------------------- |
+| `create`        | `delete`        | Deletes the entity that was created   |
+| `update`        | `restore`       | Restores entity to its previous state |
+
+**Workflow Example:**
+
+```bash
+# 1. Perform a sync push
+ops kong sync push --type services --force
+
+# 2. Realize the sync was incorrect, view history
+ops kong sync history
+
+# 3. Preview rollback
+ops kong sync rollback abc12345... --dry-run
+
+# 4. Execute rollback
+ops kong sync rollback abc12345... --force
+
+# 5. Verify entities were removed/restored
+ops kong sync status --type services
+```
+
+**Limitations:**
+
+- Cannot rollback dry-run syncs (no changes were made)
+- Cannot rollback if `before_state` or `after_state` was not recorded
+- Entities modified after the sync may need manual resolution
+
 ---
 
 ### Enterprise Features

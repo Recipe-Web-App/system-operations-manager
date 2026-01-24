@@ -1598,4 +1598,172 @@ def register_sync_commands(
         console.print(table)
         console.print("\n[dim]Use 'ops kong sync history --sync-id <id>' for details[/dim]")
 
+    @sync_app.command("rollback")
+    def sync_rollback_cmd(
+        sync_id_arg: Annotated[
+            str,
+            typer.Argument(help="Sync operation ID to rollback (from 'sync history')"),
+        ],
+        dry_run: Annotated[
+            bool,
+            typer.Option(
+                "--dry-run",
+                "-n",
+                help="Preview rollback without making changes",
+            ),
+        ] = False,
+        entity_type: Annotated[
+            str | None,
+            typer.Option(
+                "--type",
+                "-t",
+                help="Only rollback specific entity type",
+            ),
+        ] = None,
+        force: ForceOption = False,
+    ) -> None:
+        """Rollback a sync operation.
+
+        Reverses the changes made by a previous sync push or pull operation.
+        Use 'ops kong sync history' to find sync IDs.
+
+        Examples:
+            ops kong sync history                 # List sync operations
+            ops kong sync rollback abc123 -n     # Preview rollback
+            ops kong sync rollback abc123        # Execute rollback
+            ops kong sync rollback abc123 -t services  # Rollback only services
+        """
+        from rich.table import Table
+
+        from system_operations_manager.services.kong.sync_rollback import RollbackService
+
+        audit_service = SyncAuditService()
+
+        # Build managers dicts
+        gateway_managers: dict[str, Any] = {}
+        konnect_managers: dict[str, Any] = {}
+
+        if get_gateway_service_manager:
+            gateway_managers["services"] = get_gateway_service_manager()
+        if get_gateway_route_manager:
+            gateway_managers["routes"] = get_gateway_route_manager()
+        if get_gateway_consumer_manager:
+            gateway_managers["consumers"] = get_gateway_consumer_manager()
+        if get_gateway_plugin_manager:
+            gateway_managers["plugins"] = get_gateway_plugin_manager()
+        if get_gateway_upstream_manager:
+            gateway_managers["upstreams"] = get_gateway_upstream_manager()
+        if get_gateway_certificate_manager:
+            gateway_managers["certificates"] = get_gateway_certificate_manager()
+        if get_gateway_sni_manager:
+            gateway_managers["snis"] = get_gateway_sni_manager()
+        if get_gateway_ca_certificate_manager:
+            gateway_managers["ca_certificates"] = get_gateway_ca_certificate_manager()
+        if get_gateway_key_set_manager:
+            gateway_managers["key_sets"] = get_gateway_key_set_manager()
+        if get_gateway_key_manager:
+            gateway_managers["keys"] = get_gateway_key_manager()
+        if get_gateway_vault_manager:
+            gateway_managers["vaults"] = get_gateway_vault_manager()
+
+        if get_konnect_service_manager:
+            konnect_managers["services"] = get_konnect_service_manager()
+        if get_konnect_route_manager:
+            konnect_managers["routes"] = get_konnect_route_manager()
+        if get_konnect_consumer_manager:
+            konnect_managers["consumers"] = get_konnect_consumer_manager()
+        if get_konnect_plugin_manager:
+            konnect_managers["plugins"] = get_konnect_plugin_manager()
+        if get_konnect_upstream_manager:
+            konnect_managers["upstreams"] = get_konnect_upstream_manager()
+        if get_konnect_certificate_manager:
+            konnect_managers["certificates"] = get_konnect_certificate_manager()
+        if get_konnect_sni_manager:
+            konnect_managers["snis"] = get_konnect_sni_manager()
+        if get_konnect_ca_certificate_manager:
+            konnect_managers["ca_certificates"] = get_konnect_ca_certificate_manager()
+        if get_konnect_key_set_manager:
+            konnect_managers["key_sets"] = get_konnect_key_set_manager()
+        if get_konnect_key_manager:
+            konnect_managers["keys"] = get_konnect_key_manager()
+        if get_konnect_vault_manager:
+            konnect_managers["vaults"] = get_konnect_vault_manager()
+
+        rollback_service = RollbackService(audit_service, gateway_managers, konnect_managers)
+
+        # Parse entity types filter
+        entity_types = [entity_type] if entity_type else None
+
+        # Preview the rollback
+        preview = rollback_service.preview_rollback(sync_id_arg, entity_types)
+
+        if not preview.can_rollback:
+            console.print(f"\n[red]Cannot rollback sync {sync_id_arg[:12]}...[/red]")
+            for warning in preview.warnings:
+                console.print(f"  [yellow]• {warning}[/yellow]")
+            raise typer.Exit(1)
+
+        # Display preview
+        direction = "Konnect → Gateway" if preview.operation == "push" else "Gateway → Konnect"
+        console.print(f"\n[bold]Rollback Preview: {sync_id_arg[:12]}...[/bold]")
+        console.print(f"Original sync: {preview.operation} ({direction})")
+        console.print(f"Timestamp: {preview.timestamp}")
+
+        if preview.warnings:
+            console.print("\n[yellow]Warnings:[/yellow]")
+            for warning in preview.warnings:
+                console.print(f"  • {warning}")
+
+        # Show actions table
+        table = Table(show_header=True, header_style="bold")
+        table.add_column("Entity Type")
+        table.add_column("Name")
+        table.add_column("Action")
+        table.add_column("Target")
+
+        for action in preview.actions:
+            action_style = "red" if action.rollback_action == "delete" else "yellow"
+            table.add_row(
+                action.entity_type,
+                action.entity_name,
+                f"[{action_style}]{action.rollback_action}[/{action_style}]",
+                action.target,
+            )
+
+        console.print("\n")
+        console.print(table)
+
+        if dry_run:
+            console.print(
+                f"\n[cyan]Dry run:[/cyan] Would rollback {len(preview.actions)} operation(s)"
+            )
+            raise typer.Exit(0)
+
+        # Confirmation
+        if not force:
+            console.print(f"\nThis will rollback {len(preview.actions)} operation(s).")
+            if not confirm_action("execute this rollback"):
+                console.print("[yellow]Cancelled[/yellow]")
+                raise typer.Exit(0)
+
+        # Execute rollback
+        console.print("\n[bold]Executing rollback...[/bold]")
+        result = rollback_service.rollback(sync_id_arg, entity_types, force=True)
+
+        # Display result
+        console.print("\n[bold]Rollback Summary:[/bold]")
+        console.print(f"  Rolled back: {result.rolled_back}")
+        if result.skipped > 0:
+            console.print(f"  Skipped: {result.skipped}")
+        if result.failed > 0:
+            console.print(f"  [red]Failed: {result.failed}[/red]")
+            for error in result.errors:
+                console.print(f"    [red]• {error}[/red]")
+
+        if result.success:
+            console.print("\n[green]✓ Rollback complete[/green]")
+        else:
+            console.print("\n[red]✗ Rollback completed with errors[/red]")
+            raise typer.Exit(1)
+
     app.add_typer(sync_app, name="sync")
