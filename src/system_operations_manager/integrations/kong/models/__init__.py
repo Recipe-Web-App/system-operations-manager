@@ -8,6 +8,12 @@ from system_operations_manager.integrations.kong.models.base import (
     KongEntityReference,
     PaginatedResponse,
 )
+from system_operations_manager.integrations.kong.models.certificate import (
+    SNI,
+    CACertificate,
+    Certificate,
+    CertificateSummary,
+)
 from system_operations_manager.integrations.kong.models.config import (
     ApplyOperation,
     ConfigDiff,
@@ -46,6 +52,10 @@ from system_operations_manager.integrations.kong.models.enterprise import (
     Workspace,
     WorkspaceConfig,
 )
+from system_operations_manager.integrations.kong.models.key import (
+    Key,
+    KeySet,
+)
 from system_operations_manager.integrations.kong.models.observability import (
     MetricsSummary,
     NodeStatus,
@@ -80,12 +90,16 @@ from system_operations_manager.integrations.kong.models.upstream import (
 )
 
 __all__ = [
+    "SNI",
     "ACLGroup",
     "AWSSecretsConfig",
     "ApplyOperation",
     "AvailablePlugin",
     "AzureVaultConfig",
     "BasicAuthCredential",
+    "CACertificate",
+    "Certificate",
+    "CertificateSummary",
     "ConfigDiff",
     "ConfigDiffSummary",
     "ConfigValidationError",
@@ -104,7 +118,9 @@ __all__ = [
     "HashiCorpVaultConfig",
     "HealthFailure",
     "JWTCredential",
+    "Key",
     "KeyAuthCredential",
+    "KeySet",
     "KongEntityBase",
     "KongEntityReference",
     "KongPluginEntity",

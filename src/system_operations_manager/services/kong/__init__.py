@@ -6,6 +6,11 @@ to abstract data access from command implementations.
 """
 
 from system_operations_manager.services.kong.base import BaseEntityManager
+from system_operations_manager.services.kong.certificate_manager import (
+    CACertificateManager,
+    CertificateManager,
+    SNIManager,
+)
 from system_operations_manager.services.kong.config_manager import ConfigManager
 from system_operations_manager.services.kong.consumer_manager import ConsumerManager
 from system_operations_manager.services.kong.deployment_manager import (
@@ -13,6 +18,10 @@ from system_operations_manager.services.kong.deployment_manager import (
     DeploymentInfo,
     DeploymentStatus,
     KongDeploymentManager,
+)
+from system_operations_manager.services.kong.key_manager import (
+    KeyManager,
+    KeySetManager,
 )
 from system_operations_manager.services.kong.observability_manager import ObservabilityManager
 from system_operations_manager.services.kong.openapi_sync_manager import OpenAPISyncManager
@@ -27,11 +36,15 @@ from system_operations_manager.services.kong.workspace_manager import WorkspaceM
 
 __all__ = [
     "BaseEntityManager",
+    "CACertificateManager",
+    "CertificateManager",
     "ConfigManager",
     "ConsumerManager",
     "DeploymentError",
     "DeploymentInfo",
     "DeploymentStatus",
+    "KeyManager",
+    "KeySetManager",
     "KongDeploymentManager",
     "KongPluginManager",
     "ObservabilityManager",
@@ -39,6 +52,7 @@ __all__ = [
     "PortalManager",
     "RBACManager",
     "RouteManager",
+    "SNIManager",
     "ServiceManager",
     "UpstreamManager",
     "VaultManager",

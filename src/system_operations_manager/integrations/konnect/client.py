@@ -29,7 +29,14 @@ from system_operations_manager.integrations.konnect.models import (
 if TYPE_CHECKING:
     from system_operations_manager.integrations.konnect.config import KonnectConfig
 
+from system_operations_manager.integrations.kong.models.certificate import (
+    SNI,
+    CACertificate,
+    Certificate,
+)
 from system_operations_manager.integrations.kong.models.consumer import Consumer
+from system_operations_manager.integrations.kong.models.enterprise import Vault
+from system_operations_manager.integrations.kong.models.key import Key, KeySet
 from system_operations_manager.integrations.kong.models.plugin import KongPluginEntity
 from system_operations_manager.integrations.kong.models.route import Route
 from system_operations_manager.integrations.kong.models.service import Service
@@ -1285,3 +1292,923 @@ class KonnectClient:
             f"/v2/control-planes/{control_plane_id}/core-entities/upstreams/{upstream_id_or_name}/targets/{target_id_or_target}",
         )
         logger.info("Deleted Konnect target", target=target_id_or_target)
+
+    # =========================================================================
+    # Certificate Management (Control Plane Admin API)
+    # =========================================================================
+
+    def list_certificates(
+        self,
+        control_plane_id: str,
+        *,
+        tags: list[str] | None = None,
+        limit: int | None = None,
+        offset: str | None = None,
+    ) -> tuple[list[Certificate], str | None]:
+        """List all certificates in a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            tags: Filter by tags.
+            limit: Maximum number of certificates to return.
+            offset: Pagination offset token.
+
+        Returns:
+            Tuple of (list of certificates, next offset for pagination).
+        """
+        params: dict[str, Any] = {}
+        if tags:
+            params["tags"] = ",".join(tags)
+        if limit:
+            params["size"] = limit
+        if offset:
+            params["offset"] = offset
+
+        logger.debug("Listing Konnect certificates", control_plane_id=control_plane_id)
+        data = self._request(
+            "GET",
+            f"/v2/control-planes/{control_plane_id}/core-entities/certificates",
+            params=params,
+        )
+        certificates = [Certificate.model_validate(item) for item in data.get("data", [])]
+        next_offset = data.get("offset")
+        logger.info("Listed Konnect certificates", count=len(certificates))
+        return certificates, next_offset
+
+    def get_certificate(
+        self,
+        control_plane_id: str,
+        certificate_id: str,
+    ) -> Certificate:
+        """Get a certificate from a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            certificate_id: Certificate ID.
+
+        Returns:
+            Certificate details.
+
+        Raises:
+            KonnectNotFoundError: If certificate not found.
+        """
+        logger.debug(
+            "Getting Konnect certificate",
+            control_plane_id=control_plane_id,
+            certificate=certificate_id,
+        )
+        data = self._request(
+            "GET",
+            f"/v2/control-planes/{control_plane_id}/core-entities/certificates/{certificate_id}",
+        )
+        return Certificate.model_validate(data)
+
+    def create_certificate(
+        self,
+        control_plane_id: str,
+        certificate: Certificate,
+    ) -> Certificate:
+        """Create a certificate in a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            certificate: Certificate to create.
+
+        Returns:
+            Created certificate with ID and timestamps.
+        """
+        payload = certificate.to_create_payload()
+        logger.debug(
+            "Creating Konnect certificate",
+            control_plane_id=control_plane_id,
+        )
+        data = self._request(
+            "POST",
+            f"/v2/control-planes/{control_plane_id}/core-entities/certificates",
+            json=payload,
+        )
+        created = Certificate.model_validate(data)
+        logger.info("Created Konnect certificate", id=created.id)
+        return created
+
+    def update_certificate(
+        self,
+        control_plane_id: str,
+        certificate_id: str,
+        certificate: Certificate,
+    ) -> Certificate:
+        """Update a certificate in a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            certificate_id: Certificate ID to update.
+            certificate: Updated certificate data.
+
+        Returns:
+            Updated certificate.
+        """
+        payload = certificate.to_create_payload()
+        logger.debug(
+            "Updating Konnect certificate",
+            control_plane_id=control_plane_id,
+            certificate=certificate_id,
+        )
+        data = self._request(
+            "PATCH",
+            f"/v2/control-planes/{control_plane_id}/core-entities/certificates/{certificate_id}",
+            json=payload,
+        )
+        updated = Certificate.model_validate(data)
+        logger.info("Updated Konnect certificate", id=updated.id)
+        return updated
+
+    def delete_certificate(
+        self,
+        control_plane_id: str,
+        certificate_id: str,
+    ) -> None:
+        """Delete a certificate from a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            certificate_id: Certificate ID to delete.
+        """
+        logger.debug(
+            "Deleting Konnect certificate",
+            control_plane_id=control_plane_id,
+            certificate=certificate_id,
+        )
+        self._request(
+            "DELETE",
+            f"/v2/control-planes/{control_plane_id}/core-entities/certificates/{certificate_id}",
+        )
+        logger.info("Deleted Konnect certificate", certificate=certificate_id)
+
+    # =========================================================================
+    # SNI Management (Control Plane Admin API)
+    # =========================================================================
+
+    def list_snis(
+        self,
+        control_plane_id: str,
+        *,
+        tags: list[str] | None = None,
+        limit: int | None = None,
+        offset: str | None = None,
+    ) -> tuple[list[SNI], str | None]:
+        """List all SNIs in a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            tags: Filter by tags.
+            limit: Maximum number of SNIs to return.
+            offset: Pagination offset token.
+
+        Returns:
+            Tuple of (list of SNIs, next offset for pagination).
+        """
+        params: dict[str, Any] = {}
+        if tags:
+            params["tags"] = ",".join(tags)
+        if limit:
+            params["size"] = limit
+        if offset:
+            params["offset"] = offset
+
+        logger.debug("Listing Konnect SNIs", control_plane_id=control_plane_id)
+        data = self._request(
+            "GET",
+            f"/v2/control-planes/{control_plane_id}/core-entities/snis",
+            params=params,
+        )
+        snis = [SNI.model_validate(item) for item in data.get("data", [])]
+        next_offset = data.get("offset")
+        logger.info("Listed Konnect SNIs", count=len(snis))
+        return snis, next_offset
+
+    def get_sni(
+        self,
+        control_plane_id: str,
+        sni_id_or_name: str,
+    ) -> SNI:
+        """Get an SNI from a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            sni_id_or_name: SNI ID or name.
+
+        Returns:
+            SNI details.
+
+        Raises:
+            KonnectNotFoundError: If SNI not found.
+        """
+        logger.debug(
+            "Getting Konnect SNI",
+            control_plane_id=control_plane_id,
+            sni=sni_id_or_name,
+        )
+        data = self._request(
+            "GET",
+            f"/v2/control-planes/{control_plane_id}/core-entities/snis/{sni_id_or_name}",
+        )
+        return SNI.model_validate(data)
+
+    def create_sni(
+        self,
+        control_plane_id: str,
+        sni: SNI,
+    ) -> SNI:
+        """Create an SNI in a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            sni: SNI to create.
+
+        Returns:
+            Created SNI with ID and timestamps.
+        """
+        payload = sni.to_create_payload()
+        logger.debug(
+            "Creating Konnect SNI",
+            control_plane_id=control_plane_id,
+            name=sni.name,
+        )
+        data = self._request(
+            "POST",
+            f"/v2/control-planes/{control_plane_id}/core-entities/snis",
+            json=payload,
+        )
+        created = SNI.model_validate(data)
+        logger.info("Created Konnect SNI", name=created.name, id=created.id)
+        return created
+
+    def update_sni(
+        self,
+        control_plane_id: str,
+        sni_id_or_name: str,
+        sni: SNI,
+    ) -> SNI:
+        """Update an SNI in a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            sni_id_or_name: SNI ID or name to update.
+            sni: Updated SNI data.
+
+        Returns:
+            Updated SNI.
+        """
+        payload = sni.to_create_payload()
+        logger.debug(
+            "Updating Konnect SNI",
+            control_plane_id=control_plane_id,
+            sni=sni_id_or_name,
+        )
+        data = self._request(
+            "PATCH",
+            f"/v2/control-planes/{control_plane_id}/core-entities/snis/{sni_id_or_name}",
+            json=payload,
+        )
+        updated = SNI.model_validate(data)
+        logger.info("Updated Konnect SNI", name=updated.name, id=updated.id)
+        return updated
+
+    def delete_sni(
+        self,
+        control_plane_id: str,
+        sni_id_or_name: str,
+    ) -> None:
+        """Delete an SNI from a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            sni_id_or_name: SNI ID or name to delete.
+        """
+        logger.debug(
+            "Deleting Konnect SNI",
+            control_plane_id=control_plane_id,
+            sni=sni_id_or_name,
+        )
+        self._request(
+            "DELETE",
+            f"/v2/control-planes/{control_plane_id}/core-entities/snis/{sni_id_or_name}",
+        )
+        logger.info("Deleted Konnect SNI", sni=sni_id_or_name)
+
+    # =========================================================================
+    # CA Certificate Management (Control Plane Admin API)
+    # =========================================================================
+
+    def list_ca_certificates(
+        self,
+        control_plane_id: str,
+        *,
+        tags: list[str] | None = None,
+        limit: int | None = None,
+        offset: str | None = None,
+    ) -> tuple[list[CACertificate], str | None]:
+        """List all CA certificates in a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            tags: Filter by tags.
+            limit: Maximum number of CA certificates to return.
+            offset: Pagination offset token.
+
+        Returns:
+            Tuple of (list of CA certificates, next offset for pagination).
+        """
+        params: dict[str, Any] = {}
+        if tags:
+            params["tags"] = ",".join(tags)
+        if limit:
+            params["size"] = limit
+        if offset:
+            params["offset"] = offset
+
+        logger.debug("Listing Konnect CA certificates", control_plane_id=control_plane_id)
+        data = self._request(
+            "GET",
+            f"/v2/control-planes/{control_plane_id}/core-entities/ca_certificates",
+            params=params,
+        )
+        ca_certs = [CACertificate.model_validate(item) for item in data.get("data", [])]
+        next_offset = data.get("offset")
+        logger.info("Listed Konnect CA certificates", count=len(ca_certs))
+        return ca_certs, next_offset
+
+    def get_ca_certificate(
+        self,
+        control_plane_id: str,
+        ca_certificate_id: str,
+    ) -> CACertificate:
+        """Get a CA certificate from a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            ca_certificate_id: CA certificate ID.
+
+        Returns:
+            CA certificate details.
+
+        Raises:
+            KonnectNotFoundError: If CA certificate not found.
+        """
+        logger.debug(
+            "Getting Konnect CA certificate",
+            control_plane_id=control_plane_id,
+            ca_certificate=ca_certificate_id,
+        )
+        data = self._request(
+            "GET",
+            f"/v2/control-planes/{control_plane_id}/core-entities/ca_certificates/{ca_certificate_id}",
+        )
+        return CACertificate.model_validate(data)
+
+    def create_ca_certificate(
+        self,
+        control_plane_id: str,
+        ca_certificate: CACertificate,
+    ) -> CACertificate:
+        """Create a CA certificate in a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            ca_certificate: CA certificate to create.
+
+        Returns:
+            Created CA certificate with ID and timestamps.
+        """
+        payload = ca_certificate.to_create_payload()
+        logger.debug(
+            "Creating Konnect CA certificate",
+            control_plane_id=control_plane_id,
+        )
+        data = self._request(
+            "POST",
+            f"/v2/control-planes/{control_plane_id}/core-entities/ca_certificates",
+            json=payload,
+        )
+        created = CACertificate.model_validate(data)
+        logger.info("Created Konnect CA certificate", id=created.id)
+        return created
+
+    def update_ca_certificate(
+        self,
+        control_plane_id: str,
+        ca_certificate_id: str,
+        ca_certificate: CACertificate,
+    ) -> CACertificate:
+        """Update a CA certificate in a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            ca_certificate_id: CA certificate ID to update.
+            ca_certificate: Updated CA certificate data.
+
+        Returns:
+            Updated CA certificate.
+        """
+        payload = ca_certificate.to_create_payload()
+        logger.debug(
+            "Updating Konnect CA certificate",
+            control_plane_id=control_plane_id,
+            ca_certificate=ca_certificate_id,
+        )
+        data = self._request(
+            "PATCH",
+            f"/v2/control-planes/{control_plane_id}/core-entities/ca_certificates/{ca_certificate_id}",
+            json=payload,
+        )
+        updated = CACertificate.model_validate(data)
+        logger.info("Updated Konnect CA certificate", id=updated.id)
+        return updated
+
+    def delete_ca_certificate(
+        self,
+        control_plane_id: str,
+        ca_certificate_id: str,
+    ) -> None:
+        """Delete a CA certificate from a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            ca_certificate_id: CA certificate ID to delete.
+        """
+        logger.debug(
+            "Deleting Konnect CA certificate",
+            control_plane_id=control_plane_id,
+            ca_certificate=ca_certificate_id,
+        )
+        self._request(
+            "DELETE",
+            f"/v2/control-planes/{control_plane_id}/core-entities/ca_certificates/{ca_certificate_id}",
+        )
+        logger.info("Deleted Konnect CA certificate", ca_certificate=ca_certificate_id)
+
+    # =========================================================================
+    # Key Set Management (Control Plane Admin API)
+    # =========================================================================
+
+    def list_key_sets(
+        self,
+        control_plane_id: str,
+        *,
+        tags: list[str] | None = None,
+        limit: int | None = None,
+        offset: str | None = None,
+    ) -> tuple[list[KeySet], str | None]:
+        """List all key sets in a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            tags: Filter by tags.
+            limit: Maximum number of key sets to return.
+            offset: Pagination offset token.
+
+        Returns:
+            Tuple of (list of key sets, next offset for pagination).
+        """
+        params: dict[str, Any] = {}
+        if tags:
+            params["tags"] = ",".join(tags)
+        if limit:
+            params["size"] = limit
+        if offset:
+            params["offset"] = offset
+
+        logger.debug("Listing Konnect key sets", control_plane_id=control_plane_id)
+        data = self._request(
+            "GET",
+            f"/v2/control-planes/{control_plane_id}/core-entities/key-sets",
+            params=params,
+        )
+        key_sets = [KeySet.model_validate(item) for item in data.get("data", [])]
+        next_offset = data.get("offset")
+        logger.info("Listed Konnect key sets", count=len(key_sets))
+        return key_sets, next_offset
+
+    def get_key_set(
+        self,
+        control_plane_id: str,
+        key_set_id_or_name: str,
+    ) -> KeySet:
+        """Get a key set from a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            key_set_id_or_name: Key set ID or name.
+
+        Returns:
+            Key set details.
+
+        Raises:
+            KonnectNotFoundError: If key set not found.
+        """
+        logger.debug(
+            "Getting Konnect key set",
+            control_plane_id=control_plane_id,
+            key_set=key_set_id_or_name,
+        )
+        data = self._request(
+            "GET",
+            f"/v2/control-planes/{control_plane_id}/core-entities/key-sets/{key_set_id_or_name}",
+        )
+        return KeySet.model_validate(data)
+
+    def create_key_set(
+        self,
+        control_plane_id: str,
+        key_set: KeySet,
+    ) -> KeySet:
+        """Create a key set in a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            key_set: Key set to create.
+
+        Returns:
+            Created key set with ID and timestamps.
+        """
+        payload = key_set.to_create_payload()
+        logger.debug(
+            "Creating Konnect key set",
+            control_plane_id=control_plane_id,
+            name=key_set.name,
+        )
+        data = self._request(
+            "POST",
+            f"/v2/control-planes/{control_plane_id}/core-entities/key-sets",
+            json=payload,
+        )
+        created = KeySet.model_validate(data)
+        logger.info("Created Konnect key set", name=created.name, id=created.id)
+        return created
+
+    def update_key_set(
+        self,
+        control_plane_id: str,
+        key_set_id_or_name: str,
+        key_set: KeySet,
+    ) -> KeySet:
+        """Update a key set in a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            key_set_id_or_name: Key set ID or name to update.
+            key_set: Updated key set data.
+
+        Returns:
+            Updated key set.
+        """
+        payload = key_set.to_create_payload()
+        logger.debug(
+            "Updating Konnect key set",
+            control_plane_id=control_plane_id,
+            key_set=key_set_id_or_name,
+        )
+        data = self._request(
+            "PATCH",
+            f"/v2/control-planes/{control_plane_id}/core-entities/key-sets/{key_set_id_or_name}",
+            json=payload,
+        )
+        updated = KeySet.model_validate(data)
+        logger.info("Updated Konnect key set", name=updated.name, id=updated.id)
+        return updated
+
+    def delete_key_set(
+        self,
+        control_plane_id: str,
+        key_set_id_or_name: str,
+    ) -> None:
+        """Delete a key set from a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            key_set_id_or_name: Key set ID or name to delete.
+        """
+        logger.debug(
+            "Deleting Konnect key set",
+            control_plane_id=control_plane_id,
+            key_set=key_set_id_or_name,
+        )
+        self._request(
+            "DELETE",
+            f"/v2/control-planes/{control_plane_id}/core-entities/key-sets/{key_set_id_or_name}",
+        )
+        logger.info("Deleted Konnect key set", key_set=key_set_id_or_name)
+
+    # =========================================================================
+    # Key Management (Control Plane Admin API)
+    # =========================================================================
+
+    def list_keys(
+        self,
+        control_plane_id: str,
+        *,
+        tags: list[str] | None = None,
+        limit: int | None = None,
+        offset: str | None = None,
+    ) -> tuple[list[Key], str | None]:
+        """List all keys in a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            tags: Filter by tags.
+            limit: Maximum number of keys to return.
+            offset: Pagination offset token.
+
+        Returns:
+            Tuple of (list of keys, next offset for pagination).
+        """
+        params: dict[str, Any] = {}
+        if tags:
+            params["tags"] = ",".join(tags)
+        if limit:
+            params["size"] = limit
+        if offset:
+            params["offset"] = offset
+
+        logger.debug("Listing Konnect keys", control_plane_id=control_plane_id)
+        data = self._request(
+            "GET",
+            f"/v2/control-planes/{control_plane_id}/core-entities/keys",
+            params=params,
+        )
+        keys = [Key.model_validate(item) for item in data.get("data", [])]
+        next_offset = data.get("offset")
+        logger.info("Listed Konnect keys", count=len(keys))
+        return keys, next_offset
+
+    def get_key(
+        self,
+        control_plane_id: str,
+        key_id_or_name: str,
+    ) -> Key:
+        """Get a key from a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            key_id_or_name: Key ID or name.
+
+        Returns:
+            Key details.
+
+        Raises:
+            KonnectNotFoundError: If key not found.
+        """
+        logger.debug(
+            "Getting Konnect key",
+            control_plane_id=control_plane_id,
+            key=key_id_or_name,
+        )
+        data = self._request(
+            "GET",
+            f"/v2/control-planes/{control_plane_id}/core-entities/keys/{key_id_or_name}",
+        )
+        return Key.model_validate(data)
+
+    def create_key(
+        self,
+        control_plane_id: str,
+        key: Key,
+    ) -> Key:
+        """Create a key in a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            key: Key to create.
+
+        Returns:
+            Created key with ID and timestamps.
+        """
+        payload = key.to_create_payload()
+        logger.debug(
+            "Creating Konnect key",
+            control_plane_id=control_plane_id,
+            kid=key.kid,
+        )
+        data = self._request(
+            "POST",
+            f"/v2/control-planes/{control_plane_id}/core-entities/keys",
+            json=payload,
+        )
+        created = Key.model_validate(data)
+        logger.info("Created Konnect key", kid=created.kid, id=created.id)
+        return created
+
+    def update_key(
+        self,
+        control_plane_id: str,
+        key_id_or_name: str,
+        key: Key,
+    ) -> Key:
+        """Update a key in a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            key_id_or_name: Key ID or name to update.
+            key: Updated key data.
+
+        Returns:
+            Updated key.
+        """
+        payload = key.to_create_payload()
+        logger.debug(
+            "Updating Konnect key",
+            control_plane_id=control_plane_id,
+            key=key_id_or_name,
+        )
+        data = self._request(
+            "PATCH",
+            f"/v2/control-planes/{control_plane_id}/core-entities/keys/{key_id_or_name}",
+            json=payload,
+        )
+        updated = Key.model_validate(data)
+        logger.info("Updated Konnect key", kid=updated.kid, id=updated.id)
+        return updated
+
+    def delete_key(
+        self,
+        control_plane_id: str,
+        key_id_or_name: str,
+    ) -> None:
+        """Delete a key from a control plane.
+
+        Args:
+            control_plane_id: Control plane ID.
+            key_id_or_name: Key ID or name to delete.
+        """
+        logger.debug(
+            "Deleting Konnect key",
+            control_plane_id=control_plane_id,
+            key=key_id_or_name,
+        )
+        self._request(
+            "DELETE",
+            f"/v2/control-planes/{control_plane_id}/core-entities/keys/{key_id_or_name}",
+        )
+        logger.info("Deleted Konnect key", key=key_id_or_name)
+
+    # =========================================================================
+    # Vault Management (Control Plane Admin API - Enterprise)
+    # =========================================================================
+
+    def list_vaults(
+        self,
+        control_plane_id: str,
+        *,
+        tags: list[str] | None = None,
+        limit: int | None = None,
+        offset: str | None = None,
+    ) -> tuple[list[Vault], str | None]:
+        """List all vaults in a control plane.
+
+        Note: Vaults are an Enterprise feature.
+
+        Args:
+            control_plane_id: Control plane ID.
+            tags: Filter by tags.
+            limit: Maximum number of vaults to return.
+            offset: Pagination offset token.
+
+        Returns:
+            Tuple of (list of vaults, next offset for pagination).
+        """
+        params: dict[str, Any] = {}
+        if tags:
+            params["tags"] = ",".join(tags)
+        if limit:
+            params["size"] = limit
+        if offset:
+            params["offset"] = offset
+
+        logger.debug("Listing Konnect vaults", control_plane_id=control_plane_id)
+        data = self._request(
+            "GET",
+            f"/v2/control-planes/{control_plane_id}/core-entities/vaults",
+            params=params,
+        )
+        vaults = [Vault.model_validate(item) for item in data.get("data", [])]
+        next_offset = data.get("offset")
+        logger.info("Listed Konnect vaults", count=len(vaults))
+        return vaults, next_offset
+
+    def get_vault(
+        self,
+        control_plane_id: str,
+        vault_id_or_prefix: str,
+    ) -> Vault:
+        """Get a vault from a control plane.
+
+        Note: Vaults are an Enterprise feature.
+
+        Args:
+            control_plane_id: Control plane ID.
+            vault_id_or_prefix: Vault ID or prefix.
+
+        Returns:
+            Vault details.
+
+        Raises:
+            KonnectNotFoundError: If vault not found.
+        """
+        logger.debug(
+            "Getting Konnect vault",
+            control_plane_id=control_plane_id,
+            vault=vault_id_or_prefix,
+        )
+        data = self._request(
+            "GET",
+            f"/v2/control-planes/{control_plane_id}/core-entities/vaults/{vault_id_or_prefix}",
+        )
+        return Vault.model_validate(data)
+
+    def create_vault(
+        self,
+        control_plane_id: str,
+        vault: Vault,
+    ) -> Vault:
+        """Create a vault in a control plane.
+
+        Note: Vaults are an Enterprise feature.
+
+        Args:
+            control_plane_id: Control plane ID.
+            vault: Vault to create.
+
+        Returns:
+            Created vault with ID and timestamps.
+        """
+        payload = vault.to_create_payload()
+        logger.debug(
+            "Creating Konnect vault",
+            control_plane_id=control_plane_id,
+            name=vault.name,
+        )
+        data = self._request(
+            "POST",
+            f"/v2/control-planes/{control_plane_id}/core-entities/vaults",
+            json=payload,
+        )
+        created = Vault.model_validate(data)
+        logger.info("Created Konnect vault", name=created.name, id=created.id)
+        return created
+
+    def update_vault(
+        self,
+        control_plane_id: str,
+        vault_id_or_prefix: str,
+        vault: Vault,
+    ) -> Vault:
+        """Update a vault in a control plane.
+
+        Note: Vaults are an Enterprise feature.
+
+        Args:
+            control_plane_id: Control plane ID.
+            vault_id_or_prefix: Vault ID or prefix to update.
+            vault: Updated vault data.
+
+        Returns:
+            Updated vault.
+        """
+        payload = vault.to_create_payload()
+        logger.debug(
+            "Updating Konnect vault",
+            control_plane_id=control_plane_id,
+            vault=vault_id_or_prefix,
+        )
+        data = self._request(
+            "PATCH",
+            f"/v2/control-planes/{control_plane_id}/core-entities/vaults/{vault_id_or_prefix}",
+            json=payload,
+        )
+        updated = Vault.model_validate(data)
+        logger.info("Updated Konnect vault", name=updated.name, id=updated.id)
+        return updated
+
+    def delete_vault(
+        self,
+        control_plane_id: str,
+        vault_id_or_prefix: str,
+    ) -> None:
+        """Delete a vault from a control plane.
+
+        Note: Vaults are an Enterprise feature.
+
+        Args:
+            control_plane_id: Control plane ID.
+            vault_id_or_prefix: Vault ID or prefix to delete.
+        """
+        logger.debug(
+            "Deleting Konnect vault",
+            control_plane_id=control_plane_id,
+            vault=vault_id_or_prefix,
+        )
+        self._request(
+            "DELETE",
+            f"/v2/control-planes/{control_plane_id}/core-entities/vaults/{vault_id_or_prefix}",
+        )
+        logger.info("Deleted Konnect vault", vault=vault_id_or_prefix)

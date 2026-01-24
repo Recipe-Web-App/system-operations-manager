@@ -10,7 +10,14 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 
+from system_operations_manager.integrations.kong.models.certificate import (
+    SNI,
+    CACertificate,
+    Certificate,
+)
 from system_operations_manager.integrations.kong.models.consumer import Consumer
+from system_operations_manager.integrations.kong.models.enterprise import Vault
+from system_operations_manager.integrations.kong.models.key import Key, KeySet
 from system_operations_manager.integrations.kong.models.plugin import KongPluginEntity
 from system_operations_manager.integrations.kong.models.route import Route
 from system_operations_manager.integrations.kong.models.service import Service
@@ -21,13 +28,29 @@ from system_operations_manager.integrations.kong.models.unified import (
 from system_operations_manager.integrations.kong.models.upstream import Target, Upstream
 
 if TYPE_CHECKING:
+    from system_operations_manager.services.kong.certificate_manager import (
+        CACertificateManager,
+        CertificateManager,
+        SNIManager,
+    )
     from system_operations_manager.services.kong.consumer_manager import ConsumerManager
+    from system_operations_manager.services.kong.key_manager import KeyManager, KeySetManager
     from system_operations_manager.services.kong.plugin_manager import KongPluginManager
     from system_operations_manager.services.kong.route_manager import RouteManager
     from system_operations_manager.services.kong.service_manager import ServiceManager
     from system_operations_manager.services.kong.upstream_manager import UpstreamManager
+    from system_operations_manager.services.kong.vault_manager import VaultManager
+    from system_operations_manager.services.konnect.certificate_manager import (
+        KonnectCACertificateManager,
+        KonnectCertificateManager,
+        KonnectSNIManager,
+    )
     from system_operations_manager.services.konnect.consumer_manager import (
         KonnectConsumerManager,
+    )
+    from system_operations_manager.services.konnect.key_manager import (
+        KonnectKeyManager,
+        KonnectKeySetManager,
     )
     from system_operations_manager.services.konnect.plugin_manager import (
         KonnectPluginManager,
@@ -40,6 +63,9 @@ if TYPE_CHECKING:
     )
     from system_operations_manager.services.konnect.upstream_manager import (
         KonnectUpstreamManager,
+    )
+    from system_operations_manager.services.konnect.vault_manager import (
+        KonnectVaultManager,
     )
 
 logger = structlog.get_logger()
@@ -58,11 +84,23 @@ class UnifiedQueryService:
         gateway_consumer_manager: Gateway ConsumerManager instance.
         gateway_plugin_manager: Gateway PluginManager instance.
         gateway_upstream_manager: Gateway UpstreamManager instance.
+        gateway_certificate_manager: Gateway CertificateManager instance (optional).
+        gateway_sni_manager: Gateway SNIManager instance (optional).
+        gateway_ca_certificate_manager: Gateway CACertificateManager instance (optional).
+        gateway_key_set_manager: Gateway KeySetManager instance (optional).
+        gateway_key_manager: Gateway KeyManager instance (optional).
+        gateway_vault_manager: Gateway VaultManager instance (optional).
         konnect_service_manager: Konnect ServiceManager (None if not configured).
         konnect_route_manager: Konnect RouteManager (None if not configured).
         konnect_consumer_manager: Konnect ConsumerManager (None if not configured).
         konnect_plugin_manager: Konnect PluginManager (None if not configured).
         konnect_upstream_manager: Konnect UpstreamManager (None if not configured).
+        konnect_certificate_manager: Konnect CertificateManager (None if not configured).
+        konnect_sni_manager: Konnect SNIManager (None if not configured).
+        konnect_ca_certificate_manager: Konnect CACertificateManager (None if not configured).
+        konnect_key_set_manager: Konnect KeySetManager (None if not configured).
+        konnect_key_manager: Konnect KeyManager (None if not configured).
+        konnect_vault_manager: Konnect VaultManager (None if not configured).
     """
 
     def __init__(
@@ -73,11 +111,23 @@ class UnifiedQueryService:
         gateway_consumer_manager: ConsumerManager,
         gateway_plugin_manager: KongPluginManager,
         gateway_upstream_manager: UpstreamManager,
+        gateway_certificate_manager: CertificateManager | None = None,
+        gateway_sni_manager: SNIManager | None = None,
+        gateway_ca_certificate_manager: CACertificateManager | None = None,
+        gateway_key_set_manager: KeySetManager | None = None,
+        gateway_key_manager: KeyManager | None = None,
+        gateway_vault_manager: VaultManager | None = None,
         konnect_service_manager: KonnectServiceManager | None = None,
         konnect_route_manager: KonnectRouteManager | None = None,
         konnect_consumer_manager: KonnectConsumerManager | None = None,
         konnect_plugin_manager: KonnectPluginManager | None = None,
         konnect_upstream_manager: KonnectUpstreamManager | None = None,
+        konnect_certificate_manager: KonnectCertificateManager | None = None,
+        konnect_sni_manager: KonnectSNIManager | None = None,
+        konnect_ca_certificate_manager: KonnectCACertificateManager | None = None,
+        konnect_key_set_manager: KonnectKeySetManager | None = None,
+        konnect_key_manager: KonnectKeyManager | None = None,
+        konnect_vault_manager: KonnectVaultManager | None = None,
     ) -> None:
         # Gateway managers
         self._gateway_services = gateway_service_manager
@@ -85,6 +135,12 @@ class UnifiedQueryService:
         self._gateway_consumers = gateway_consumer_manager
         self._gateway_plugins = gateway_plugin_manager
         self._gateway_upstreams = gateway_upstream_manager
+        self._gateway_certificates = gateway_certificate_manager
+        self._gateway_snis = gateway_sni_manager
+        self._gateway_ca_certificates = gateway_ca_certificate_manager
+        self._gateway_key_sets = gateway_key_set_manager
+        self._gateway_keys = gateway_key_manager
+        self._gateway_vaults = gateway_vault_manager
 
         # Konnect managers (optional)
         self._konnect_services = konnect_service_manager
@@ -92,6 +148,12 @@ class UnifiedQueryService:
         self._konnect_consumers = konnect_consumer_manager
         self._konnect_plugins = konnect_plugin_manager
         self._konnect_upstreams = konnect_upstream_manager
+        self._konnect_certificates = konnect_certificate_manager
+        self._konnect_snis = konnect_sni_manager
+        self._konnect_ca_certificates = konnect_ca_certificate_manager
+        self._konnect_key_sets = konnect_key_set_manager
+        self._konnect_keys = konnect_key_manager
+        self._konnect_vaults = konnect_vault_manager
 
     @property
     def konnect_configured(self) -> bool:
@@ -626,6 +688,394 @@ class UnifiedQueryService:
         return targets
 
     # -------------------------------------------------------------------------
+    # Certificate Queries
+    # -------------------------------------------------------------------------
+
+    def list_certificates(
+        self,
+        *,
+        tags: list[str] | None = None,
+    ) -> UnifiedEntityList[Certificate]:
+        """List certificates from both Gateway and Konnect.
+
+        Args:
+            tags: Filter by tags.
+
+        Returns:
+            Unified list of certificates with source information.
+        """
+        # Fetch from Gateway
+        gateway_certs: list[Certificate] = []
+        if self._gateway_certificates:
+            gateway_certs = self._fetch_all_gateway_certificates(tags=tags)
+
+        # Fetch from Konnect if configured
+        konnect_certs: list[Certificate] = []
+        if self._konnect_certificates:
+            konnect_certs = self._fetch_all_konnect_certificates(tags=tags)
+
+        return merge_entities(gateway_certs, konnect_certs, key_field="id")
+
+    def _fetch_all_gateway_certificates(
+        self, *, tags: list[str] | None = None
+    ) -> list[Certificate]:
+        """Fetch all certificates from Gateway with pagination."""
+        if not self._gateway_certificates:
+            return []
+
+        certificates: list[Certificate] = []
+        offset: str | None = None
+
+        while True:
+            batch, next_offset = self._gateway_certificates.list(tags=tags, offset=offset)
+            certificates.extend(batch)
+            if not next_offset:
+                break
+            offset = next_offset
+
+        return certificates
+
+    def _fetch_all_konnect_certificates(
+        self, *, tags: list[str] | None = None
+    ) -> list[Certificate]:
+        """Fetch all certificates from Konnect with pagination."""
+        if not self._konnect_certificates:
+            return []
+
+        certificates: list[Certificate] = []
+        offset: str | None = None
+
+        while True:
+            batch, next_offset = self._konnect_certificates.list(tags=tags, offset=offset)
+            certificates.extend(batch)
+            if not next_offset:
+                break
+            offset = next_offset
+
+        return certificates
+
+    # -------------------------------------------------------------------------
+    # SNI Queries
+    # -------------------------------------------------------------------------
+
+    def list_snis(
+        self,
+        *,
+        tags: list[str] | None = None,
+    ) -> UnifiedEntityList[SNI]:
+        """List SNIs from both Gateway and Konnect.
+
+        Args:
+            tags: Filter by tags.
+
+        Returns:
+            Unified list of SNIs with source information.
+        """
+        # Fetch from Gateway
+        gateway_snis: list[SNI] = []
+        if self._gateway_snis:
+            gateway_snis = self._fetch_all_gateway_snis(tags=tags)
+
+        # Fetch from Konnect if configured
+        konnect_snis: list[SNI] = []
+        if self._konnect_snis:
+            konnect_snis = self._fetch_all_konnect_snis(tags=tags)
+
+        return merge_entities(gateway_snis, konnect_snis, key_field="name")
+
+    def _fetch_all_gateway_snis(self, *, tags: list[str] | None = None) -> list[SNI]:
+        """Fetch all SNIs from Gateway with pagination."""
+        if not self._gateway_snis:
+            return []
+
+        snis: list[SNI] = []
+        offset: str | None = None
+
+        while True:
+            batch, next_offset = self._gateway_snis.list(tags=tags, offset=offset)
+            snis.extend(batch)
+            if not next_offset:
+                break
+            offset = next_offset
+
+        return snis
+
+    def _fetch_all_konnect_snis(self, *, tags: list[str] | None = None) -> list[SNI]:
+        """Fetch all SNIs from Konnect with pagination."""
+        if not self._konnect_snis:
+            return []
+
+        snis: list[SNI] = []
+        offset: str | None = None
+
+        while True:
+            batch, next_offset = self._konnect_snis.list(tags=tags, offset=offset)
+            snis.extend(batch)
+            if not next_offset:
+                break
+            offset = next_offset
+
+        return snis
+
+    # -------------------------------------------------------------------------
+    # CA Certificate Queries
+    # -------------------------------------------------------------------------
+
+    def list_ca_certificates(
+        self,
+        *,
+        tags: list[str] | None = None,
+    ) -> UnifiedEntityList[CACertificate]:
+        """List CA certificates from both Gateway and Konnect.
+
+        Args:
+            tags: Filter by tags.
+
+        Returns:
+            Unified list of CA certificates with source information.
+        """
+        # Fetch from Gateway
+        gateway_ca_certs: list[CACertificate] = []
+        if self._gateway_ca_certificates:
+            gateway_ca_certs = self._fetch_all_gateway_ca_certificates(tags=tags)
+
+        # Fetch from Konnect if configured
+        konnect_ca_certs: list[CACertificate] = []
+        if self._konnect_ca_certificates:
+            konnect_ca_certs = self._fetch_all_konnect_ca_certificates(tags=tags)
+
+        return merge_entities(gateway_ca_certs, konnect_ca_certs, key_field="id")
+
+    def _fetch_all_gateway_ca_certificates(
+        self, *, tags: list[str] | None = None
+    ) -> list[CACertificate]:
+        """Fetch all CA certificates from Gateway with pagination."""
+        if not self._gateway_ca_certificates:
+            return []
+
+        ca_certs: list[CACertificate] = []
+        offset: str | None = None
+
+        while True:
+            batch, next_offset = self._gateway_ca_certificates.list(tags=tags, offset=offset)
+            ca_certs.extend(batch)
+            if not next_offset:
+                break
+            offset = next_offset
+
+        return ca_certs
+
+    def _fetch_all_konnect_ca_certificates(
+        self, *, tags: list[str] | None = None
+    ) -> list[CACertificate]:
+        """Fetch all CA certificates from Konnect with pagination."""
+        if not self._konnect_ca_certificates:
+            return []
+
+        ca_certs: list[CACertificate] = []
+        offset: str | None = None
+
+        while True:
+            batch, next_offset = self._konnect_ca_certificates.list(tags=tags, offset=offset)
+            ca_certs.extend(batch)
+            if not next_offset:
+                break
+            offset = next_offset
+
+        return ca_certs
+
+    # -------------------------------------------------------------------------
+    # Key Set Queries
+    # -------------------------------------------------------------------------
+
+    def list_key_sets(
+        self,
+        *,
+        tags: list[str] | None = None,
+    ) -> UnifiedEntityList[KeySet]:
+        """List key sets from both Gateway and Konnect.
+
+        Args:
+            tags: Filter by tags.
+
+        Returns:
+            Unified list of key sets with source information.
+        """
+        # Fetch from Gateway
+        gateway_key_sets: list[KeySet] = []
+        if self._gateway_key_sets:
+            gateway_key_sets = self._fetch_all_gateway_key_sets(tags=tags)
+
+        # Fetch from Konnect if configured
+        konnect_key_sets: list[KeySet] = []
+        if self._konnect_key_sets:
+            konnect_key_sets = self._fetch_all_konnect_key_sets(tags=tags)
+
+        return merge_entities(gateway_key_sets, konnect_key_sets, key_field="name")
+
+    def _fetch_all_gateway_key_sets(self, *, tags: list[str] | None = None) -> list[KeySet]:
+        """Fetch all key sets from Gateway with pagination."""
+        if not self._gateway_key_sets:
+            return []
+
+        key_sets: list[KeySet] = []
+        offset: str | None = None
+
+        while True:
+            batch, next_offset = self._gateway_key_sets.list(tags=tags, offset=offset)
+            key_sets.extend(batch)
+            if not next_offset:
+                break
+            offset = next_offset
+
+        return key_sets
+
+    def _fetch_all_konnect_key_sets(self, *, tags: list[str] | None = None) -> list[KeySet]:
+        """Fetch all key sets from Konnect with pagination."""
+        if not self._konnect_key_sets:
+            return []
+
+        key_sets: list[KeySet] = []
+        offset: str | None = None
+
+        while True:
+            batch, next_offset = self._konnect_key_sets.list(tags=tags, offset=offset)
+            key_sets.extend(batch)
+            if not next_offset:
+                break
+            offset = next_offset
+
+        return key_sets
+
+    # -------------------------------------------------------------------------
+    # Key Queries
+    # -------------------------------------------------------------------------
+
+    def list_keys(
+        self,
+        *,
+        tags: list[str] | None = None,
+    ) -> UnifiedEntityList[Key]:
+        """List keys from both Gateway and Konnect.
+
+        Args:
+            tags: Filter by tags.
+
+        Returns:
+            Unified list of keys with source information.
+        """
+        # Fetch from Gateway
+        gateway_keys: list[Key] = []
+        if self._gateway_keys:
+            gateway_keys = self._fetch_all_gateway_keys(tags=tags)
+
+        # Fetch from Konnect if configured
+        konnect_keys: list[Key] = []
+        if self._konnect_keys:
+            konnect_keys = self._fetch_all_konnect_keys(tags=tags)
+
+        return merge_entities(gateway_keys, konnect_keys, key_field="kid")
+
+    def _fetch_all_gateway_keys(self, *, tags: list[str] | None = None) -> list[Key]:
+        """Fetch all keys from Gateway with pagination."""
+        if not self._gateway_keys:
+            return []
+
+        keys: list[Key] = []
+        offset: str | None = None
+
+        while True:
+            batch, next_offset = self._gateway_keys.list(tags=tags, offset=offset)
+            keys.extend(batch)
+            if not next_offset:
+                break
+            offset = next_offset
+
+        return keys
+
+    def _fetch_all_konnect_keys(self, *, tags: list[str] | None = None) -> list[Key]:
+        """Fetch all keys from Konnect with pagination."""
+        if not self._konnect_keys:
+            return []
+
+        keys: list[Key] = []
+        offset: str | None = None
+
+        while True:
+            batch, next_offset = self._konnect_keys.list(tags=tags, offset=offset)
+            keys.extend(batch)
+            if not next_offset:
+                break
+            offset = next_offset
+
+        return keys
+
+    # -------------------------------------------------------------------------
+    # Vault Queries
+    # -------------------------------------------------------------------------
+
+    def list_vaults(
+        self,
+        *,
+        tags: list[str] | None = None,
+    ) -> UnifiedEntityList[Vault]:
+        """List vaults from both Gateway and Konnect.
+
+        Note: Vaults are an Enterprise feature.
+
+        Args:
+            tags: Filter by tags.
+
+        Returns:
+            Unified list of vaults with source information.
+        """
+        # Fetch from Gateway
+        gateway_vaults: list[Vault] = []
+        if self._gateway_vaults:
+            gateway_vaults = self._fetch_all_gateway_vaults(tags=tags)
+
+        # Fetch from Konnect if configured
+        konnect_vaults: list[Vault] = []
+        if self._konnect_vaults:
+            konnect_vaults = self._fetch_all_konnect_vaults(tags=tags)
+
+        return merge_entities(gateway_vaults, konnect_vaults, key_field="name")
+
+    def _fetch_all_gateway_vaults(self, *, tags: list[str] | None = None) -> list[Vault]:
+        """Fetch all vaults from Gateway with pagination."""
+        if not self._gateway_vaults:
+            return []
+
+        vaults: list[Vault] = []
+        offset: str | None = None
+
+        while True:
+            batch, next_offset = self._gateway_vaults.list(tags=tags, offset=offset)
+            vaults.extend(batch)
+            if not next_offset:
+                break
+            offset = next_offset
+
+        return vaults
+
+    def _fetch_all_konnect_vaults(self, *, tags: list[str] | None = None) -> list[Vault]:
+        """Fetch all vaults from Konnect with pagination."""
+        if not self._konnect_vaults:
+            return []
+
+        vaults: list[Vault] = []
+        offset: str | None = None
+
+        while True:
+            batch, next_offset = self._konnect_vaults.list(tags=tags, offset=offset)
+            vaults.extend(batch)
+            if not next_offset:
+                break
+            offset = next_offset
+
+        return vaults
+
+    # -------------------------------------------------------------------------
     # Summary Methods
     # -------------------------------------------------------------------------
 
@@ -652,7 +1102,19 @@ class UnifiedQueryService:
             }
         """
         if entity_types is None:
-            entity_types = ["services", "routes", "consumers", "plugins", "upstreams"]
+            entity_types = [
+                "services",
+                "routes",
+                "consumers",
+                "plugins",
+                "upstreams",
+                "certificates",
+                "snis",
+                "ca_certificates",
+                "key_sets",
+                "keys",
+                "vaults",
+            ]
 
         summary: dict[str, dict[str, int]] = {}
 
@@ -676,5 +1138,17 @@ class UnifiedQueryService:
                 summary[entity_type] = extract_stats(self.list_plugins())
             elif entity_type == "upstreams":
                 summary[entity_type] = extract_stats(self.list_upstreams())
+            elif entity_type == "certificates":
+                summary[entity_type] = extract_stats(self.list_certificates())
+            elif entity_type == "snis":
+                summary[entity_type] = extract_stats(self.list_snis())
+            elif entity_type == "ca_certificates":
+                summary[entity_type] = extract_stats(self.list_ca_certificates())
+            elif entity_type == "key_sets":
+                summary[entity_type] = extract_stats(self.list_key_sets())
+            elif entity_type == "keys":
+                summary[entity_type] = extract_stats(self.list_keys())
+            elif entity_type == "vaults":
+                summary[entity_type] = extract_stats(self.list_vaults())
 
         return summary

@@ -63,3 +63,10 @@ repos:
       - id: check-added-large-files
       - id: check-merge-conflict
       - id: detect-private-key
+        exclude: |
+          (?x)^(
+            tests/unit/services/kong/test_key_manager\.py|
+            tests/unit/services/kong/test_certificate_manager\.py|
+            src/system_operations_manager/integrations/kong/models/certificate\.py|
+            src/system_operations_manager/services/kong/certificate_manager\.py
+          )$

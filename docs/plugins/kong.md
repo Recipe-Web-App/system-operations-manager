@@ -1758,6 +1758,24 @@ Config File: ~/.config/ops/konnect.yaml
 
 Monitor and synchronize state between Kong Gateway and Konnect control plane.
 
+#### Supported Entity Types
+
+The sync commands support the following Kong entity types:
+
+| Entity Type       | Description                     | Sync Support |
+| ----------------- | ------------------------------- | ------------ |
+| `services`        | Backend API/service definitions | Full         |
+| `routes`          | Request routing rules           | Full         |
+| `consumers`       | API consumers                   | Full         |
+| `plugins`         | Kong plugins                    | Full         |
+| `upstreams`       | Load balancer upstreams         | Full         |
+| `certificates`    | TLS certificates for SSL/mTLS   | Full         |
+| `snis`            | Server Name Indications         | Full         |
+| `ca_certificates` | CA certificates for mTLS        | Full         |
+| `key_sets`        | Cryptographic key collections   | Full         |
+| `keys`            | Cryptographic keys (JWT, etc.)  | Full         |
+| `vaults`          | Secret backends (Enterprise)    | Full         |
+
 #### `ops kong sync status`
 
 Show drift between Gateway and Konnect configurations.
@@ -1806,10 +1824,25 @@ Entities only in Gateway (not in Konnect):
 
 **Options:**
 
-| Option            | Description                                                            |
-| ----------------- | ---------------------------------------------------------------------- |
-| `--type`, `-t`    | Entity type to check (services, routes, consumers, plugins, upstreams) |
-| `--output FORMAT` | Output format (table, json, yaml)                                      |
+| Option            | Description                                             |
+| ----------------- | ------------------------------------------------------- |
+| `--type`, `-t`    | Entity type to check (see Supported Entity Types above) |
+| `--output FORMAT` | Output format (table, json, yaml)                       |
+
+**Examples:**
+
+```bash
+# Check sync status for certificates
+ops kong sync status --type certificates
+
+# Check sync status for key sets
+ops kong sync status --type key_sets
+
+# Check sync status for all TLS-related entities
+ops kong sync status --type certificates
+ops kong sync status --type snis
+ops kong sync status --type ca_certificates
+```
 
 #### `ops kong sync push`
 
@@ -1870,12 +1903,12 @@ Summary:
 
 **Options:**
 
-| Option              | Description                                                           |
-| ------------------- | --------------------------------------------------------------------- |
-| `--type`, `-t`      | Entity type to push (services, routes, consumers, plugins, upstreams) |
-| `--dry-run`, `-n`   | Show what would be pushed without making changes                      |
-| `--include-targets` | Also sync targets when syncing upstreams                              |
-| `--force`, `-f`     | Push without confirmation prompt                                      |
+| Option              | Description                                            |
+| ------------------- | ------------------------------------------------------ |
+| `--type`, `-t`      | Entity type to push (see Supported Entity Types above) |
+| `--dry-run`, `-n`   | Show what would be pushed without making changes       |
+| `--include-targets` | Also sync targets when syncing upstreams               |
+| `--force`, `-f`     | Push without confirmation prompt                       |
 
 **Examples:**
 
@@ -1891,6 +1924,23 @@ ops kong sync push --type routes --force
 
 # Push upstreams with their targets
 ops kong sync push --type upstreams --include-targets --force
+
+# Push TLS certificates to Konnect
+ops kong sync push --type certificates --dry-run
+ops kong sync push --type certificates --force
+
+# Push SNIs (Server Name Indications) to Konnect
+ops kong sync push --type snis --force
+
+# Push CA certificates for mTLS
+ops kong sync push --type ca_certificates --force
+
+# Push cryptographic keys and key sets
+ops kong sync push --type key_sets --force
+ops kong sync push --type keys --force
+
+# Push vault configurations (Enterprise)
+ops kong sync push --type vaults --force
 ```
 
 #### `ops kong sync pull`
@@ -1943,13 +1993,13 @@ Summary:
 
 **Options:**
 
-| Option              | Description                                                           |
-| ------------------- | --------------------------------------------------------------------- |
-| `--type`, `-t`      | Entity type to pull (services, routes, consumers, plugins, upstreams) |
-| `--dry-run`, `-n`   | Show what would be pulled without making changes                      |
-| `--with-drift`      | Also update entities with drift (Gateway to match Konnect)            |
-| `--include-targets` | Also sync targets when syncing upstreams                              |
-| `--force`, `-f`     | Pull without confirmation prompt                                      |
+| Option              | Description                                                |
+| ------------------- | ---------------------------------------------------------- |
+| `--type`, `-t`      | Entity type to pull (see Supported Entity Types above)     |
+| `--dry-run`, `-n`   | Show what would be pulled without making changes           |
+| `--with-drift`      | Also update entities with drift (Gateway to match Konnect) |
+| `--include-targets` | Also sync targets when syncing upstreams                   |
+| `--force`, `-f`     | Pull without confirmation prompt                           |
 
 **Examples:**
 
@@ -1965,6 +2015,23 @@ ops kong sync pull --with-drift --force
 
 # Pull upstreams with their targets
 ops kong sync pull --type upstreams --include-targets --force
+
+# Pull TLS certificates from Konnect
+ops kong sync pull --type certificates --dry-run
+ops kong sync pull --type certificates --force
+
+# Pull SNIs from Konnect
+ops kong sync pull --type snis --force
+
+# Pull CA certificates from Konnect
+ops kong sync pull --type ca_certificates --force
+
+# Pull cryptographic keys and key sets from Konnect
+ops kong sync pull --type key_sets --force
+ops kong sync pull --type keys --force
+
+# Pull vault configurations from Konnect (Enterprise)
+ops kong sync pull --type vaults --force
 ```
 
 ---
@@ -2266,6 +2333,58 @@ ops kong config diff production-config.yaml
 # Apply to Kong (DB-less mode)
 ops kong config apply production-config.yaml --confirm
 ```
+
+### Synchronizing TLS Certificates and Keys
+
+Complete workflow for syncing certificate-related entities between Gateway and Konnect:
+
+```bash
+# 1. Check current sync status for TLS entities
+ops kong sync status --type certificates
+ops kong sync status --type snis
+ops kong sync status --type ca_certificates
+
+# 2. Preview what would be pushed (dry run)
+ops kong sync push --type certificates --dry-run
+
+# 3. Push certificates from Gateway to Konnect
+ops kong sync push --type certificates --force
+
+# 4. Push SNIs (must be after certificates due to dependency)
+ops kong sync push --type snis --force
+
+# 5. Push CA certificates for mTLS
+ops kong sync push --type ca_certificates --force
+
+# 6. Push cryptographic key sets and keys
+ops kong sync push --type key_sets --force
+ops kong sync push --type keys --force
+
+# 7. Verify sync status
+ops kong sync status --type certificates
+ops kong sync status --type key_sets
+```
+
+**Pull certificates from Konnect to Gateway:**
+
+```bash
+# Preview what would be pulled
+ops kong sync pull --type certificates --dry-run
+
+# Pull all certificate types from Konnect
+ops kong sync pull --type certificates --force
+ops kong sync pull --type snis --force
+ops kong sync pull --type ca_certificates --force
+
+# Pull keys and key sets
+ops kong sync pull --type key_sets --force
+ops kong sync pull --type keys --force
+```
+
+**Note:** When syncing SNIs and Keys, ensure their parent entities (Certificates and
+Key Sets) are synced first due to reference dependencies.
+
+---
 
 ### Managing Consumer Credentials
 

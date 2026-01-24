@@ -31,14 +31,30 @@ from system_operations_manager.services.kong.sync_audit import (
 )
 
 if TYPE_CHECKING:
+    from system_operations_manager.services.kong.certificate_manager import (
+        CACertificateManager,
+        CertificateManager,
+        SNIManager,
+    )
     from system_operations_manager.services.kong.consumer_manager import ConsumerManager
+    from system_operations_manager.services.kong.key_manager import KeyManager, KeySetManager
     from system_operations_manager.services.kong.plugin_manager import KongPluginManager
     from system_operations_manager.services.kong.route_manager import RouteManager
     from system_operations_manager.services.kong.service_manager import ServiceManager
     from system_operations_manager.services.kong.unified_query import UnifiedQueryService
     from system_operations_manager.services.kong.upstream_manager import UpstreamManager
+    from system_operations_manager.services.kong.vault_manager import VaultManager
+    from system_operations_manager.services.konnect.certificate_manager import (
+        KonnectCACertificateManager,
+        KonnectCertificateManager,
+        KonnectSNIManager,
+    )
     from system_operations_manager.services.konnect.consumer_manager import (
         KonnectConsumerManager,
+    )
+    from system_operations_manager.services.konnect.key_manager import (
+        KonnectKeyManager,
+        KonnectKeySetManager,
     )
     from system_operations_manager.services.konnect.plugin_manager import (
         KonnectPluginManager,
@@ -51,6 +67,9 @@ if TYPE_CHECKING:
     )
     from system_operations_manager.services.konnect.upstream_manager import (
         KonnectUpstreamManager,
+    )
+    from system_operations_manager.services.konnect.vault_manager import (
+        KonnectVaultManager,
     )
 
 
@@ -127,6 +146,18 @@ def _display_sync_status_table(
             return unified_service.list_plugins()
         elif etype == "upstreams":
             return unified_service.list_upstreams()
+        elif etype == "certificates":
+            return unified_service.list_certificates()
+        elif etype == "snis":
+            return unified_service.list_snis()
+        elif etype == "ca_certificates":
+            return unified_service.list_ca_certificates()
+        elif etype == "key_sets":
+            return unified_service.list_key_sets()
+        elif etype == "keys":
+            return unified_service.list_keys()
+        elif etype == "vaults":
+            return unified_service.list_vaults()
         else:
             return UnifiedEntityList(entities=[])
 
@@ -218,6 +249,18 @@ def _push_entity_type(
         entities = unified_service.list_plugins()
     elif entity_type == "upstreams":
         entities = unified_service.list_upstreams()
+    elif entity_type == "certificates":
+        entities = unified_service.list_certificates()
+    elif entity_type == "snis":
+        entities = unified_service.list_snis()
+    elif entity_type == "ca_certificates":
+        entities = unified_service.list_ca_certificates()
+    elif entity_type == "key_sets":
+        entities = unified_service.list_key_sets()
+    elif entity_type == "keys":
+        entities = unified_service.list_keys()
+    elif entity_type == "vaults":
+        entities = unified_service.list_vaults()
     else:
         return 0, 0, 0
 
@@ -431,6 +474,18 @@ def _pull_entity_type(
         entities = unified_service.list_plugins()
     elif entity_type == "upstreams":
         entities = unified_service.list_upstreams()
+    elif entity_type == "certificates":
+        entities = unified_service.list_certificates()
+    elif entity_type == "snis":
+        entities = unified_service.list_snis()
+    elif entity_type == "ca_certificates":
+        entities = unified_service.list_ca_certificates()
+    elif entity_type == "key_sets":
+        entities = unified_service.list_key_sets()
+    elif entity_type == "keys":
+        entities = unified_service.list_keys()
+    elif entity_type == "vaults":
+        entities = unified_service.list_vaults()
     else:
         return 0, 0, 0
 
@@ -724,12 +779,25 @@ def register_sync_commands(
     get_konnect_consumer_manager: Callable[[], KonnectConsumerManager | None] | None = None,
     get_konnect_plugin_manager: Callable[[], KonnectPluginManager | None] | None = None,
     get_konnect_upstream_manager: Callable[[], KonnectUpstreamManager | None] | None = None,
+    get_konnect_certificate_manager: Callable[[], KonnectCertificateManager | None] | None = None,
+    get_konnect_sni_manager: Callable[[], KonnectSNIManager | None] | None = None,
+    get_konnect_ca_certificate_manager: Callable[[], KonnectCACertificateManager | None]
+    | None = None,
+    get_konnect_key_set_manager: Callable[[], KonnectKeySetManager | None] | None = None,
+    get_konnect_key_manager: Callable[[], KonnectKeyManager | None] | None = None,
+    get_konnect_vault_manager: Callable[[], KonnectVaultManager | None] | None = None,
     # Gateway manager factories (for sync pull)
     get_gateway_service_manager: Callable[[], ServiceManager] | None = None,
     get_gateway_route_manager: Callable[[], RouteManager] | None = None,
     get_gateway_consumer_manager: Callable[[], ConsumerManager] | None = None,
     get_gateway_plugin_manager: Callable[[], KongPluginManager] | None = None,
     get_gateway_upstream_manager: Callable[[], UpstreamManager] | None = None,
+    get_gateway_certificate_manager: Callable[[], CertificateManager] | None = None,
+    get_gateway_sni_manager: Callable[[], SNIManager] | None = None,
+    get_gateway_ca_certificate_manager: Callable[[], CACertificateManager] | None = None,
+    get_gateway_key_set_manager: Callable[[], KeySetManager] | None = None,
+    get_gateway_key_manager: Callable[[], KeyManager] | None = None,
+    get_gateway_vault_manager: Callable[[], VaultManager] | None = None,
 ) -> None:
     """Register sync commands with the Kong app.
 
@@ -741,11 +809,23 @@ def register_sync_commands(
         get_konnect_consumer_manager: Factory for Konnect consumer manager.
         get_konnect_plugin_manager: Factory for Konnect plugin manager.
         get_konnect_upstream_manager: Factory for Konnect upstream manager.
+        get_konnect_certificate_manager: Factory for Konnect certificate manager.
+        get_konnect_sni_manager: Factory for Konnect SNI manager.
+        get_konnect_ca_certificate_manager: Factory for Konnect CA certificate manager.
+        get_konnect_key_set_manager: Factory for Konnect key set manager.
+        get_konnect_key_manager: Factory for Konnect key manager.
+        get_konnect_vault_manager: Factory for Konnect vault manager.
         get_gateway_service_manager: Factory for Gateway service manager (for pull).
         get_gateway_route_manager: Factory for Gateway route manager (for pull).
         get_gateway_consumer_manager: Factory for Gateway consumer manager (for pull).
         get_gateway_plugin_manager: Factory for Gateway plugin manager (for pull).
         get_gateway_upstream_manager: Factory for Gateway upstream manager (for pull).
+        get_gateway_certificate_manager: Factory for Gateway certificate manager (for pull).
+        get_gateway_sni_manager: Factory for Gateway SNI manager (for pull).
+        get_gateway_ca_certificate_manager: Factory for Gateway CA certificate manager (for pull).
+        get_gateway_key_set_manager: Factory for Gateway key set manager (for pull).
+        get_gateway_key_manager: Factory for Gateway key manager (for pull).
+        get_gateway_vault_manager: Factory for Gateway vault manager (for pull).
     """
     sync_app = typer.Typer(
         name="sync",
@@ -795,7 +875,19 @@ def register_sync_commands(
 
         # Determine which entity types to check
         if entity_type:
-            valid_types = ["services", "routes", "consumers", "plugins", "upstreams"]
+            valid_types = [
+                "services",
+                "routes",
+                "consumers",
+                "plugins",
+                "upstreams",
+                "certificates",
+                "snis",
+                "ca_certificates",
+                "key_sets",
+                "keys",
+                "vaults",
+            ]
             if entity_type not in valid_types:
                 console.print(
                     f"[red]Invalid entity type:[/red] {entity_type}\n"
@@ -804,7 +896,19 @@ def register_sync_commands(
                 raise typer.Exit(1)
             entity_types = [entity_type]
         else:
-            entity_types = ["services", "routes", "consumers", "plugins", "upstreams"]
+            entity_types = [
+                "services",
+                "routes",
+                "consumers",
+                "plugins",
+                "upstreams",
+                "certificates",
+                "snis",
+                "ca_certificates",
+                "key_sets",
+                "keys",
+                "vaults",
+            ]
 
         # Get sync summary
         summary = unified_service.get_sync_summary(entity_types)
@@ -867,7 +971,19 @@ def register_sync_commands(
             raise typer.Exit(1)
 
         # Determine which entity types to push
-        valid_types = ["services", "routes", "consumers", "plugins", "upstreams"]
+        valid_types = [
+            "services",
+            "routes",
+            "consumers",
+            "plugins",
+            "upstreams",
+            "certificates",
+            "snis",
+            "ca_certificates",
+            "key_sets",
+            "keys",
+            "vaults",
+        ]
         if entity_type:
             if entity_type not in valid_types:
                 console.print(
@@ -891,6 +1007,18 @@ def register_sync_commands(
             konnect_managers["plugins"] = get_konnect_plugin_manager()
         if get_konnect_upstream_manager:
             konnect_managers["upstreams"] = get_konnect_upstream_manager()
+        if get_konnect_certificate_manager:
+            konnect_managers["certificates"] = get_konnect_certificate_manager()
+        if get_konnect_sni_manager:
+            konnect_managers["snis"] = get_konnect_sni_manager()
+        if get_konnect_ca_certificate_manager:
+            konnect_managers["ca_certificates"] = get_konnect_ca_certificate_manager()
+        if get_konnect_key_set_manager:
+            konnect_managers["key_sets"] = get_konnect_key_set_manager()
+        if get_konnect_key_manager:
+            konnect_managers["keys"] = get_konnect_key_manager()
+        if get_konnect_vault_manager:
+            konnect_managers["vaults"] = get_konnect_vault_manager()
 
         if not konnect_managers:
             console.print("[yellow]No Konnect managers available.[/yellow]")
@@ -1043,7 +1171,19 @@ def register_sync_commands(
             raise typer.Exit(1)
 
         # Determine which entity types to pull
-        valid_types = ["services", "routes", "consumers", "plugins", "upstreams"]
+        valid_types = [
+            "services",
+            "routes",
+            "consumers",
+            "plugins",
+            "upstreams",
+            "certificates",
+            "snis",
+            "ca_certificates",
+            "key_sets",
+            "keys",
+            "vaults",
+        ]
         if entity_type:
             if entity_type not in valid_types:
                 console.print(
@@ -1054,7 +1194,19 @@ def register_sync_commands(
             entity_types_to_pull = [entity_type]
         else:
             # Process in dependency order: services first, then routes, etc.
-            entity_types_to_pull = ["services", "upstreams", "consumers", "routes", "plugins"]
+            entity_types_to_pull = [
+                "services",
+                "upstreams",
+                "consumers",
+                "routes",
+                "plugins",
+                "ca_certificates",
+                "certificates",
+                "snis",
+                "key_sets",
+                "keys",
+                "vaults",
+            ]
 
         # Build Gateway managers dict
         gateway_managers: dict[str, Any] = {}
@@ -1068,6 +1220,18 @@ def register_sync_commands(
             gateway_managers["plugins"] = get_gateway_plugin_manager()
         if get_gateway_upstream_manager:
             gateway_managers["upstreams"] = get_gateway_upstream_manager()
+        if get_gateway_certificate_manager:
+            gateway_managers["certificates"] = get_gateway_certificate_manager()
+        if get_gateway_sni_manager:
+            gateway_managers["snis"] = get_gateway_sni_manager()
+        if get_gateway_ca_certificate_manager:
+            gateway_managers["ca_certificates"] = get_gateway_ca_certificate_manager()
+        if get_gateway_key_set_manager:
+            gateway_managers["key_sets"] = get_gateway_key_set_manager()
+        if get_gateway_key_manager:
+            gateway_managers["keys"] = get_gateway_key_manager()
+        if get_gateway_vault_manager:
+            gateway_managers["vaults"] = get_gateway_vault_manager()
 
         if not gateway_managers:
             console.print("[yellow]No Gateway managers available.[/yellow]")
