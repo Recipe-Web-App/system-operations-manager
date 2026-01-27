@@ -76,6 +76,15 @@ ForceOption = Annotated[
     ),
 ]
 
+InteractiveOption = Annotated[
+    bool,
+    typer.Option(
+        "--interactive",
+        "-i",
+        help="Launch interactive TUI for conflict resolution",
+    ),
+]
+
 ServiceFilterOption = Annotated[
     str | None,
     typer.Option(

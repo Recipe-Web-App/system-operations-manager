@@ -1758,6 +1758,11 @@ Config File: ~/.config/ops/konnect.yaml
 
 Monitor and synchronize state between Kong Gateway and Konnect control plane.
 
+> **Interactive Conflict Resolution**: When entities have configuration drift between
+> Gateway and Konnect, use `--interactive` to launch a TUI for resolving conflicts.
+> See [Interactive Conflict Resolution](../features/interactive-conflict-resolution.md)
+> for detailed documentation.
+
 #### Supported Entity Types
 
 The sync commands support the following Kong entity types:
@@ -1903,12 +1908,16 @@ Summary:
 
 **Options:**
 
-| Option              | Description                                            |
-| ------------------- | ------------------------------------------------------ |
-| `--type`, `-t`      | Entity type to push (see Supported Entity Types above) |
-| `--dry-run`, `-n`   | Show what would be pushed without making changes       |
-| `--include-targets` | Also sync targets when syncing upstreams               |
-| `--force`, `-f`     | Push without confirmation prompt                       |
+| Option                | Description                                                           |
+| --------------------- | --------------------------------------------------------------------- |
+| `--type`, `-t`        | Entity type to push (see Supported Entity Types above)                |
+| `--dry-run`, `-n`     | Show what would be pushed without making changes                      |
+| `--include-targets`   | Also sync targets when syncing upstreams                              |
+| `--force`, `-f`       | Push without confirmation prompt                                      |
+| `--interactive`, `-i` | Launch TUI for interactive conflict resolution when drift is detected |
+| `--skip-conflicts`    | Skip entities with conflicts (sync only non-conflicting entities)     |
+
+> **Note:** `--interactive` and `--skip-conflicts` are mutually exclusive options.
 
 **Examples:**
 
@@ -1918,6 +1927,12 @@ ops kong sync push --type services --dry-run
 
 # Push all changes without confirmation
 ops kong sync push --force
+
+# Interactive conflict resolution (launches TUI when drift detected)
+ops kong sync push --interactive
+
+# Skip conflicting entities, sync only clean ones
+ops kong sync push --skip-conflicts --force
 
 # Push only routes to Konnect
 ops kong sync push --type routes --force
@@ -1993,13 +2008,17 @@ Summary:
 
 **Options:**
 
-| Option              | Description                                                |
-| ------------------- | ---------------------------------------------------------- |
-| `--type`, `-t`      | Entity type to pull (see Supported Entity Types above)     |
-| `--dry-run`, `-n`   | Show what would be pulled without making changes           |
-| `--with-drift`      | Also update entities with drift (Gateway to match Konnect) |
-| `--include-targets` | Also sync targets when syncing upstreams                   |
-| `--force`, `-f`     | Pull without confirmation prompt                           |
+| Option                | Description                                                           |
+| --------------------- | --------------------------------------------------------------------- |
+| `--type`, `-t`        | Entity type to pull (see Supported Entity Types above)                |
+| `--dry-run`, `-n`     | Show what would be pulled without making changes                      |
+| `--with-drift`        | Also update entities with drift (Gateway to match Konnect)            |
+| `--include-targets`   | Also sync targets when syncing upstreams                              |
+| `--force`, `-f`       | Pull without confirmation prompt                                      |
+| `--interactive`, `-i` | Launch TUI for interactive conflict resolution when drift is detected |
+| `--skip-conflicts`    | Skip entities with conflicts (sync only non-conflicting entities)     |
+
+> **Note:** `--interactive` and `--skip-conflicts` are mutually exclusive options.
 
 **Examples:**
 
@@ -2012,6 +2031,12 @@ ops kong sync pull --type services --force
 
 # Pull and sync drifted entities
 ops kong sync pull --with-drift --force
+
+# Interactive conflict resolution for pull (launches TUI)
+ops kong sync pull --with-drift --interactive
+
+# Skip conflicts, pull only non-conflicting entities
+ops kong sync pull --with-drift --skip-conflicts --force
 
 # Pull upstreams with their targets
 ops kong sync pull --type upstreams --include-targets --force
@@ -2465,6 +2490,52 @@ Key Sets) are synced first due to reference dependencies.
 
 ---
 
+### Resolving Sync Conflicts Interactively
+
+When entities have different configurations on Gateway and Konnect, use interactive
+mode to resolve conflicts through the TUI:
+
+```bash
+# 1. Check for drift
+ops kong sync status
+
+# 2. If drift detected, launch interactive conflict resolution
+ops kong sync push --interactive
+
+# 3. In the TUI:
+#    - Navigate conflicts with arrow keys or j/k
+#    - Press Enter to view conflict details
+#    - Press 's' to keep source (Gateway) values
+#    - Press 't' to keep target (Konnect) values
+#    - Press 'm' to merge (if available)
+#    - Press 'k' to skip
+#    - Press 'a' to review and apply all resolutions
+
+# 4. Verify sync completed
+ops kong sync status
+```
+
+**Batch Resolution Example:**
+
+```bash
+# Start interactive push
+ops kong sync push --interactive
+
+# In TUI: Press 's' to apply "Keep Source" to all pending conflicts
+# Then press 'a' to apply, Enter to confirm
+```
+
+**Skip Conflicts in CI/CD:**
+
+```bash
+# When interactive isn't possible, skip conflicts and sync only clean entities
+ops kong sync push --skip-conflicts --force
+```
+
+For detailed TUI documentation, see [Interactive Conflict Resolution](../features/interactive-conflict-resolution.md).
+
+---
+
 ### Managing Consumer Credentials
 
 ```bash
@@ -2600,6 +2671,9 @@ ops kong services get payment-api --output json
 
 ## Related Documentation
 
+- [Interactive Conflict Resolution](../features/interactive-conflict-resolution.md) - TUI for resolving sync conflicts
+- [History and Rollback](../features/history-rollback.md) - Sync history and rollback features
+- [Dry Run Mode](../features/dry-run-mode.md) - Preview changes before applying
 - [Plugin Development Guide](development.md)
 - [Hot Loading](hot-loading.md)
 - [Available Plugins](available-plugins.md)

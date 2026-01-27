@@ -49,6 +49,10 @@ class SyncAuditEntry(BaseModel):
     drift_fields: list[str] | None = Field(
         default=None, description="Fields that differed (for updates)"
     )
+    resolution_action: str | None = Field(
+        default=None,
+        description="Resolution action from interactive mode: 'keep_source', 'keep_target', 'skip', or 'merge'",
+    )
 
     # Snapshot for rollback (future)
     before_state: dict[str, Any] | None = Field(
@@ -56,6 +60,15 @@ class SyncAuditEntry(BaseModel):
     )
     after_state: dict[str, Any] | None = Field(
         default=None, description="Entity state after change"
+    )
+
+    # Merge-specific fields
+    merged_state: dict[str, Any] | None = Field(
+        default=None, description="Merged entity state (for merge resolutions)"
+    )
+    merge_details: dict[str, Any] | None = Field(
+        default=None,
+        description="Merge analysis details (source_only_fields, target_only_fields, conflicting_fields)",
     )
 
 
@@ -73,6 +86,7 @@ class SyncSummary(BaseModel):
     # Counts
     created: int = Field(default=0, description="Number of entities created")
     updated: int = Field(default=0, description="Number of entities updated")
+    merged: int = Field(default=0, description="Number of entities merged")
     errors: int = Field(default=0, description="Number of errors")
     skipped: int = Field(default=0, description="Number of entities skipped")
 
@@ -191,14 +205,18 @@ class SyncAuditService:
 
             first_entry = entries[0]
             entity_types = set()
-            created = updated = errors = skipped = 0
+            created = updated = merged = errors = skipped = 0
 
             for entry in entries:
                 entity_types.add(entry.entity_type)
                 if entry.status in ("success", "would_create") and entry.action == "create":
                     created += 1
                 elif entry.status in ("success", "would_update") and entry.action == "update":
-                    updated += 1
+                    # Check if this was a merge resolution
+                    if entry.resolution_action == "merge":
+                        merged += 1
+                    else:
+                        updated += 1
                 elif entry.status == "failed":
                     errors += 1
                 elif entry.action == "skip":
@@ -212,6 +230,7 @@ class SyncAuditService:
                     dry_run=first_entry.dry_run,
                     created=created,
                     updated=updated,
+                    merged=merged,
                     errors=errors,
                     skipped=skipped,
                     entity_types=sorted(entity_types),
