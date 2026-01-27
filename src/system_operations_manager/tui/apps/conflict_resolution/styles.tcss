@@ -1,0 +1,73 @@
+/* Conflict Resolution TUI Styles */
+
+/* Main screen containers */
+#conflict-list-container {
+    padding: 1;
+}
+
+#header-label {
+    margin-bottom: 1;
+    text-style: bold;
+}
+
+#footer-hint {
+    margin-top: 1;
+}
+
+#conflict-table {
+    height: auto;
+    max-height: 80%;
+}
+
+/* Detail screen */
+#detail-container {
+    padding: 1;
+}
+
+#detail-header {
+    margin-bottom: 1;
+}
+
+#conflict-title {
+    text-style: bold;
+}
+
+#drift-fields {
+    color: $text-muted;
+}
+
+/* Summary screen */
+#summary-container {
+    padding: 2;
+    align: center middle;
+}
+
+#summary-title {
+    text-style: bold;
+    text-align: center;
+    margin-bottom: 2;
+}
+
+#summary-stats {
+    margin-bottom: 2;
+    padding: 1;
+    border: solid $primary;
+}
+
+#summary-hint {
+    margin-top: 1;
+    text-align: center;
+}
+
+/* General styling */
+Screen {
+    background: $surface;
+}
+
+DataTable {
+    background: $surface-darken-1;
+}
+
+DataTable > .datatable--cursor {
+    background: $accent;
+}

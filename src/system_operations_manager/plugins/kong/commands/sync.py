@@ -12,17 +12,23 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 import typer
 
 from system_operations_manager.plugins.kong.commands.base import (
     ForceOption,
+    InteractiveOption,
     OutputOption,
     confirm_action,
     console,
 )
 from system_operations_manager.plugins.kong.formatters import OutputFormat, get_formatter
+from system_operations_manager.services.kong.conflict_resolver import (
+    ConflictResolutionService,
+    Resolution,
+    ResolutionAction,
+)
 from system_operations_manager.services.kong.sync_audit import (
     SyncAuditEntry,
     SyncAuditService,
@@ -212,6 +218,110 @@ def _display_sync_status_table(
     console.print()
 
 
+def _launch_conflict_resolution_tui(
+    unified_service: UnifiedQueryService,
+    entity_types: list[str],
+    direction: Literal["push", "pull"],
+    dry_run: bool = False,
+) -> list[Resolution]:
+    """Launch the TUI for interactive conflict resolution.
+
+    Args:
+        unified_service: Service for querying unified entities.
+        entity_types: List of entity types to check for conflicts.
+        direction: Sync direction ('push' or 'pull').
+        dry_run: Whether this is a dry-run.
+
+    Returns:
+        List of resolutions made by the user.
+    """
+    from system_operations_manager.integrations.kong.models.unified import UnifiedEntityList
+    from system_operations_manager.tui.apps.conflict_resolution import ConflictResolutionApp
+
+    # Collect entity lists with drift
+    entity_lists: dict[str, UnifiedEntityList[Any]] = {}
+
+    list_methods: dict[str, Callable[[], UnifiedEntityList[Any]]] = {
+        "services": unified_service.list_services,
+        "routes": unified_service.list_routes,
+        "consumers": unified_service.list_consumers,
+        "plugins": unified_service.list_plugins,
+        "upstreams": unified_service.list_upstreams,
+        "certificates": unified_service.list_certificates,
+        "snis": unified_service.list_snis,
+        "ca_certificates": unified_service.list_ca_certificates,
+        "key_sets": unified_service.list_key_sets,
+        "keys": unified_service.list_keys,
+        "vaults": unified_service.list_vaults,
+    }
+
+    for etype in entity_types:
+        if etype in list_methods:
+            entity_lists[etype] = list_methods[etype]()
+
+    # Collect conflicts
+    conflict_service = ConflictResolutionService()
+    conflicts = conflict_service.collect_conflicts(entity_lists, direction)
+
+    if not conflicts:
+        console.print("[green]No conflicts found.[/green]")
+        return []
+
+    console.print(f"\n[bold]Found {len(conflicts)} conflict(s)[/bold]")
+    console.print("[dim]Launching interactive conflict resolution...[/dim]\n")
+
+    # Launch TUI
+    app = ConflictResolutionApp(
+        conflicts=conflicts,
+        direction=direction,
+        dry_run=dry_run,
+    )
+    resolutions = app.run_and_get_resolutions()
+
+    return resolutions
+
+
+def _record_skipped_resolutions(
+    resolutions: list[Resolution],
+    operation: Literal["push", "pull"],
+    audit_service: SyncAuditService,
+    sync_id: str,
+    dry_run: bool,
+) -> None:
+    """Record audit entries for skipped resolutions (KEEP_TARGET and SKIP).
+
+    Args:
+        resolutions: List of resolutions from interactive mode.
+        operation: Sync operation type ('push' or 'pull').
+        audit_service: Audit service for logging.
+        sync_id: Sync operation ID.
+        dry_run: Whether this is a dry-run.
+    """
+    for resolution in resolutions:
+        if resolution.action in (ResolutionAction.KEEP_TARGET, ResolutionAction.SKIP):
+            conflict = resolution.conflict
+            source = "gateway" if operation == "push" else "konnect"
+            target = "konnect" if operation == "push" else "gateway"
+
+            audit_service.record(
+                SyncAuditEntry(
+                    sync_id=sync_id,
+                    timestamp=datetime.now(UTC).isoformat(),
+                    operation=operation,
+                    dry_run=dry_run,
+                    entity_type=conflict.entity_type,
+                    entity_id=conflict.entity_id,
+                    entity_name=conflict.entity_name,
+                    action="skip",
+                    source=source,
+                    target=target,
+                    status="success",
+                    drift_fields=conflict.drift_fields,
+                    resolution_action=resolution.action.value,
+                )
+            )
+
+
 def _push_entity_type(
     entity_type: str,
     unified_service: UnifiedQueryService,
@@ -219,6 +329,8 @@ def _push_entity_type(
     dry_run: bool,
     audit_service: SyncAuditService | None = None,
     sync_id: str | None = None,
+    resolved_entities: set[str] | None = None,
+    resolution_actions: dict[str, str] | None = None,
 ) -> tuple[int, int, int]:
     """Push entities of a specific type to Konnect.
 
@@ -229,6 +341,12 @@ def _push_entity_type(
         dry_run: If True, show what would be pushed without changes
         audit_service: Optional audit service for logging operations
         sync_id: Optional sync operation ID for grouping audit entries
+        resolved_entities: Optional set of "entity_type:entity_name" strings
+            for entities that should be synced. If provided, only entities
+            in this set will be updated (for interactive mode).
+        resolution_actions: Optional dict mapping "entity_type:entity_name" to
+            resolution action string ('keep_source', 'keep_target', 'skip')
+            for audit logging in interactive mode.
 
     Returns:
         Tuple of (created_count, updated_count, error_count)
@@ -351,7 +469,16 @@ def _push_entity_type(
         if entity is None or konnect_id is None:
             continue
 
+        entity_key = f"{entity_type}:{unified.identifier}"
+
+        # In interactive mode, skip entities not in resolved set
+        if resolved_entities is not None and entity_key not in resolved_entities:
+            continue
+
         drift_fields = unified.drift_fields or []
+
+        # Get resolution action for audit logging (if interactive mode)
+        resolution_action = resolution_actions.get(entity_key) if resolution_actions else None
 
         if dry_run:
             console.print(f"  [cyan]Would update:[/cyan] {unified.identifier}")
@@ -374,6 +501,7 @@ def _push_entity_type(
                         target="konnect",
                         status="would_update",
                         drift_fields=drift_fields if drift_fields else None,
+                        resolution_action=resolution_action,
                         before_state=unified.konnect_entity.model_dump()
                         if unified.konnect_entity and hasattr(unified.konnect_entity, "model_dump")
                         else None,
@@ -400,6 +528,7 @@ def _push_entity_type(
                             target="konnect",
                             status="success",
                             drift_fields=drift_fields if drift_fields else None,
+                            resolution_action=resolution_action,
                             before_state=unified.konnect_entity.model_dump()
                             if unified.konnect_entity
                             and hasattr(unified.konnect_entity, "model_dump")
@@ -429,6 +558,7 @@ def _push_entity_type(
                             status="failed",
                             error=str(e),
                             drift_fields=drift_fields if drift_fields else None,
+                            resolution_action=resolution_action,
                         )
                     )
 
@@ -443,6 +573,8 @@ def _pull_entity_type(
     with_drift: bool = False,
     audit_service: SyncAuditService | None = None,
     sync_id: str | None = None,
+    resolved_entities: set[str] | None = None,
+    resolution_actions: dict[str, str] | None = None,
 ) -> tuple[int, int, int]:
     """Pull entities of a specific type from Konnect to Gateway.
 
@@ -454,6 +586,12 @@ def _pull_entity_type(
         with_drift: If True, also update entities with drift (Gateway to match Konnect)
         audit_service: Optional audit service for logging operations
         sync_id: Optional sync operation ID for grouping audit entries
+        resolved_entities: Optional set of "entity_type:entity_name" strings
+            for entities that should be synced. If provided, only entities
+            in this set will be updated (for interactive mode).
+        resolution_actions: Optional dict mapping "entity_type:entity_name" to
+            resolution action string ('keep_source', 'keep_target', 'skip')
+            for audit logging in interactive mode.
 
     Returns:
         Tuple of (created_count, updated_count, error_count)
@@ -577,7 +715,16 @@ def _pull_entity_type(
             if entity is None or gateway_id is None:
                 continue
 
+            entity_key = f"{entity_type}:{unified.identifier}"
+
+            # In interactive mode, skip entities not in resolved set
+            if resolved_entities is not None and entity_key not in resolved_entities:
+                continue
+
             drift_fields = unified.drift_fields or []
+
+            # Get resolution action for audit logging (if interactive mode)
+            resolution_action = resolution_actions.get(entity_key) if resolution_actions else None
 
             if dry_run:
                 console.print(f"  [cyan]Would update:[/cyan] {unified.identifier}")
@@ -600,6 +747,7 @@ def _pull_entity_type(
                             target="gateway",
                             status="would_update",
                             drift_fields=drift_fields if drift_fields else None,
+                            resolution_action=resolution_action,
                             before_state=unified.gateway_entity.model_dump()
                             if unified.gateway_entity
                             and hasattr(unified.gateway_entity, "model_dump")
@@ -627,6 +775,7 @@ def _pull_entity_type(
                                 target="gateway",
                                 status="success",
                                 drift_fields=drift_fields if drift_fields else None,
+                                resolution_action=resolution_action,
                                 before_state=unified.gateway_entity.model_dump()
                                 if unified.gateway_entity
                                 and hasattr(unified.gateway_entity, "model_dump")
@@ -656,6 +805,7 @@ def _pull_entity_type(
                                 status="failed",
                                 error=str(e),
                                 drift_fields=drift_fields if drift_fields else None,
+                                resolution_action=resolution_action,
                             )
                         )
 
@@ -943,19 +1093,29 @@ def register_sync_commands(
                 help="Also sync targets when syncing upstreams",
             ),
         ] = False,
+        skip_conflicts: Annotated[
+            bool,
+            typer.Option(
+                "--skip-conflicts",
+                help="Skip entities with drift (only sync new entities)",
+            ),
+        ] = False,
         force: ForceOption = False,
+        interactive: InteractiveOption = False,
     ) -> None:
         """Push Gateway configuration to Konnect.
 
         Syncs entities that are:
         - Only in Gateway (creates in Konnect)
-        - In both with drift (updates Konnect to match Gateway)
+        - In both with drift (updates Konnect to match Gateway, unless --skip-conflicts)
 
         Examples:
             ops kong sync push                     # Push all entity types
             ops kong sync push --type services     # Push only services
             ops kong sync push --dry-run           # Preview changes
             ops kong sync push --force             # Skip confirmation
+            ops kong sync push --interactive       # Resolve conflicts interactively
+            ops kong sync push --skip-conflicts    # Only sync new entities (CI/CD friendly)
         """
         unified_service = get_unified_query_service()
 
@@ -1024,14 +1184,65 @@ def register_sync_commands(
             console.print("[yellow]No Konnect managers available.[/yellow]")
             raise typer.Exit(1)
 
+        # Check for mutually exclusive options
+        if skip_conflicts and interactive:
+            console.print(
+                "[red]Error:[/red] --skip-conflicts and --interactive are mutually exclusive."
+            )
+            raise typer.Exit(1)
+
         # Get preview of changes
         summary = unified_service.get_sync_summary(entity_types_to_push)
         total_to_create = sum(s["gateway_only"] for s in summary.values())
-        total_to_update = sum(s["drift"] for s in summary.values())
+        drift_count = sum(s["drift"] for s in summary.values())
+        total_to_update = 0 if skip_conflicts else drift_count
 
         if total_to_create == 0 and total_to_update == 0:
-            console.print("\n[green]Nothing to push.[/green] Gateway and Konnect are in sync.")
+            if skip_conflicts and drift_count > 0:
+                console.print(
+                    f"\n[green]Nothing to push.[/green] Only new entities synced "
+                    f"({drift_count} conflict(s) skipped with --skip-conflicts)."
+                )
+            else:
+                console.print("\n[green]Nothing to push.[/green] Gateway and Konnect are in sync.")
             raise typer.Exit(0)
+
+        # Show skip-conflicts notice
+        if skip_conflicts and drift_count > 0:
+            console.print(
+                f"\n[yellow]Note:[/yellow] Skipping {drift_count} entity(s) with drift "
+                "(--skip-conflicts)"
+            )
+
+        # Interactive conflict resolution
+        resolutions: list[Resolution] = []
+        resolved_entities: set[str] = set()  # entity_type:entity_name that should be synced
+        resolution_actions: dict[str, str] = {}  # entity_key -> action name for audit
+        merged_states: dict[str, dict[str, Any]] = {}  # entity_key -> merged state for MERGE
+
+        if interactive and total_to_update > 0:
+            resolutions = _launch_conflict_resolution_tui(
+                unified_service, entity_types_to_push, "push", dry_run
+            )
+            if not resolutions:
+                console.print("[yellow]No resolutions made. Cancelled.[/yellow]")
+                raise typer.Exit(0)
+
+            # Build set of entities to sync (those with KEEP_SOURCE or MERGE resolution)
+            # and resolution_actions dict for audit logging
+            for resolution in resolutions:
+                key = f"{resolution.conflict.entity_type}:{resolution.conflict.entity_name}"
+                resolution_actions[key] = resolution.action.value
+                if resolution.action == ResolutionAction.KEEP_SOURCE:
+                    resolved_entities.add(key)
+                elif resolution.action == ResolutionAction.MERGE:
+                    resolved_entities.add(key)
+                    if resolution.merged_state:
+                        merged_states[key] = resolution.merged_state
+
+            # Update totals based on resolutions
+            total_to_update = len(resolved_entities)
+            console.print(f"\n[bold]Applying {total_to_update} resolution(s)[/bold]")
 
         # Show preview header
         if dry_run:
@@ -1039,8 +1250,8 @@ def register_sync_commands(
         else:
             console.print("\n[bold]Pushing Gateway -> Konnect[/bold]")
 
-        # Confirmation for non-dry-run
-        if not dry_run and not force:
+        # Confirmation for non-dry-run (skip if interactive - already confirmed in TUI)
+        if not dry_run and not force and not interactive:
             console.print(
                 f"\nThis will create {total_to_create} and update {total_to_update} entities."
             )
@@ -1052,6 +1263,10 @@ def register_sync_commands(
         audit_service = SyncAuditService()
         sync_id = audit_service.start_sync("push", dry_run)
 
+        # Record skipped resolutions from interactive mode
+        if interactive and resolutions:
+            _record_skipped_resolutions(resolutions, "push", audit_service, sync_id, dry_run)
+
         # Push each entity type
         total_created = 0
         total_updated = 0
@@ -1060,12 +1275,24 @@ def register_sync_commands(
         for etype in entity_types_to_push:
             stats = summary.get(etype, {})
             to_create = stats.get("gateway_only", 0)
-            to_update = stats.get("drift", 0)
+            to_update = 0 if skip_conflicts else stats.get("drift", 0)
 
             if to_create == 0 and to_update == 0:
                 continue
 
             console.print(f"\n[cyan]{etype.capitalize()}:[/cyan]")
+
+            # Determine resolved_entities based on mode:
+            # - interactive: use the user-resolved entities
+            # - skip_conflicts: use empty set to skip all drift
+            # - normal: None to process all
+            if interactive:
+                resolved = resolved_entities
+            elif skip_conflicts:
+                resolved = set()  # Empty set = skip all drifted entities
+            else:
+                resolved = None
+
             created, updated, errors = _push_entity_type(
                 etype,
                 unified_service,
@@ -1073,6 +1300,8 @@ def register_sync_commands(
                 dry_run,
                 audit_service=audit_service,
                 sync_id=sync_id,
+                resolved_entities=resolved,
+                resolution_actions=resolution_actions if interactive else None,
             )
             total_created += created
             total_updated += updated
@@ -1139,7 +1368,15 @@ def register_sync_commands(
                 help="Also sync targets when syncing upstreams",
             ),
         ] = False,
+        skip_conflicts: Annotated[
+            bool,
+            typer.Option(
+                "--skip-conflicts",
+                help="Skip entities with drift (only sync new entities)",
+            ),
+        ] = False,
         force: ForceOption = False,
+        interactive: InteractiveOption = False,
     ) -> None:
         """Pull Konnect configuration to Gateway.
 
@@ -1156,6 +1393,8 @@ def register_sync_commands(
             ops kong sync pull --dry-run           # Preview changes
             ops kong sync pull --with-drift        # Also sync drifted entities
             ops kong sync pull --force             # Skip confirmation
+            ops kong sync pull --interactive       # Resolve conflicts interactively
+            ops kong sync pull --skip-conflicts    # Only sync new entities (CI/CD friendly)
         """
         unified_service = get_unified_query_service()
 
@@ -1237,20 +1476,72 @@ def register_sync_commands(
             console.print("[yellow]No Gateway managers available.[/yellow]")
             raise typer.Exit(1)
 
+        # Check for mutually exclusive options
+        if skip_conflicts and interactive:
+            console.print(
+                "[red]Error:[/red] --skip-conflicts and --interactive are mutually exclusive."
+            )
+            raise typer.Exit(1)
+
         # Get preview of changes
         summary = unified_service.get_sync_summary(entity_types_to_pull)
         total_to_create = sum(s["konnect_only"] for s in summary.values())
-        total_to_update = sum(s["drift"] for s in summary.values()) if with_drift else 0
+        drift_count = sum(s["drift"] for s in summary.values())
+        # Interactive mode implies with_drift for conflict resolution
+        # skip_conflicts overrides with_drift
+        effective_with_drift = (with_drift or interactive) and not skip_conflicts
+        total_to_update = drift_count if effective_with_drift else 0
 
         if total_to_create == 0 and total_to_update == 0:
-            console.print("\n[green]Nothing to pull.[/green] Gateway and Konnect are in sync.")
-            if not with_drift:
-                drift_count = sum(s["drift"] for s in summary.values())
-                if drift_count > 0:
+            if skip_conflicts and drift_count > 0:
+                console.print(
+                    f"\n[green]Nothing to pull.[/green] Only new entities synced "
+                    f"({drift_count} conflict(s) skipped with --skip-conflicts)."
+                )
+            else:
+                console.print("\n[green]Nothing to pull.[/green] Gateway and Konnect are in sync.")
+                if not effective_with_drift and drift_count > 0:
                     console.print(
-                        f"[dim]({drift_count} entities with drift - use --with-drift to sync)[/dim]"
+                        f"[dim]({drift_count} entities with drift - use --with-drift or --interactive to sync)[/dim]"
                     )
             raise typer.Exit(0)
+
+        # Show skip-conflicts notice
+        if skip_conflicts and drift_count > 0:
+            console.print(
+                f"\n[yellow]Note:[/yellow] Skipping {drift_count} entity(s) with drift "
+                "(--skip-conflicts)"
+            )
+
+        # Interactive conflict resolution
+        resolutions: list[Resolution] = []
+        resolved_entities: set[str] = set()  # entity_type:entity_name that should be synced
+        resolution_actions: dict[str, str] = {}  # entity_key -> action name for audit
+        merged_states: dict[str, dict[str, Any]] = {}  # entity_key -> merged state for MERGE
+
+        if interactive and drift_count > 0:
+            resolutions = _launch_conflict_resolution_tui(
+                unified_service, entity_types_to_pull, "pull", dry_run
+            )
+            if not resolutions:
+                console.print("[yellow]No resolutions made. Cancelled.[/yellow]")
+                raise typer.Exit(0)
+
+            # Build set of entities to sync (those with KEEP_SOURCE or MERGE resolution)
+            # and resolution_actions dict for audit logging
+            for resolution in resolutions:
+                key = f"{resolution.conflict.entity_type}:{resolution.conflict.entity_name}"
+                resolution_actions[key] = resolution.action.value
+                if resolution.action == ResolutionAction.KEEP_SOURCE:
+                    resolved_entities.add(key)
+                elif resolution.action == ResolutionAction.MERGE:
+                    resolved_entities.add(key)
+                    if resolution.merged_state:
+                        merged_states[key] = resolution.merged_state
+
+            # Update totals based on resolutions
+            total_to_update = len(resolved_entities)
+            console.print(f"\n[bold]Applying {total_to_update} resolution(s)[/bold]")
 
         # Show preview header
         if dry_run:
@@ -1258,8 +1549,8 @@ def register_sync_commands(
         else:
             console.print("\n[bold]Pulling Konnect -> Gateway[/bold]")
 
-        # Confirmation for non-dry-run
-        if not dry_run and not force:
+        # Confirmation for non-dry-run (skip if interactive - already confirmed in TUI)
+        if not dry_run and not force and not interactive:
             msg = f"This will create {total_to_create}"
             if with_drift:
                 msg += f" and update {total_to_update}"
@@ -1273,6 +1564,10 @@ def register_sync_commands(
         audit_service = SyncAuditService()
         sync_id = audit_service.start_sync("pull", dry_run)
 
+        # Record skipped resolutions from interactive mode
+        if interactive and resolutions:
+            _record_skipped_resolutions(resolutions, "pull", audit_service, sync_id, dry_run)
+
         # Pull each entity type
         total_created = 0
         total_updated = 0
@@ -1281,7 +1576,7 @@ def register_sync_commands(
         for etype in entity_types_to_pull:
             stats = summary.get(etype, {})
             to_create = stats.get("konnect_only", 0)
-            to_update = stats.get("drift", 0) if with_drift else 0
+            to_update = stats.get("drift", 0) if effective_with_drift else 0
 
             if to_create == 0 and to_update == 0:
                 continue
@@ -1292,9 +1587,11 @@ def register_sync_commands(
                 unified_service,
                 gateway_managers,
                 dry_run,
-                with_drift,
+                effective_with_drift,
                 audit_service=audit_service,
                 sync_id=sync_id,
+                resolved_entities=resolved_entities if interactive else None,
+                resolution_actions=resolution_actions if interactive else None,
             )
             total_created += created
             total_updated += updated

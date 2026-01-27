@@ -92,7 +92,7 @@ def register_upstream_commands(
             str | None,
             typer.Option(
                 "--source",
-                "-s",
+                "-S",
                 help="Filter by source: gateway, konnect (only when Konnect is configured)",
             ),
         ] = None,

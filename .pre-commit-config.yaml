@@ -45,6 +45,7 @@ repos:
           - structlog
           - pydantic
           - pluggy
+          - textual
 
   # Secret scanning
   - repo: https://github.com/gitleaks/gitleaks

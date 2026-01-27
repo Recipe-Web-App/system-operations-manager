@@ -82,7 +82,7 @@ def register_external_metrics_commands(
         ] = "1h",
         step: Annotated[
             str,
-            typer.Option("--step", "-s", help="Query resolution step"),
+            typer.Option("--step", help="Query resolution step"),
         ] = "1m",
         output: OutputOption = OutputFormat.TABLE,
     ) -> None:

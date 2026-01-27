@@ -20,6 +20,7 @@ class ProfileConfig(BaseModel):
 
     debug: bool = False
     log_level: str = "INFO"
+    default_editor: str | None = None
 
     @field_validator("log_level")
     @classmethod

@@ -91,7 +91,7 @@ def register_plugin_commands(
             str | None,
             typer.Option(
                 "--source",
-                "-s",
+                "-S",
                 help="Filter by source: gateway, konnect (only when Konnect is configured)",
             ),
         ] = None,

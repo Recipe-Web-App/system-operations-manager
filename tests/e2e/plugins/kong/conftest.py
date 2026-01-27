@@ -21,7 +21,10 @@ from testcontainers.postgres import PostgresContainer
 from typer.testing import CliRunner
 
 if TYPE_CHECKING:
-    pass
+    from contextlib import AbstractContextManager
+    from unittest.mock import MagicMock
+
+    from system_operations_manager.services.kong.conflict_resolver import Resolution
 
 
 # ============================================================================
@@ -995,3 +998,85 @@ def vault_url(vault_container: VaultContainer) -> str:
 def vault_token(vault_container: VaultContainer) -> str:
     """Get Vault root token."""
     return vault_container.get_root_token()
+
+
+# ============================================================================
+# Konnect Configuration Detection
+# ============================================================================
+
+
+@pytest.fixture(scope="session")
+def is_konnect_configured() -> bool:
+    """Detect if Konnect is configured in the environment.
+
+    Checks for KONNECT_API_KEY or ops.yaml configuration.
+    Returns True if Konnect appears to be configured, False otherwise.
+    """
+    import os
+
+    # Check environment variable
+    if os.environ.get("KONNECT_API_KEY"):
+        return True
+
+    # Check for ops.yaml with konnect config
+    config_locations = [
+        Path.cwd() / "ops.yaml",
+        Path.home() / ".config" / "ops" / "ops.yaml",
+    ]
+
+    for config_path in config_locations:
+        if config_path.exists():
+            try:
+                import yaml
+
+                with config_path.open() as f:
+                    config = yaml.safe_load(f)
+                    if config and config.get("konnect", {}).get("api_key"):
+                        return True
+            except Exception:
+                continue
+
+    return False
+
+
+@pytest.fixture(autouse=True)
+def skip_if_no_konnect(request: pytest.FixtureRequest) -> None:
+    """Skip tests marked with 'requires_konnect' if Konnect is not configured.
+
+    This fixture auto-runs for all tests but only acts on tests with
+    the @pytest.mark.requires_konnect marker.
+    """
+    if request.node.get_closest_marker("requires_konnect"):
+        is_configured = request.getfixturevalue("is_konnect_configured")
+        if not is_configured:
+            pytest.skip("Konnect not configured - set KONNECT_API_KEY or configure ops.yaml")
+
+
+# ============================================================================
+# Sync Interactive Mode Fixtures
+# ============================================================================
+
+
+@pytest.fixture
+def mock_tui_resolutions() -> Callable[[list[Resolution]], AbstractContextManager[MagicMock]]:
+    """Factory to mock _launch_conflict_resolution_tui with specific resolutions.
+
+    Usage:
+        def test_example(mock_tui_resolutions):
+            resolutions = [Resolution(...)]
+            with mock_tui_resolutions(resolutions) as mock_tui:
+                result = cli_runner.invoke(app, ["kong", "sync", "push", "--interactive"])
+                mock_tui.assert_called_once()
+    """
+    from contextlib import contextmanager
+    from unittest.mock import patch
+
+    @contextmanager
+    def _mock(resolutions: list[Resolution]) -> Generator[MagicMock]:
+        with patch(
+            "system_operations_manager.plugins.kong.commands.sync._launch_conflict_resolution_tui"
+        ) as mock:
+            mock.return_value = resolutions
+            yield mock
+
+    return _mock
