@@ -2120,7 +2120,7 @@ Monitor and synchronize state between Kong Gateway and Konnect control plane.
 
 > **Interactive Conflict Resolution**: When entities have configuration drift between
 > Gateway and Konnect, use `--interactive` to launch a TUI for resolving conflicts.
-> See [Interactive Conflict Resolution](../features/interactive-conflict-resolution.md)
+> See [Interactive Conflict Resolution](./conflict-resolution.md)
 > for detailed documentation.
 
 #### Supported Entity Types
@@ -2892,7 +2892,7 @@ ops kong sync push --interactive
 ops kong sync push --skip-conflicts --force
 ```
 
-For detailed TUI documentation, see [Interactive Conflict Resolution](../features/interactive-conflict-resolution.md).
+For detailed TUI documentation, see [Interactive Conflict Resolution](./conflict-resolution.md).
 
 ---
 
@@ -3031,7 +3031,7 @@ ops kong services get payment-api --output json
 
 ## Related Documentation
 
-- [Interactive Conflict Resolution](../features/interactive-conflict-resolution.md) - TUI for resolving sync conflicts
+- [Interactive Conflict Resolution](./conflict-resolution.md) - TUI for resolving sync conflicts
 - [History and Rollback](../features/history-rollback.md) - Sync history and rollback features
 - [Dry Run Mode](../features/dry-run-mode.md) - Preview changes before applying
 - [Plugin Development Guide](development.md)

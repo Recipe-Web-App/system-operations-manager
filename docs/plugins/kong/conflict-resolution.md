@@ -327,6 +327,6 @@ If pressing `e` doesn't open your editor:
 
 ## Related Documentation
 
-- [Kong Plugin Documentation](../plugins/kong.md) - Full sync command reference
-- [History and Rollback](./history-rollback.md) - Sync history and rollback features
-- [Dry Run Mode](./dry-run-mode.md) - Preview changes before applying
+- [Kong Plugin Documentation](./index.md) - Full sync command reference
+- [History and Rollback](../../features/history-rollback.md) - Sync history and rollback features
+- [Dry Run Mode](../../features/dry-run-mode.md) - Preview changes before applying
