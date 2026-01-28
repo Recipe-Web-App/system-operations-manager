@@ -68,9 +68,4 @@ tmp/
 .serena/
 
 # Beads
-.beads/*
-!.beads/issues.jsonl
-!.beads/.gitignore
-
-# bv (beads viewer) local config and caches
 .bv/
