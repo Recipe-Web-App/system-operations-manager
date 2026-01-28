@@ -74,7 +74,7 @@ jinja2 = ">=3.1.6"
 structlog = ">=25.5.0"
 cryptography = ">=46.0.4"
 jsonschema = ">=4.26.0"
-psutil = ">=7.2.1"
+psutil = ">=7.2.2"
 pluggy = ">=1.6.0"
 tenacity = ">=9.1.2"
 textual = ">=7.4.0"
@@ -91,7 +91,7 @@ elasticsearch = { version = ">=9.2.1", optional = true }
 opentelemetry-api = { version = ">=1.39.1", optional = true }
 opentelemetry-sdk = { version = ">=1.39.1", optional = true }
 hvac = { version = ">=2.4.0", optional = true }
-boto3 = { version = ">=1.42.36", optional = true }
+boto3 = { version = ">=1.42.37", optional = true }
 azure-keyvault-secrets = { version = ">=4.10.0", optional = true }
 azure-identity = { version = ">=1.25.1", optional = true }
 google-cloud-secret-manager = { version = ">=2.26.0", optional = true }
