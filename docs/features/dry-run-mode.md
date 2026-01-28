@@ -20,32 +20,32 @@ Dry run mode features:
 
 ```bash
 # Add --dry-run to any command
-sysctl deploy api --env production --dry-run
+ops deploy api --env production --dry-run
 
 # Alternative syntax
-sysctl --dry-run deploy api --env production
+ops --dry-run deploy api --env production
 
 # Verbose dry run with detailed output
-sysctl deploy api --env production --dry-run --verbose
+ops deploy api --env production --dry-run --verbose
 ```
 
 ### Command-Specific Dry Run
 
 ```bash
 # Deployment dry run
-sysctl deploy api --image api:v2.1.0 --env production --dry-run
+ops deploy api --image api:v2.1.0 --env production --dry-run
 
 # Configuration changes
-sysctl config set api.replicas 5 --env production --dry-run
+ops config set api.replicas 5 --env production --dry-run
 
 # Service scaling
-sysctl scale api --replicas 10 --env production --dry-run
+ops scale api --replicas 10 --env production --dry-run
 
 # Batch operations
-sysctl batch run complex-workflow.yaml --dry-run
+ops batch run complex-workflow.yaml --dry-run
 
 # Backup operations
-sysctl backup create --all --env production --dry-run
+ops backup create --all --env production --dry-run
 ```
 
 ## Configuration
@@ -97,7 +97,7 @@ dry_run:
 
 ```bash
 # Basic deployment dry run
-sysctl deploy api --image api:v2.1.0 --env production --dry-run
+ops deploy api --image api:v2.1.0 --env production --dry-run
 
 # Example output:
 ```
@@ -162,7 +162,7 @@ Would execute: kubectl apply --dry-run=server -f deployment.yaml
 ### Blue-Green Deployment Preview
 
 ```bash
-sysctl deploy api --strategy blue-green --env production --dry-run
+ops deploy api --strategy blue-green --env production --dry-run
 
 # Example output:
 ```text
@@ -213,7 +213,7 @@ Planned State (Green):
 
 ```bash
 # Configuration update dry run
-sysctl config update api --file new-config.yaml --env production --dry-run
+ops config update api --file new-config.yaml --env production --dry-run
 
 # Example output:
 ````
@@ -262,7 +262,7 @@ new_ui: false
 🔄 Rollback Plan:
 
 - Previous configuration backed up as api-config-v127
-- Rollback command: sysctl config rollback api --version v127
+- Rollback command: ops config rollback api --version v127
 
 ````text
 
@@ -271,7 +271,7 @@ new_ui: false
 ### Workflow Preview
 
 ```bash
-sysctl batch run deployment-workflow.yaml --dry-run
+ops batch run deployment-workflow.yaml --dry-run
 
 # Example output:
 ````
@@ -286,12 +286,12 @@ Parameters: version=v2.1.0, replicas=3
 📋 Execution Plan:
 ┌──────────────────────────────────────────────────────────┐
 │ Step 1: pre_deployment_checks │
-│ ├─ Command: sysctl health --all --env production │
+│ ├─ Command: ops health --all --env production │
 │ ├─ Expected Duration: 30s │
 │ └─ Dependencies: none │
 ├──────────────────────────────────────────────────────────┤
 │ Step 2: deploy_database_migrations │
-│ ├─ Command: sysctl db migrate --env production │
+│ ├─ Command: ops db migrate --env production │
 │ ├─ Expected Duration: 2-5 minutes │
 │ └─ Dependencies: pre_deployment_checks │
 ├──────────────────────────────────────────────────────────┤
@@ -302,7 +302,7 @@ Parameters: version=v2.1.0, replicas=3
 │ └─ Dependencies: deploy_database_migrations │
 ├──────────────────────────────────────────────────────────┤
 │ Step 4: post_deployment_tests │
-│ ├─ Command: sysctl test integration --env production │
+│ ├─ Command: ops test integration --env production │
 │ ├─ Expected Duration: 5 minutes │
 │ └─ Dependencies: deploy_services │
 └──────────────────────────────────────────────────────────┘
@@ -330,7 +330,7 @@ Parameters: version=v2.1.0, replicas=3
 ### Resource Impact Preview
 
 ```bash
-sysctl scale api --replicas 10 --env production --dry-run
+ops scale api --replicas 10 --env production --dry-run
 
 # Example output:
 ````
@@ -388,16 +388,16 @@ Scaling Factor: 3.33x
 
 ```bash
 # Comprehensive impact analysis
-sysctl deploy api --dry-run --impact-analysis
+ops deploy api --dry-run --impact-analysis
 
 # Cost estimation
-sysctl deploy api --dry-run --estimate-costs
+ops deploy api --dry-run --estimate-costs
 
 # Dependency analysis
-sysctl deploy api --dry-run --check-dependencies
+ops deploy api --dry-run --check-dependencies
 
 # Security impact
-sysctl deploy api --dry-run --security-analysis
+ops deploy api --dry-run --security-analysis
 ````
 
 ### Custom Dry Run Policies
@@ -452,7 +452,7 @@ jobs:
 
       - name: Dry Run Deployment
         run: |
-          sysctl deploy api --env staging --dry-run --format json > dry-run-results.json
+          ops deploy api --env staging --dry-run --format json > dry-run-results.json
 
       - name: Comment PR with Dry Run Results
         uses: actions/github-script@v6
@@ -492,7 +492,7 @@ jobs:
 ### JSON Output
 
 ```bash
-sysctl deploy api --dry-run --format json
+ops deploy api --dry-run --format json
 ```
 
 ```json
@@ -532,7 +532,7 @@ sysctl deploy api --dry-run --format json
 ### YAML Output
 
 ```bash
-sysctl deploy api --dry-run --format yaml
+ops deploy api --dry-run --format yaml
 ```
 
 ```yaml
@@ -569,14 +569,14 @@ prerequisites:
 
 ```bash
 # 1. Always start with dry run
-sysctl deploy api --env production --dry-run
+ops deploy api --env production --dry-run
 
 # 2. Review the output carefully
 # 3. Check resource requirements and impact
 # 4. Verify rollback plan is available
 # 5. Execute the actual command
 
-sysctl deploy api --env production
+ops deploy api --env production
 ```
 
 ### Safety Checks

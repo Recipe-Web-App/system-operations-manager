@@ -1,0 +1,1 @@
+# Kong plugin integration tests

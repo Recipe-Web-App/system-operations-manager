@@ -37,6 +37,7 @@ repos:
     rev: v1.19.1
     hooks:
       - id: mypy
+        language_version: python3.14
         additional_dependencies:
           - types-PyYAML
           - typer
@@ -44,6 +45,13 @@ repos:
           - structlog
           - pydantic
           - pluggy
+          - textual
+
+  # Secret scanning
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.0
+    hooks:
+      - id: gitleaks
 
   # General pre-commit hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -52,6 +60,14 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+        args: [--allow-multiple-documents]
       - id: check-added-large-files
       - id: check-merge-conflict
       - id: detect-private-key
+        exclude: |
+          (?x)^(
+            tests/unit/services/kong/test_key_manager\.py|
+            tests/unit/services/kong/test_certificate_manager\.py|
+            src/system_operations_manager/integrations/kong/models/certificate\.py|
+            src/system_operations_manager/services/kong/certificate_manager\.py
+          )$

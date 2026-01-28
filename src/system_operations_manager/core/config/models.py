@@ -20,6 +20,7 @@ class ProfileConfig(BaseModel):
 
     debug: bool = False
     log_level: str = "INFO"
+    default_editor: str | None = None
 
     @field_validator("log_level")
     @classmethod
@@ -95,3 +96,27 @@ def load_config(config_path: Path | None = None) -> SystemConfig | None:
         return SystemConfig.model_validate(data)
     except yaml.YAMLError as e:
         raise ValueError(f"Invalid YAML in {path}: {e}") from e
+
+
+def load_raw_config(config_path: Path | None = None) -> dict[str, Any]:
+    """Load raw configuration from YAML file without validation.
+
+    Used for plugin configuration which may have arbitrary structure
+    not covered by the SystemConfig model.
+
+    Args:
+        config_path: Path to config file. Defaults to ~/.config/ops/config.yaml
+
+    Returns:
+        Raw configuration dictionary, or empty dict if file doesn't exist.
+    """
+    path = config_path or CONFIG_FILE
+
+    if not path.exists():
+        return {}
+
+    try:
+        content = path.read_text()
+        return yaml.safe_load(content) or {}
+    except yaml.YAMLError:
+        return {}

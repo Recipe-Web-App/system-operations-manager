@@ -1,0 +1,47 @@
+admin:
+  enabled: true
+  http:
+    enabled: true
+  type: ClusterIP
+admissionWebhook:
+  enabled: true
+  failurePolicy: Ignore
+env:
+  database: postgres
+  pg_database: kong
+  pg_host: kong-postgres
+  pg_password:
+    valueFrom:
+      secretKeyRef:
+        key: POSTGRES_PASSWORD
+        name: kong-postgres-secret
+  pg_port: "5432"
+  pg_user: kong
+ingressController:
+  enabled: true
+  ingressClass: kong
+  installCRDs: false
+livenessProbe:
+  failureThreshold: 10
+  initialDelaySeconds: 10
+  periodSeconds: 10
+migrations:
+  postUpgrade: true
+  preUpgrade: true
+proxy:
+  http:
+    servicePort: 80
+  tls:
+    servicePort: 443
+  type: LoadBalancer
+readinessProbe:
+  failureThreshold: 10
+  initialDelaySeconds: 10
+  periodSeconds: 5
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1024Mi
+  requests:
+    cpu: 200m
+    memory: 256Mi

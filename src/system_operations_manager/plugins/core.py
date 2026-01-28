@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 import typer
 from rich.console import Console
-from rich.table import Table
 
+from system_operations_manager.cli.output import Table
 from system_operations_manager.core.plugins.base import Plugin, hookimpl
 
 if TYPE_CHECKING:

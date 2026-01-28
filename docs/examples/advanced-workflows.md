@@ -822,3 +822,358 @@ sysctl workflow run zero-downtime-migration \
 
 These advanced workflows demonstrate sophisticated automation patterns for enterprise-scale system
 management, providing robust error handling, monitoring, and rollback capabilities.
+
+---
+
+## Kong Gateway Workflows
+
+Advanced workflows for managing Kong Gateway API infrastructure.
+
+### Complete API Onboarding Workflow
+
+Full workflow for onboarding a new API service to Kong Gateway with security, rate limiting,
+and observability.
+
+**Prerequisites:**
+
+- Kong Gateway running and accessible
+- `ops kong status` returns healthy
+- Backend service deployed and accessible
+
+**Steps:**
+
+```bash
+#!/bin/bash
+# api-onboarding.sh - Complete API onboarding workflow
+set -e
+
+SERVICE_NAME="payment-api"
+BACKEND_HOST="payment.internal.example.com"
+BACKEND_PORT="8080"
+API_PATH="/api/v1/payments"
+
+echo "=== Step 1: Create the upstream service ==="
+ops kong services create \
+  --name "$SERVICE_NAME" \
+  --host "$BACKEND_HOST" \
+  --port "$BACKEND_PORT" \
+  --protocol http \
+  --tag production \
+  --tag payments
+
+echo "=== Step 2: Add route for public access ==="
+ops kong routes create \
+  --name "${SERVICE_NAME}-route" \
+  --service "$SERVICE_NAME" \
+  --path "$API_PATH" \
+  --method GET \
+  --method POST \
+  --method PUT \
+  --method DELETE \
+  --strip-path
+
+echo "=== Step 3: Enable API key authentication ==="
+ops kong security key-auth enable \
+  --service "$SERVICE_NAME" \
+  --hide-credentials
+
+echo "=== Step 4: Create consumer and API key ==="
+ops kong consumers create \
+  --username "${SERVICE_NAME}-client" \
+  --tag automated
+
+API_KEY=$(uuidgen)
+ops kong security key-auth create-key "${SERVICE_NAME}-client" \
+  --key "$API_KEY"
+
+echo "=== Step 5: Add rate limiting ==="
+ops kong traffic rate-limit enable \
+  --service "$SERVICE_NAME" \
+  --minute 100 \
+  --hour 1000 \
+  --policy local
+
+echo "=== Step 6: Enable logging ==="
+ops kong observability logs http enable \
+  --service "$SERVICE_NAME" \
+  --http-endpoint "https://logs.example.com/kong" \
+  --method POST
+
+echo "=== Step 7: Verify configuration ==="
+ops kong services get "$SERVICE_NAME"
+ops kong routes list --service "$SERVICE_NAME"
+ops kong plugins list --service "$SERVICE_NAME"
+
+echo ""
+echo "=== API Onboarding Complete ==="
+echo "Service: $SERVICE_NAME"
+echo "Endpoint: https://api.example.com$API_PATH"
+echo "API Key: $API_KEY"
+echo ""
+echo "Test with:"
+echo "  curl -H 'apikey: $API_KEY' https://api.example.com$API_PATH"
+```
+
+### Security Hardening Workflow
+
+Steps to harden security on an existing Kong API.
+
+**Prerequisites:**
+
+- Existing service and route configured
+- Admin access to Kong
+
+**Steps:**
+
+```bash
+#!/bin/bash
+# security-hardening.sh - Security hardening workflow
+set -e
+
+SERVICE_NAME="${1:-my-api}"
+
+echo "=== Security Hardening for $SERVICE_NAME ==="
+
+echo "Step 1: Audit current plugins..."
+ops kong plugins list --service "$SERVICE_NAME" --output json > /tmp/current-plugins.json
+echo "Current plugins saved to /tmp/current-plugins.json"
+
+echo "Step 2: Enable IP restriction (if not already)..."
+ops kong security ip-restriction enable \
+  --service "$SERVICE_NAME" \
+  --allow "10.0.0.0/8" \
+  --allow "172.16.0.0/12" \
+  --allow "192.168.0.0/16" || true
+
+echo "Step 3: Add request size limits..."
+ops kong traffic request-size enable \
+  --service "$SERVICE_NAME" \
+  --size 1048576  # 1MB max
+
+echo "Step 4: Configure CORS if needed..."
+ops kong security cors enable \
+  --service "$SERVICE_NAME" \
+  --origins "https://app.example.com" \
+  --methods GET \
+  --methods POST \
+  --methods PUT \
+  --methods DELETE \
+  --headers "Authorization" \
+  --headers "Content-Type" \
+  --max-age 3600
+
+echo "Step 5: Add security headers via response transformer..."
+ops kong traffic response-transformer enable \
+  --service "$SERVICE_NAME" \
+  --add-header "X-Frame-Options:DENY" \
+  --add-header "X-Content-Type-Options:nosniff" \
+  --add-header "X-XSS-Protection:1; mode=block" \
+  --add-header "Strict-Transport-Security:max-age=31536000; includeSubDomains"
+
+echo "Step 6: Verify final configuration..."
+ops kong plugins list --service "$SERVICE_NAME"
+
+echo ""
+echo "=== Security Hardening Complete ==="
+```
+
+### Configuration Promotion Workflow
+
+Promote Kong configuration from development to production safely.
+
+**Prerequisites:**
+
+- Configuration exported from development environment
+- Access to both dev and prod Kong instances
+
+**Steps:**
+
+```bash
+#!/bin/bash
+# config-promotion.sh - Promote configuration from dev to prod
+set -e
+
+DEV_CONFIG="${1:-kong-dev.yaml}"
+PROD_KONG_URL="${PROD_KONG_URL:-https://kong-admin.prod.example.com}"
+
+echo "=== Kong Configuration Promotion Workflow ==="
+echo "Source config: $DEV_CONFIG"
+echo "Target: $PROD_KONG_URL"
+echo ""
+
+# Step 1: Export current dev state
+echo "Step 1: Exporting current development configuration..."
+ops kong config export "$DEV_CONFIG" --only services,routes,plugins
+
+# Step 2: Validate the configuration
+echo "Step 2: Validating configuration..."
+ops kong config validate "$DEV_CONFIG"
+if [ $? -ne 0 ]; then
+  echo "ERROR: Configuration validation failed!"
+  exit 1
+fi
+
+# Step 3: Switch context to production
+echo "Step 3: Switching to production environment..."
+export OPS_KONG_BASE_URL="$PROD_KONG_URL"
+
+# Step 4: Show differences
+echo "Step 4: Showing differences between config and production state..."
+ops kong config diff "$DEV_CONFIG"
+
+# Step 5: Prompt for confirmation
+echo ""
+read -p "Do you want to apply these changes to production? (yes/no): " CONFIRM
+if [ "$CONFIRM" != "yes" ]; then
+  echo "Aborted."
+  exit 0
+fi
+
+# Step 6: Create backup
+echo "Step 6: Creating production backup..."
+BACKUP_FILE="kong-prod-backup-$(date +%Y%m%d-%H%M%S).yaml"
+ops kong config export "$BACKUP_FILE"
+echo "Backup saved to: $BACKUP_FILE"
+
+# Step 7: Apply configuration
+echo "Step 7: Applying configuration to production..."
+ops kong config apply "$DEV_CONFIG" --confirm
+
+# Step 8: Verify health
+echo "Step 8: Verifying Kong health..."
+ops kong status
+
+# Step 9: Quick smoke test
+echo "Step 9: Running smoke tests..."
+ops kong services list --limit 5
+ops kong routes list --limit 5
+
+echo ""
+echo "=== Configuration Promotion Complete ==="
+echo "Backup file: $BACKUP_FILE"
+echo ""
+echo "If issues occur, rollback with:"
+echo "  ops kong config apply $BACKUP_FILE --confirm"
+```
+
+### Blue-Green Deployment Workflow
+
+Zero-downtime deployment using Kong upstreams.
+
+```bash
+#!/bin/bash
+# blue-green-deploy.sh - Blue-green deployment workflow
+set -e
+
+UPSTREAM_NAME="${1:-api-cluster}"
+NEW_TARGET="${2:-green.internal:8080}"
+OLD_TARGET="${3:-blue.internal:8080}"
+
+echo "=== Blue-Green Deployment ==="
+echo "Upstream: $UPSTREAM_NAME"
+echo "Current (blue): $OLD_TARGET"
+echo "New (green): $NEW_TARGET"
+echo ""
+
+# Step 1: Add green target with weight 0
+echo "Step 1: Adding green target (weight 0)..."
+GREEN_ID=$(ops kong upstreams targets add "$UPSTREAM_NAME" \
+  --target "$NEW_TARGET" \
+  --weight 0 \
+  --output json | jq -r '.id')
+echo "Green target ID: $GREEN_ID"
+
+# Step 2: Get blue target ID
+BLUE_ID=$(ops kong upstreams targets list "$UPSTREAM_NAME" --output json | \
+  jq -r --arg target "$OLD_TARGET" '.data[] | select(.target == $target) | .id')
+echo "Blue target ID: $BLUE_ID"
+
+# Step 3: Canary - 10% to green
+echo "Step 3: Canary deployment (10% to green)..."
+ops kong upstreams targets update "$UPSTREAM_NAME" "$BLUE_ID" --weight 90
+ops kong upstreams targets update "$UPSTREAM_NAME" "$GREEN_ID" --weight 10
+
+echo "Waiting 30 seconds to monitor..."
+sleep 30
+ops kong upstreams health "$UPSTREAM_NAME"
+
+# Step 4: Increase to 50%
+read -p "Continue to 50%? (yes/no): " CONTINUE
+if [ "$CONTINUE" == "yes" ]; then
+  echo "Step 4: Increasing to 50%..."
+  ops kong upstreams targets update "$UPSTREAM_NAME" "$BLUE_ID" --weight 50
+  ops kong upstreams targets update "$UPSTREAM_NAME" "$GREEN_ID" --weight 50
+
+  sleep 30
+  ops kong upstreams health "$UPSTREAM_NAME"
+fi
+
+# Step 5: Full cutover
+read -p "Complete cutover to green? (yes/no): " CUTOVER
+if [ "$CUTOVER" == "yes" ]; then
+  echo "Step 5: Full cutover to green..."
+  ops kong upstreams targets update "$UPSTREAM_NAME" "$BLUE_ID" --weight 0
+  ops kong upstreams targets update "$UPSTREAM_NAME" "$GREEN_ID" --weight 100
+
+  echo ""
+  echo "=== Deployment Complete ==="
+  ops kong upstreams health "$UPSTREAM_NAME"
+  echo ""
+  echo "To rollback:"
+  echo "  ops kong upstreams targets update $UPSTREAM_NAME $BLUE_ID --weight 100"
+  echo "  ops kong upstreams targets update $UPSTREAM_NAME $GREEN_ID --weight 0"
+else
+  echo "Cutover aborted. Rolling back..."
+  ops kong upstreams targets update "$UPSTREAM_NAME" "$BLUE_ID" --weight 100
+  ops kong upstreams targets update "$UPSTREAM_NAME" "$GREEN_ID" --weight 0
+  ops kong upstreams targets delete "$UPSTREAM_NAME" "$GREEN_ID" --force
+fi
+```
+
+### Emergency Rollback Workflow
+
+Quick rollback procedure when issues are detected.
+
+```bash
+#!/bin/bash
+# emergency-rollback.sh - Emergency configuration rollback
+set -e
+
+BACKUP_FILE="${1}"
+
+if [ -z "$BACKUP_FILE" ]; then
+  echo "Usage: $0 <backup-file.yaml>"
+  echo ""
+  echo "Available backups:"
+  ls -la kong-*-backup-*.yaml 2>/dev/null || echo "No backup files found"
+  exit 1
+fi
+
+echo "=== EMERGENCY ROLLBACK ==="
+echo "Restoring from: $BACKUP_FILE"
+echo ""
+echo "WARNING: This will overwrite current Kong configuration!"
+read -p "Are you sure? (type 'ROLLBACK' to confirm): " CONFIRM
+
+if [ "$CONFIRM" != "ROLLBACK" ]; then
+  echo "Aborted."
+  exit 1
+fi
+
+# Apply the backup
+echo "Applying backup configuration..."
+ops kong config apply "$BACKUP_FILE" --no-confirm
+
+# Verify
+echo "Verifying Kong status..."
+ops kong status
+
+echo ""
+echo "=== Rollback Complete ==="
+echo "Verify services are healthy:"
+echo "  ops kong services list"
+echo "  ops kong upstreams health <upstream-name>"
+```
+
+These Kong workflows provide production-ready patterns for API lifecycle management, security hardening,
+deployment automation, and emergency procedures.
