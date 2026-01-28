@@ -64,6 +64,7 @@ The main screen shows all detected conflicts grouped by entity type.
 | `Enter`  | View conflict details              |
 | `s`      | Apply "Keep Source" to all pending |
 | `t`      | Apply "Keep Target" to all pending |
+| `m`      | Apply "Auto-merge" to all pending  |
 | `a`      | Apply changes (go to summary)      |
 | `Escape` | Cancel and exit                    |
 | `?`      | Show help                          |
@@ -92,13 +93,14 @@ View the full diff for a single conflict with resolution options.
 
 **Keyboard Shortcuts:**
 
-| Key      | Action               |
-| -------- | -------------------- |
-| `s`      | Keep Source          |
-| `t`      | Keep Target          |
-| `m`      | Merge (if available) |
-| `k`      | Skip this conflict   |
-| `Escape` | Back to list         |
+| Key      | Action                                 |
+| -------- | -------------------------------------- |
+| `1`      | Keep Source                            |
+| `2`      | Keep Target                            |
+| `3`      | Skip this conflict                     |
+| `4`      | Merge (if available)                   |
+| `d`      | Toggle diff mode (side-by-side/inline) |
+| `Escape` | Back to list                           |
 
 **Example Display:**
 
@@ -114,7 +116,7 @@ View the full diff for a single conflict with resolution options.
 │                                                          │
 │  Drift fields: host, port, retries                       │
 │                                                          │
-│  [s] Keep Source  [t] Keep Target  [m] Merge  [k] Skip   │
+│  [1] Keep Source  [2] Keep Target  [3] Skip  [4] Merge   │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -126,7 +128,7 @@ When merge is available (non-overlapping changes), preview the merged result.
 
 | Key      | Action          |
 | -------- | --------------- |
-| `Enter`  | Accept merge    |
+| `c`      | Confirm merge   |
 | `e`      | Edit in $EDITOR |
 | `Escape` | Cancel merge    |
 

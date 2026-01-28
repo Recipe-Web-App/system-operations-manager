@@ -717,12 +717,43 @@ ops kong upstreams targets add payment-cluster \
 | `--weight` | Traffic weight (0-65535)              | 100     |
 | `--tag`    | Tag (repeatable)                      | -       |
 
+#### `ops kong upstreams targets update <upstream> <target>`
+
+Update an existing target's weight.
+
+```bash
+ops kong upstreams targets update payment-cluster 192.168.1.10:8080 --weight 200
+```
+
+**Options:**
+
+| Option     | Description              |
+| ---------- | ------------------------ |
+| `--weight` | New traffic weight       |
+| `--tag`    | Tags (replaces existing) |
+
 #### `ops kong upstreams targets delete <upstream> <target>`
 
 Remove a target from an upstream.
 
 ```bash
 ops kong upstreams targets delete payment-cluster 192.168.1.12:8080
+```
+
+#### `ops kong upstreams targets healthy <upstream> <target>`
+
+Manually mark a target as healthy.
+
+```bash
+ops kong upstreams targets healthy payment-cluster 192.168.1.12:8080
+```
+
+#### `ops kong upstreams targets unhealthy <upstream> <target>`
+
+Manually mark a target as unhealthy.
+
+```bash
+ops kong upstreams targets unhealthy payment-cluster 192.168.1.12:8080
 ```
 
 #### `ops kong upstreams health <upstream>`
@@ -1066,10 +1097,10 @@ Configure rate limiting.
 
 ```bash
 # Show current rate limit config
-ops kong traffic rate-limit show --service payment-api
+ops kong traffic rate-limit get --service payment-api
 
 # Set rate limits
-ops kong traffic rate-limit set \
+ops kong traffic rate-limit enable \
   --service payment-api \
   --second 10 \
   --minute 100 \
@@ -1083,7 +1114,7 @@ ops kong traffic rate-limit set \
   --error-message "Rate limit exceeded. Please slow down."
 
 # Set rate limit on a route
-ops kong traffic rate-limit set \
+ops kong traffic rate-limit enable \
   --route high-traffic-route \
   --minute 1000 \
   --policy redis \
@@ -1091,7 +1122,7 @@ ops kong traffic rate-limit set \
   --redis-port 6379
 
 # Remove rate limiting
-ops kong traffic rate-limit remove --service payment-api
+ops kong traffic rate-limit disable --service payment-api
 ```
 
 **Rate Limit Options:**
@@ -1281,6 +1312,113 @@ ops kong observability tracing zipkin enable \
   --sample-ratio 0.1 \
   --include-credential
 ```
+
+#### External Metrics Queries
+
+Query metrics from an external Prometheus instance.
+
+```bash
+# Execute custom PromQL query
+ops kong observability metrics query exec 'rate(kong_http_requests_total[5m])'
+ops kong observability metrics query exec 'kong_upstream_target_health' --range 1h
+
+# Show request rate (requests/second)
+ops kong observability metrics query rate
+ops kong observability metrics query rate --service my-api
+
+# Show latency percentiles (p50, p90, p99)
+ops kong observability metrics query latency
+ops kong observability metrics query latency --service my-api
+
+# Show error rate (4xx + 5xx responses)
+ops kong observability metrics query errors
+ops kong observability metrics query errors --service my-api
+
+# Show metrics summary
+ops kong observability metrics query summary
+ops kong observability metrics query summary --service my-api
+```
+
+**Options:**
+
+| Option            | Description                         | Default |
+| ----------------- | ----------------------------------- | ------- |
+| `--range`, `-r`   | Time range (e.g., '5m', '1h', '1d') | 1h      |
+| `--step`          | Query resolution step               | 1m      |
+| `--service`, `-s` | Filter by service name              | -       |
+| `--route`, `-r`   | Filter by route name                | -       |
+| `--output`        | Output format (table, json, yaml)   | table   |
+
+#### External Log Search
+
+Search logs from Elasticsearch or Loki.
+
+```bash
+# Search logs with text query
+ops kong observability logs search query "error"
+ops kong observability logs search query --service my-api
+ops kong observability logs search query --status 500 --range 1d
+
+# Show error logs (4xx and 5xx)
+ops kong observability logs search errors
+ops kong observability logs search errors --service my-api --range 1d
+
+# Show log statistics summary
+ops kong observability logs search summary
+ops kong observability logs search summary --service my-api
+```
+
+**Options:**
+
+| Option            | Description                       | Default |
+| ----------------- | --------------------------------- | ------- |
+| `--service`, `-s` | Filter by service name            | -       |
+| `--route`, `-r`   | Filter by route name              | -       |
+| `--status`        | Filter by status code             | -       |
+| `--range`         | Time range (e.g., '1h', '1d')     | 1h      |
+| `--limit`, `-l`   | Maximum results                   | 50      |
+| `--output`        | Output format (table, json, yaml) | table   |
+
+#### External Trace Search
+
+Query traces from Jaeger or Zipkin.
+
+```bash
+# Find traces
+ops kong observability tracing traces find
+ops kong observability tracing traces find --route my-route
+ops kong observability tracing traces find --min-duration 500
+
+# Get a specific trace
+ops kong observability tracing traces get abc123def456
+
+# Find slow traces (above threshold)
+ops kong observability tracing traces slow
+ops kong observability tracing traces slow --threshold 1000
+
+# Find traces with errors
+ops kong observability tracing traces errors
+ops kong observability tracing traces errors --range 1d
+
+# Analyze a trace for performance insights
+ops kong observability tracing traces analyze abc123def456
+
+# Show tracing statistics summary
+ops kong observability tracing traces summary
+ops kong observability tracing traces summary --range 1d
+```
+
+**Options:**
+
+| Option              | Description                        | Default |
+| ------------------- | ---------------------------------- | ------- |
+| `--route`, `-r`     | Filter by route name               | -       |
+| `--status`          | Filter by status code              | -       |
+| `--min-duration`    | Minimum duration in milliseconds   | -       |
+| `--threshold`, `-t` | Duration threshold for slow traces | 500     |
+| `--range`           | Time range (e.g., '1h', '1d')      | 1h      |
+| `--limit`, `-l`     | Maximum results                    | 20      |
+| `--output`          | Output format (table, json, yaml)  | table   |
 
 ---
 
@@ -1671,6 +1809,207 @@ ops kong services list
 
 ---
 
+### Deployment Management
+
+Commands for installing, upgrading, and managing Kong Gateway deployments in Kubernetes.
+
+#### `ops kong deploy status`
+
+Show Kong Gateway deployment status.
+
+```bash
+ops kong deploy status
+ops kong deploy status --output json
+```
+
+**Output:**
+
+```text
+Kong Deployment Status
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Property        Value
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Status          Running
+Namespace       kong
+Chart           kong/ingress
+Chart Version   0.13.1
+App Version     3.4.0
+PostgreSQL      Ready
+Gateway         Ready
+Controller      Ready
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Pods
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Name                          Phase     Ready    Restarts
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+kong-gateway-abc123           Running   Yes      0
+kong-controller-xyz789        Running   Yes      0
+kong-postgres-0               Running   Yes      0
+```
+
+#### `ops kong deploy install`
+
+Install Kong Gateway with PostgreSQL.
+
+```bash
+ops kong deploy install
+ops kong deploy install --force
+```
+
+This command:
+
+1. Sets up the Kong Helm repository
+2. Creates the kong namespace
+3. Creates the PostgreSQL secret from `config/.env.kong.secrets`
+4. Deploys PostgreSQL
+5. Installs Kong Gateway using the `kong/ingress` chart
+
+**Prerequisites:**
+
+- Kubernetes cluster access (kubectl configured)
+- Helm 3 installed
+- `config/.env.kong.secrets` file exists
+
+**Options:**
+
+| Option    | Description                    |
+| --------- | ------------------------------ |
+| `--force` | Reinstall without confirmation |
+
+#### `ops kong deploy upgrade`
+
+Upgrade Kong Gateway to latest configuration.
+
+```bash
+ops kong deploy upgrade
+```
+
+Updates the Kong deployment with changes from `kong-values.yaml`. PostgreSQL is not affected.
+
+#### `ops kong deploy uninstall`
+
+Uninstall Kong Gateway.
+
+```bash
+ops kong deploy uninstall
+ops kong deploy uninstall --delete-secrets --delete-pvc
+ops kong deploy uninstall --force
+```
+
+By default, keeps secrets and PVC for easier reinstallation.
+
+**Options:**
+
+| Option                            | Description                             | Default |
+| --------------------------------- | --------------------------------------- | ------- |
+| `--keep-postgres`                 | Keep PostgreSQL database                | false   |
+| `--keep-secrets/--delete-secrets` | Keep or delete secrets                  | keep    |
+| `--keep-pvc/--delete-pvc`         | Keep or delete persistent volume claims | keep    |
+| `--force`                         | Skip confirmation prompt                | false   |
+
+#### `ops kong deploy init`
+
+Initialize deployment configuration files.
+
+```bash
+ops kong deploy init
+ops kong deploy init --force
+```
+
+Creates the secrets file from the example template if it doesn't exist.
+
+---
+
+### OpenAPI Integration
+
+Manage Kong routes from OpenAPI specifications.
+
+#### `ops kong openapi sync-routes`
+
+Sync Kong routes from an OpenAPI specification.
+
+```bash
+# Sync routes from spec
+ops kong openapi sync-routes api-spec.yaml --service auth-service
+
+# Preview changes (dry run)
+ops kong openapi sync-routes api-spec.yaml --service auth-service --dry-run
+
+# Force sync with breaking changes
+ops kong openapi sync-routes api-spec.yaml --service auth-service --force
+
+# Sync with path prefix
+ops kong openapi sync-routes api.json --service my-api --path-prefix /v2
+```
+
+Creates, updates, or deletes routes to match the OpenAPI spec. Routes are named using
+the pattern: `{service}-{operationId}`.
+
+**Breaking changes (require --force):**
+
+- Removed paths (routes that exist in Kong but not in spec)
+- Removed HTTP methods from existing routes
+- Path structure changes
+
+**Options:**
+
+| Option                         | Description                       | Default |
+| ------------------------------ | --------------------------------- | ------- |
+| `--service`, `-s`              | Kong service name (required)      | -       |
+| `--path-prefix`                | Prefix to add to all route paths  | -       |
+| `--strip-path/--no-strip-path` | Strip matched path when proxying  | strip   |
+| `--dry-run`                    | Preview changes without applying  | false   |
+| `--force`                      | Apply breaking changes            | false   |
+| `--output`                     | Output format (table, json, yaml) | table   |
+
+**Output:**
+
+```text
+Parsed: Payment API v1.0 (8 operations)
+Generated 8 route mappings
+
+┌─ Sync Preview: payment-api ─────────────────────────────────────┐
+│ Creates: 3  Updates: 2  Deletes: 1  (1 breaking)                │
+└─────────────────────────────────────────────────────────────────┘
+
+Creates
+┏━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┓
+┃ Route Name            ┃ Path              ┃ Methods     ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━┩
+│ payment-api-create    │ /payments         │ POST        │
+│ payment-api-get       │ /payments/{id}    │ GET         │
+│ payment-api-list      │ /payments         │ GET         │
+└───────────────────────┴───────────────────┴─────────────┘
+```
+
+#### `ops kong openapi diff`
+
+Show diff between OpenAPI spec and current Kong routes.
+
+```bash
+# Preview differences
+ops kong openapi diff api-spec.yaml --service auth-service
+
+# Verbose output with field changes
+ops kong openapi diff api-spec.yaml --service auth-service --verbose
+
+# JSON output
+ops kong openapi diff api-spec.yaml --service auth-service --output json
+```
+
+**Options:**
+
+| Option                         | Description                       |
+| ------------------------------ | --------------------------------- |
+| `--service`, `-s`              | Kong service name (required)      |
+| `--path-prefix`                | Prefix to add to all route paths  |
+| `--strip-path/--no-strip-path` | Strip matched path when proxying  |
+| `--verbose`, `-v`              | Show detailed field changes       |
+| `--output`                     | Output format (table, json, yaml) |
+
+---
+
 ### Konnect Commands
 
 Commands for configuring and managing Kong Konnect integration.
@@ -1750,6 +2089,27 @@ Default Control Plane: my-control-plane
 Config File: ~/.config/ops/konnect.yaml
 
 ✓ Authenticated
+```
+
+#### `ops kong konnect list-control-planes`
+
+List available control planes.
+
+```bash
+ops kong konnect list-control-planes
+```
+
+**Output:**
+
+```text
+Control Planes (3)
+┏━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Name               ┃ ID                                   ┃ Type        ┃ Endpoint                     ┃
+┡━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ production         │ abc123-def456-789                    │ CLUSTER     │ us.cp.konghq.com:443         │
+│ staging            │ xyz789-abc123-456                    │ CLUSTER     │ us.cp.konghq.com:443         │
+│ development        │ def456-xyz789-123                    │ CLUSTER     │ us.cp.konghq.com:443         │
+└────────────────────┴──────────────────────────────────────┴─────────────┴──────────────────────────────┘
 ```
 
 ---
@@ -2380,7 +2740,7 @@ ops kong security acl add-group mobile-app premium-users
 
 ```bash
 # Global rate limit (fallback)
-ops kong traffic rate-limit set \
+ops kong traffic rate-limit enable \
   --service payment-api \
   --minute 60 \
   --limit-by consumer

@@ -21,16 +21,16 @@ History and rollback features:
 
 ```bash
 # View command history
-sysctl history
+ops history
 
 # View detailed history with filters
-sysctl history --service api --env production --since 24h
+ops history --service api --env production --since 24h
 
 # Search history
-sysctl history search "deploy api" --user alice --since 7d
+ops history search "deploy api" --user alice --since 7d
 
 # Export history
-sysctl history export --format json --since 30d --output history.json
+ops history export --format json --since 30d --output history.json
 ```
 
 ### History Output Example
@@ -54,7 +54,7 @@ ID      Timestamp              User     Command                          Status 
 ### Detailed History Entry
 
 ````bash
-sysctl history show 1234
+ops history show 1234
 
 # Output:
 ```text
@@ -96,7 +96,7 @@ Network I/O: 1.2GB
 
 Rollback Information:
 Rollback Available: Yes
-Rollback Command: sysctl rollback --to-history 1234
+Rollback Command: ops rollback --to-history 1234
 State Snapshot: snapshot-1234
 
 ````
@@ -149,29 +149,29 @@ history:
 
 ```bash
 # Manual snapshot
-sysctl snapshot create --name "before-major-update" --description "Pre v3.0 deployment"
+ops snapshot create --name "before-major-update" --description "Pre v3.0 deployment"
 
 # Automatic snapshot before operation
-sysctl deploy api --env production --snapshot
+ops deploy api --env production --snapshot
 
 # Snapshot with specific components
-sysctl snapshot create --components "services,configs,secrets" --name daily-backup
+ops snapshot create --components "services,configs,secrets" --name daily-backup
 ```
 
 ### Managing Snapshots
 
 ```bash
 # List snapshots
-sysctl snapshot list --env production
+ops snapshot list --env production
 
 # Show snapshot details
-sysctl snapshot show snapshot-1234
+ops snapshot show snapshot-1234
 
 # Compare snapshots
-sysctl snapshot diff snapshot-1234 snapshot-1235
+ops snapshot diff snapshot-1234 snapshot-1235
 
 # Delete old snapshots
-sysctl snapshot cleanup --older-than 30d
+ops snapshot cleanup --older-than 30d
 ```
 
 ### Snapshot Details
@@ -223,38 +223,38 @@ snapshot:
 
 ```bash
 # Rollback to previous state
-sysctl rollback api --env production
+ops rollback api --env production
 
 # Rollback to specific version
-sysctl rollback api --version v2.0.5 --env production
+ops rollback api --version v2.0.5 --env production
 
 # Rollback to specific point in time
-sysctl rollback api --timestamp "2024-01-15T09:00:00Z" --env production
+ops rollback api --timestamp "2024-01-15T09:00:00Z" --env production
 
 # Rollback using history ID
-sysctl rollback --to-history 1234
+ops rollback --to-history 1234
 ```
 
 ### Advanced Rollback
 
 ```bash
 # Rollback with validation
-sysctl rollback api --validate --env production
+ops rollback api --validate --env production
 
 # Partial rollback (specific components)
-sysctl rollback api --components "config,secrets" --env production
+ops rollback api --components "config,secrets" --env production
 
 # Rollback with custom strategy
-sysctl rollback api --strategy blue-green --env production
+ops rollback api --strategy blue-green --env production
 
 # Emergency rollback (skip confirmations)
-sysctl rollback api --emergency --force --env production
+ops rollback api --emergency --force --env production
 ```
 
 ### Rollback Preview
 
 ````bash
-sysctl rollback api --dry-run --env production
+ops rollback api --dry-run --env production
 
 # Output:
 ```text
@@ -350,13 +350,13 @@ auto_rollback:
 
 ```bash
 # Configure automatic rollback
-sysctl rollback configure --auto --env production
+ops rollback configure --auto --env production
 
 # Test rollback automation
-sysctl rollback test --simulate-failure --env staging
+ops rollback test --simulate-failure --env staging
 
 # Disable automatic rollback temporarily
-sysctl rollback disable-auto --duration 2h --reason "Maintenance window"
+ops rollback disable-auto --duration 2h --reason "Maintenance window"
 ```
 
 ## Time Travel
@@ -365,13 +365,13 @@ sysctl rollback disable-auto --duration 2h --reason "Maintenance window"
 
 ```bash
 # Show system state at specific time
-sysctl history travel "2024-01-15T09:00:00Z" --show-state
+ops history travel "2024-01-15T09:00:00Z" --show-state
 
 # Restore to specific point in time
-sysctl history restore "2024-01-15T09:00:00Z" --env production
+ops history restore "2024-01-15T09:00:00Z" --env production
 
 # Interactive time travel
-sysctl history travel --interactive
+ops history travel --interactive
 ```
 
 ### Time Travel Interface
@@ -413,16 +413,16 @@ Choose option: _
 
 ```bash
 # Generate audit report
-sysctl audit report --period monthly --format pdf
+ops audit report --period monthly --format pdf
 
 # SOX compliance report
-sysctl audit sox-report --quarter Q1-2024
+ops audit sox-report --quarter Q1-2024
 
 # GDPR compliance check
-sysctl audit gdpr-check --include-data-access
+ops audit gdpr-check --include-data-access
 
 # Custom audit query
-sysctl audit query --user alice --operations "delete,modify" --since 30d
+ops audit query --user alice --operations "delete,modify" --since 30d
 ````
 
 ### Audit Log Format
@@ -497,16 +497,16 @@ git_integration:
 
 ```bash
 # Commit current state to git
-sysctl history git-commit --message "Pre-deployment checkpoint"
+ops history git-commit --message "Pre-deployment checkpoint"
 
 # View git history
-sysctl history git-log --since 7d
+ops history git-log --since 7d
 
 # Rollback using git
-sysctl rollback --from-git HEAD~1
+ops rollback --from-git HEAD~1
 
 # Tag important states
-sysctl history git-tag v2.1.0-stable
+ops history git-tag v2.1.0-stable
 ```
 
 ## Best Practices
@@ -576,28 +576,28 @@ compliance:
 
 ```bash
 # History not recording
-sysctl history debug --check-storage --check-permissions
+ops history debug --check-storage --check-permissions
 
 # Rollback failing
-sysctl rollback debug --service api --verbose
+ops rollback debug --service api --verbose
 
 # Snapshot corruption
-sysctl snapshot verify --repair snapshot-1234
+ops snapshot verify --repair snapshot-1234
 
 # Audit compliance issues
-sysctl audit validate --standard sox --fix-issues
+ops audit validate --standard sox --fix-issues
 ```
 
 ### Recovery Procedures
 
 ```bash
 # Recover from failed rollback
-sysctl rollback recover --service api --from-snapshot snapshot-1234
+ops rollback recover --service api --from-snapshot snapshot-1234
 
 # Rebuild history from logs
-sysctl history rebuild --from-logs --since 30d
+ops history rebuild --from-logs --since 30d
 
 # Export and reimport history
-sysctl history export --all --output history-backup.json
-sysctl history import --file history-backup.json --merge
+ops history export --all --output history-backup.json
+ops history import --file history-backup.json --merge
 ```
