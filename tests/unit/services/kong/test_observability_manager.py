@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -165,8 +166,10 @@ class TestObservabilityManagerParseMetricLine:
 
         metric = manager._parse_metric_line(line, "", "gauge")
 
-        # NaN should fail float conversion, returning None
-        assert metric is None or (metric is not None and metric.value != metric.value)
+        # NaN should fail float conversion, returning None or a metric with NaN value
+        assert metric is None or (
+            metric is not None and metric.value is not None and math.isnan(metric.value)
+        )
 
     @pytest.mark.unit
     def test_parse_metric_line_inf_value(self, manager: ObservabilityManager) -> None:

@@ -9,7 +9,7 @@ This plugin provides integration with Kong Gateway's Admin API for:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import structlog
 import typer
@@ -163,7 +163,6 @@ class KongPlugin(Plugin):
             ServiceManager,
             UpstreamManager,
         )
-        from system_operations_manager.services.kong.dual_write import DualWriteService
         from system_operations_manager.services.kong.registry_manager import RegistryManager
         from system_operations_manager.services.kong.unified_query import UnifiedQueryService
 
@@ -306,42 +305,6 @@ class KongPlugin(Plugin):
                 konnect_consumer_manager=get_konnect_consumer_manager(),
                 konnect_plugin_manager=get_konnect_plugin_manager(),
                 konnect_upstream_manager=get_konnect_upstream_manager(),
-            )
-
-        # Dual-write service factory functions
-        def get_dual_write_service_manager() -> DualWriteService[Any]:
-            return DualWriteService(
-                gateway_manager=get_service_manager(),
-                konnect_manager=get_konnect_service_manager(),
-                entity_name="service",
-            )
-
-        def get_dual_write_route_manager() -> DualWriteService[Any]:
-            return DualWriteService(
-                gateway_manager=get_route_manager(),
-                konnect_manager=get_konnect_route_manager(),
-                entity_name="route",
-            )
-
-        def get_dual_write_consumer_manager() -> DualWriteService[Any]:
-            return DualWriteService(
-                gateway_manager=get_consumer_manager(),
-                konnect_manager=get_konnect_consumer_manager(),
-                entity_name="consumer",
-            )
-
-        def get_dual_write_plugin_manager() -> DualWriteService[Any]:
-            return DualWriteService(
-                gateway_manager=get_plugin_manager(),
-                konnect_manager=get_konnect_plugin_manager(),
-                entity_name="plugin",
-            )
-
-        def get_dual_write_upstream_manager() -> DualWriteService[Any]:
-            return DualWriteService(
-                gateway_manager=get_upstream_manager(),
-                konnect_manager=get_konnect_upstream_manager(),
-                entity_name="upstream",
             )
 
         # Register all command groups

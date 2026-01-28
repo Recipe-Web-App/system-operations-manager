@@ -84,10 +84,10 @@ class TestSyncPullCommand:
             app,
             lambda: mock_unified_service,
             get_gateway_service_manager=lambda: mock_gateway_service_manager,
-            get_gateway_route_manager=lambda: MagicMock(),
-            get_gateway_consumer_manager=lambda: MagicMock(),
-            get_gateway_plugin_manager=lambda: MagicMock(),
-            get_gateway_upstream_manager=lambda: MagicMock(),
+            get_gateway_route_manager=MagicMock,
+            get_gateway_consumer_manager=MagicMock,
+            get_gateway_plugin_manager=MagicMock,
+            get_gateway_upstream_manager=MagicMock,
         )
         return app, mock_gateway_service_manager
 

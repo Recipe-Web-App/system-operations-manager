@@ -94,7 +94,7 @@ class TestWorkspaceWorkflow:
         assert result.exit_code == 0
 
         # Update (add comment/meta if supported)
-        result = cli_runner.invoke(
+        cli_runner.invoke(
             kong_enterprise_app,
             [
                 "kong",

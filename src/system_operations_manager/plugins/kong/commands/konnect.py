@@ -262,8 +262,6 @@ def register_konnect_commands(
                         default=False,
                     )
                     if not create_new:
-                        # Use most recent existing cert
-                        cert = existing_certs[0]
                         console.print(
                             "[yellow]Note: Using existing certificate. "
                             "Private key is not available for existing certs.[/yellow]"
