@@ -80,7 +80,7 @@ tenacity = ">=9.1.2"
 textual = ">=7.4.0"
 cloup = { version = ">=3.0.8", optional = true }
 cement = { version = ">=3.0.14", optional = true }
-blessed = { version = ">=1.28.0", optional = true }
+blessed = { version = ">=1.29.0", optional = true }
 prompt-toolkit = { version = ">=3.0.52", optional = true }
 kubernetes = { version = ">=35.0.0", optional = true }
 kr8s = { version = ">=0.20.15", optional = true }
