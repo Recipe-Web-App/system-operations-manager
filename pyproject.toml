@@ -48,8 +48,6 @@ Changelog = "https://github.com/Recipe-Web-App/system-control/blob/main/CHANGELO
 
 [tool.poetry.scripts]
 ops = "system_operations_manager.cli.main:cli"
-ops-install = "system_operations_manager.cli.install:install"
-ops-uninstall = "system_operations_manager.cli.install:uninstall"
 test-cov = "scripts.test_scripts:coverage"
 test-e2e = "scripts.test_scripts:e2e"
 test-integration = "scripts.test_scripts:integration"

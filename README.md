@@ -93,12 +93,8 @@ Comprehensive documentation is available in the `docs/` directory:
 ## 🚀 Quick Start
 
 ```bash
-# Install dependencies with Poetry
-poetry install
-
-# Add ops to PATH (makes 'ops' available globally)
-poetry run ops-install
-source ~/.zshrc  # or open a new terminal
+# Install ops globally using pipx (recommended)
+pipx install . --python python3.14
 
 # Initialize configuration
 ops init
@@ -131,12 +127,15 @@ ops --version
 | `ops init --force`           | Overwrite existing configuration             |
 | `ops init --template <name>` | Use a specific template                      |
 
-### Installation Scripts
+### Installation Management
 
-| Command                    | Description                 |
-| -------------------------- | --------------------------- |
-| `poetry run ops-install`   | Add `ops` to your PATH      |
-| `poetry run ops-uninstall` | Remove `ops` from your PATH |
+| Command                                     | Description                      |
+| ------------------------------------------- | -------------------------------- |
+| `pipx install . --python python3.14`        | Install `ops` globally           |
+| `pipx install -e . --python python3.14`     | Install in editable/dev mode     |
+| `pipx install ".[all]" --python python3.14` | Install with all optional extras |
+| `pipx uninstall system-operations-cli`      | Remove `ops` globally            |
+| `pipx upgrade system-operations-cli`        | Upgrade to latest version        |
 
 ## 🤝 Contributing
 

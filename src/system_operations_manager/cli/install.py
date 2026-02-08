@@ -1,8 +1,10 @@
-"""Installation commands for system-operations-cli."""
+"""Installation commands for system-operations-cli using pipx."""
 
 from __future__ import annotations
 
+import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -12,10 +14,12 @@ from rich.console import Console
 
 console = Console()
 
-SHELL_RC = Path.home() / ".zshrc"
-PATH_MARKER_START = "# system-operations-cli PATH"
-PATH_MARKER_END = "# system-operations-cli PATH END"
 MIN_PYTHON_VERSION = (3, 14)
+PACKAGE_NAME = "system-operations-cli"
+
+# Legacy markers from the old PATH-injection approach
+_LEGACY_MARKER_START = "# system-operations-cli PATH"
+_LEGACY_MARKER_END = "# system-operations-cli PATH END"
 
 
 def _check_python_version() -> bool:
@@ -31,93 +35,111 @@ def _check_python_version() -> bool:
     return True
 
 
-def _get_venv_bin_path() -> Path | None:
-    """Get the virtual environment bin path from Poetry."""
+def _find_pipx() -> str | None:
+    """Find the pipx executable."""
+    pipx_path = shutil.which("pipx")
+    if pipx_path:
+        console.print(f"[green]OK:[/green] Found pipx at {pipx_path}")
+        return pipx_path
+    console.print("[red]ERROR:[/red] pipx is not installed or not in PATH")
+    console.print(
+        "\n[yellow]Install pipx with:[/yellow]\n"
+        "  python3 -m pip install --user pipx\n"
+        "  python3 -m pipx ensurepath\n"
+    )
+    return None
+
+
+def _find_python_for_pipx() -> str | None:
+    """Find a Python >= 3.14 interpreter path for pipx to use."""
+    for candidate in ["python3.14", "python3"]:
+        path = shutil.which(candidate)
+        if path:
+            try:
+                result = subprocess.run(
+                    [
+                        path,
+                        "-c",
+                        "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                major, minor = result.stdout.strip().split(".")
+                if (int(major), int(minor)) >= MIN_PYTHON_VERSION:
+                    return path
+            except (subprocess.CalledProcessError, ValueError):
+                continue
+    return None
+
+
+def _get_project_path() -> Path:
+    """Get the project root path (directory containing pyproject.toml)."""
+    current = Path(__file__).resolve().parent
+    for _ in range(10):
+        if (current / "pyproject.toml").exists():
+            return current
+        current = current.parent
+    return Path.cwd()
+
+
+def _is_installed_via_pipx() -> bool:
+    """Check if the package is already installed via pipx."""
     try:
         result = subprocess.run(
-            ["poetry", "env", "info", "--path"],
+            ["pipx", "list", "--short"],
             capture_output=True,
             text=True,
             check=True,
         )
-        venv_path = Path(result.stdout.strip())
-        bin_path = venv_path / "bin"
-        if bin_path.exists():
-            console.print(f"[green]OK:[/green] Found venv bin at {bin_path}")
-            return bin_path
-        console.print(f"[red]ERROR:[/red] Venv bin directory not found at {bin_path}")
-        return None
-    except subprocess.CalledProcessError as e:
-        console.print(f"[red]ERROR:[/red] Failed to get Poetry env info: {e.stderr}")
-        return None
-    except FileNotFoundError:
-        console.print("[red]ERROR:[/red] Poetry is not installed or not in PATH")
-        return None
+        return PACKAGE_NAME in result.stdout
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
 
 
-def _read_shell_rc() -> str:
-    """Read the shell RC file contents."""
-    if SHELL_RC.exists():
-        return SHELL_RC.read_text()
-    return ""
+def _cleanup_legacy_path_entry() -> None:
+    """Remove legacy PATH entries from shell RC files if present."""
+    for rc_file in [Path.home() / ".zshrc", Path.home() / ".bashrc"]:
+        if not rc_file.exists():
+            continue
+        content = rc_file.read_text()
+        if _LEGACY_MARKER_START in content:
+            pattern = rf"\n?{re.escape(_LEGACY_MARKER_START)}.*?{re.escape(_LEGACY_MARKER_END)}\n?"
+            cleaned = re.sub(pattern, "", content, flags=re.DOTALL)
+            rc_file.write_text(cleaned)
+            console.print(f"[green]OK:[/green] Removed legacy PATH entry from {rc_file}")
 
 
-def _write_shell_rc(content: str) -> None:
-    """Write content to shell RC file."""
-    SHELL_RC.write_text(content)
+def _install_shell_completion() -> bool:
+    """Install shell completion using Typer's built-in support."""
+    ops_path = shutil.which("ops")
+    if not ops_path:
+        console.print("[yellow]WARN:[/yellow] ops not found on PATH; skipping shell completion")
+        console.print("  You can manually run: ops --install-completion")
+        return False
 
+    shell = os.environ.get("SHELL", "")
+    shell_name = Path(shell).name if shell else ""
 
-def _remove_existing_path_entry(content: str) -> str:
-    """Remove existing PATH entry if present."""
-    pattern = rf"\n?{re.escape(PATH_MARKER_START)}.*?{re.escape(PATH_MARKER_END)}\n?"
-    return re.sub(pattern, "", content, flags=re.DOTALL)
+    if shell_name not in ("zsh", "bash", "fish"):
+        console.print(
+            f"[yellow]WARN:[/yellow] Unsupported shell '{shell_name}' for auto-completion"
+        )
+        console.print("  You can manually run: ops --install-completion")
+        return False
 
-
-def _add_path_entry(venv_bin: Path) -> bool:
-    """Add venv bin to PATH in shell RC file."""
-    content = _read_shell_rc()
-
-    # Remove existing entry if present (idempotent)
-    content = _remove_existing_path_entry(content)
-
-    # Add new PATH entry
-    path_block = f"""
-{PATH_MARKER_START}
-export PATH="{venv_bin}:$PATH"
-{PATH_MARKER_END}
-"""
-    content = content.rstrip() + path_block
-
-    _write_shell_rc(content)
-    console.print(f"[green]OK:[/green] Added PATH entry to {SHELL_RC}")
-    return True
-
-
-def _verify_ops_executable(venv_bin: Path) -> bool:
-    """Verify the ops executable exists."""
-    ops_path = venv_bin / "ops"
-    if ops_path.exists():
-        console.print(f"[green]OK:[/green] Found ops executable at {ops_path}")
-        return True
-    console.print(f"[red]ERROR:[/red] ops executable not found at {ops_path}")
-    return False
-
-
-def _install_shell_completion(venv_bin: Path) -> bool:
-    """Install shell completion for zsh using Typer's built-in support."""
-    ops_path = venv_bin / "ops"
     try:
         result = subprocess.run(
-            [str(ops_path), "--install-completion", "zsh"],
+            [ops_path, "--install-completion", shell_name],
             capture_output=True,
             text=True,
         )
         if result.returncode == 0:
-            console.print("[green]OK:[/green] Shell completion installed for zsh")
+            console.print(f"[green]OK:[/green] Shell completion installed for {shell_name}")
             return True
-        # Typer may return non-zero if already installed, which is fine
-        if "already" in result.stderr.lower() or "already" in result.stdout.lower():
-            console.print("[green]OK:[/green] Shell completion already installed")
+        if "already" in (result.stderr + result.stdout).lower():
+            console.print(f"[green]OK:[/green] Shell completion already installed for {shell_name}")
             return True
         console.print(f"[yellow]WARN:[/yellow] Could not install shell completion: {result.stderr}")
         return False
@@ -126,62 +148,103 @@ def _install_shell_completion(venv_bin: Path) -> bool:
         return False
 
 
-def install() -> None:
-    """Install system-operations-cli and add to PATH."""
-    console.print("\n[bold]Installing system-operations-cli...[/bold]\n")
+def install(
+    editable: bool = typer.Option(
+        False, "--editable", "-e", help="Install in editable/development mode."
+    ),
+    extras: str = typer.Option(
+        "", "--extras", help="Comma-separated extras to install (e.g. 'kubernetes,monitoring')."
+    ),
+    force: bool = typer.Option(
+        False, "--force", "-f", help="Force reinstall if already installed."
+    ),
+    python: str = typer.Option("", "--python", help="Path to Python interpreter for pipx venv."),
+) -> None:
+    """Install system-operations-cli globally using pipx."""
+    console.print("\n[bold]Installing system-operations-cli via pipx...[/bold]\n")
 
     # Step 1: Check Python version
     if not _check_python_version():
         raise typer.Exit(1)
 
-    # Step 2: Get venv bin path
-    venv_bin = _get_venv_bin_path()
-    if not venv_bin:
+    # Step 2: Clean up any legacy PATH entries
+    _cleanup_legacy_path_entry()
+
+    # Step 3: Verify pipx is available
+    pipx_path = _find_pipx()
+    if not pipx_path:
         raise typer.Exit(1)
 
-    # Step 3: Verify ops executable exists
-    if not _verify_ops_executable(venv_bin):
-        console.print(
-            "\n[yellow]Hint:[/yellow] Run 'poetry install' first to install dependencies."
-        )
-        raise typer.Exit(1)
+    # Step 4: Check if already installed
+    if _is_installed_via_pipx() and not force:
+        console.print(f"[yellow]{PACKAGE_NAME} is already installed via pipx.[/yellow]")
+        console.print("Use --force to reinstall, or run: pipx upgrade system-operations-cli")
+        raise typer.Exit(0)
 
-    # Step 4: Add to PATH
-    if not _add_path_entry(venv_bin):
+    # Step 5: Find Python >= 3.14 for pipx
+    python_path = python or _find_python_for_pipx()
+    if not python_path:
+        console.print("[red]ERROR:[/red] Could not find Python >= 3.14 interpreter")
+        console.print("Specify one with --python /path/to/python3.14")
         raise typer.Exit(1)
+    console.print(f"[green]OK:[/green] Using Python interpreter: {python_path}")
 
-    # Step 5: Install shell completion
-    _install_shell_completion(venv_bin)
+    # Step 6: Build the pipx install command
+    project_path = _get_project_path()
+    package_spec = str(project_path)
+    if extras:
+        package_spec = f"{project_path}[{extras}]"
+
+    cmd = [pipx_path, "install", package_spec, "--python", python_path]
+    if editable:
+        cmd.append("--editable")
+    if force:
+        cmd.append("--force")
+
+    console.print(f"[dim]Running: {' '.join(cmd)}[/dim]\n")
+
+    # Step 7: Run pipx install
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as err:
+        console.print("\n[red]ERROR:[/red] pipx install failed. See output above.")
+        raise typer.Exit(1) from err
+
+    # Step 8: Install shell completion
+    _install_shell_completion()
 
     # Success message
     console.print("\n[bold green]Installation complete![/bold green]\n")
-    console.print("To start using 'ops', either:")
-    console.print(f"  1. Run: [cyan]source {SHELL_RC}[/cyan]")
-    console.print("  2. Open a new terminal window\n")
-    console.print("Then verify with: [cyan]ops --version[/cyan]")
+    console.print("The 'ops' command is now available globally.")
+    console.print("Verify with: [cyan]ops --version[/cyan]")
     console.print("Tab completion: [cyan]ops <TAB>[/cyan]\n")
+    if editable:
+        console.print(
+            "[dim]Installed in editable mode -- code changes take effect immediately.[/dim]\n"
+        )
 
 
 def uninstall() -> None:
-    """Remove system-operations-cli from PATH."""
-    console.print("\n[bold]Uninstalling system-operations-cli...[/bold]\n")
+    """Uninstall system-operations-cli via pipx."""
+    console.print("\n[bold]Uninstalling system-operations-cli via pipx...[/bold]\n")
 
-    content = _read_shell_rc()
+    pipx_path = _find_pipx()
+    if not pipx_path:
+        raise typer.Exit(1)
 
-    if PATH_MARKER_START not in content:
-        console.print(f"[yellow]No PATH entry found in {SHELL_RC}[/yellow]")
+    if not _is_installed_via_pipx():
+        console.print(f"[yellow]{PACKAGE_NAME} is not installed via pipx.[/yellow]")
         console.print("Nothing to uninstall.")
         return
 
-    # Remove PATH entry
-    content = _remove_existing_path_entry(content)
-    _write_shell_rc(content)
+    try:
+        subprocess.run([pipx_path, "uninstall", PACKAGE_NAME], check=True)
+    except subprocess.CalledProcessError as err:
+        console.print("\n[red]ERROR:[/red] pipx uninstall failed.")
+        raise typer.Exit(1) from err
 
-    console.print(f"[green]OK:[/green] Removed PATH entry from {SHELL_RC}")
     console.print("\n[bold green]Uninstallation complete![/bold green]\n")
-    console.print("To apply changes, either:")
-    console.print(f"  1. Run: [cyan]source {SHELL_RC}[/cyan]")
-    console.print("  2. Open a new terminal window\n")
+    console.print("The 'ops' command has been removed.")
 
 
 if __name__ == "__main__":
