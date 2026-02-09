@@ -340,10 +340,11 @@ class OpenAPISyncManager:
             tags = [f"service:{service_name}"]
             tags.extend(sorted(operation_tags))
 
-            # Apply path prefix if specified
+            # Apply path prefix: explicit override > spec base_path
+            effective_prefix = path_prefix if path_prefix else spec.base_path
             final_path = path
-            if path_prefix:
-                final_path = f"{path_prefix.rstrip('/')}{path}"
+            if effective_prefix:
+                final_path = f"{effective_prefix.rstrip('/')}{path}"
 
             mappings.append(
                 RouteMapping(
@@ -459,6 +460,7 @@ class OpenAPISyncManager:
                         path=mapping.path,
                         methods=mapping.methods,
                         tags=mapping.tags,
+                        strip_path=mapping.strip_path,
                         is_breaking=False,
                     )
                 )
@@ -475,6 +477,7 @@ class OpenAPISyncManager:
                             path=mapping.path,
                             methods=mapping.methods,
                             tags=mapping.tags,
+                            strip_path=mapping.strip_path,
                             is_breaking=is_breaking,
                             breaking_reason=breaking_reason,
                             field_changes=changes,
@@ -700,6 +703,7 @@ class OpenAPISyncManager:
                 paths=[change.path],
                 methods=change.methods,
                 tags=change.tags,
+                strip_path=change.strip_path,
                 service=KongEntityReference.from_name(service_name),
             )
             self._route_manager.create_for_service(service_name, route)
@@ -732,6 +736,7 @@ class OpenAPISyncManager:
                 paths=[change.path],
                 methods=change.methods,
                 tags=change.tags,
+                strip_path=change.strip_path,
             )
             self._route_manager.update(change.route_name, route)
             self._log.info("updated_route", name=change.route_name)

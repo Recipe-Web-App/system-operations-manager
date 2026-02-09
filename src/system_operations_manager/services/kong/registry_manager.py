@@ -454,12 +454,40 @@ class RegistryManager:
         routes_status: str = "no_spec"
         error: str | None = None
 
+        # Determine whether routes will carry the full path prefix (from the
+        # OpenAPI spec or explicit path_prefix).  If so, we must omit the
+        # service ``path`` to avoid double-prefixing on the upstream request.
+        omit_service_path = False
+        if not skip_routes and entry.has_openapi_spec and openapi_sync_manager is not None:
+            if entry.path_prefix:
+                omit_service_path = True
+            else:
+                spec_path = entry.openapi_spec_path
+                if spec_path is not None and spec_path.exists():
+                    try:
+                        spec = openapi_sync_manager.parse_openapi(spec_path)
+                        if spec.base_path:
+                            omit_service_path = True
+                    except Exception:
+                        pass  # will be reported during route sync
+
         # Handle service creation/update
         if diff.operation == "unchanged":
             service_status = "unchanged"
+            # Even when "unchanged", if omit_service_path changed we must
+            # update the service to remove the stale path.
+            if omit_service_path and entry.path is not None:
+                try:
+                    service = Service(**entry.to_kong_service_dict(omit_path=True))
+                    service.path = "/"
+                    service_manager.update(entry.name, service)
+                    service_status = "updated"
+                    self._log.info("service_path_cleared", name=entry.name)
+                except Exception as e:
+                    self._log.warning("service_path_clear_failed", name=entry.name, error=str(e))
         elif diff.operation == "create":
             try:
-                service = Service(**entry.to_kong_service_dict())
+                service = Service(**entry.to_kong_service_dict(omit_path=omit_service_path))
                 service_manager.create(service)
                 service_status = "created"
                 self._log.info("service_created", name=entry.name)
@@ -472,7 +500,7 @@ class RegistryManager:
                 )
         elif diff.operation == "update":
             try:
-                service = Service(**entry.to_kong_service_dict())
+                service = Service(**entry.to_kong_service_dict(omit_path=omit_service_path))
                 service_manager.update(entry.name, service)
                 service_status = "updated"
                 self._log.info("service_updated", name=entry.name)
@@ -634,9 +662,40 @@ class RegistryManager:
         if not paths:
             return 0, "synced"
 
+        # Look up the Konnect service UUID (Konnect API requires UUIDs, not names)
+        try:
+            konnect_service = konnect_service_manager.get(entry.name)
+            if not konnect_service.id:
+                raise ValueError("Service has no ID")
+            konnect_service_id: str = konnect_service.id
+        except Exception as exc:
+            self._log.error(
+                "konnect_service_lookup_failed",
+                name=entry.name,
+            )
+            raise ValueError(f"Konnect API error: service_id '{entry.name}' is not a UUID") from exc
+
         # Get existing routes for this service in Konnect
-        existing_routes, _ = konnect_route_manager.list_by_service(entry.name)
+        existing_routes, _ = konnect_route_manager.list_by_service(konnect_service_id)
         existing_by_name = {r.name: r for r in existing_routes if r.name}
+
+        # Determine effective path prefix: explicit override > spec base_path
+        spec_base_path: str | None = None
+        servers = data.get("servers", [])
+        if servers and isinstance(servers[0], dict):
+            server_url = servers[0].get("url", "")
+            if server_url.startswith(("http://", "https://")):
+                from urllib.parse import urlparse
+
+                parsed_url = urlparse(server_url)
+                bp = parsed_url.path.rstrip("/")
+                if bp and bp != "/":
+                    spec_base_path = bp
+            elif server_url:
+                bp = server_url.rstrip("/")
+                if bp and bp != "/":
+                    spec_base_path = bp
+        effective_prefix = entry.path_prefix if entry.path_prefix else spec_base_path
 
         routes_synced = 0
         for path, methods in paths.items():
@@ -656,24 +715,24 @@ class RegistryManager:
             safe_path = path.replace("/", "-").replace("{", "").replace("}", "").strip("-")
             route_name = f"{entry.name}{safe_path}" if safe_path else entry.name
 
-            # Apply path prefix if specified
+            # Apply path prefix: explicit override > spec base_path
             final_path = path
-            if entry.path_prefix:
-                final_path = f"{entry.path_prefix.rstrip('/')}{path}"
+            if effective_prefix:
+                final_path = f"{effective_prefix.rstrip('/')}{path}"
 
             # Build tags
             tags = [f"service:{entry.name}"]
             if entry.tags:
                 tags.extend(entry.tags)
 
-            # Create route
+            # Create route (use Konnect service UUID, not name)
             route = Route(
                 name=route_name,
                 paths=[final_path],
                 methods=http_methods,
                 tags=tags,
                 strip_path=entry.strip_path,
-                service=KongEntityReference.from_name(entry.name),
+                service=KongEntityReference.from_id(konnect_service_id),
             )
 
             try:
@@ -684,7 +743,7 @@ class RegistryManager:
                         konnect_route_manager.update(existing.id, route)
                 else:
                     # Create new route
-                    konnect_route_manager.create(route, service_name_or_id=entry.name)
+                    konnect_route_manager.create(route, service_name_or_id=konnect_service_id)
 
                 routes_synced += 1
             except Exception as e:
