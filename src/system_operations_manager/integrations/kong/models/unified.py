@@ -145,6 +145,11 @@ class UnifiedEntityList[T: KongEntityBase](BaseModel):
     def filter_by_source(self, source: EntitySource | str) -> UnifiedEntityList[T]:
         """Filter entities by source.
 
+        When filtering by ``gateway`` or ``konnect``, entities that exist in
+        **both** sources are included (since they are present in the requested
+        source).  Filtering by ``both`` returns only entities that exist in
+        both sources simultaneously.
+
         Args:
             source: Source to filter by (gateway, konnect, or both).
 
@@ -154,7 +159,17 @@ class UnifiedEntityList[T: KongEntityBase](BaseModel):
         if isinstance(source, str):
             source = EntitySource(source)
 
-        return UnifiedEntityList(entities=[e for e in self.entities if e.source == source])
+        # "both" means the entity exists in both planes, so it should be
+        # included when the caller asks for either single plane.
+        if source == EntitySource.GATEWAY:
+            match_sources = {EntitySource.GATEWAY, EntitySource.BOTH}
+        elif source == EntitySource.KONNECT:
+            match_sources = {EntitySource.KONNECT, EntitySource.BOTH}
+        else:
+            # Explicit "both" filter — only entities present in both planes
+            match_sources = {EntitySource.BOTH}
+
+        return UnifiedEntityList(entities=[e for e in self.entities if e.source in match_sources])
 
 
 def detect_drift(
