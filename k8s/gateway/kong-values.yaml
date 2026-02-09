@@ -43,8 +43,8 @@ gateway:
     konnect_mode: "on"
     vitals: "off"
     cluster_mtls: pki
-    cluster_telemetry_endpoint: "2ae749365b.us.tp0.konghq.com:443"
-    cluster_telemetry_server_name: "2ae749365b.us.tp0.konghq.com"
+    cluster_telemetry_endpoint: "7570908678.us.tp0.konghq.com:443"
+    cluster_telemetry_server_name: "7570908678.us.tp0.konghq.com"
     cluster_cert: /etc/secrets/konnect-client-tls/tls.crt
     cluster_cert_key: /etc/secrets/konnect-client-tls/tls.key
     lua_ssl_trusted_certificate: system
