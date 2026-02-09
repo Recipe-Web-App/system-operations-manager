@@ -60,7 +60,7 @@ core = "system_operations_manager.plugins.core:CorePlugin"
 kong = "system_operations_manager.plugins.kong:KongPlugin"
 
 [tool.poetry.dependencies]
-python = ">=3.14.2,<4.0"
+python = ">=3.14.3,<4.0"
 click = ">=8.3.1"
 typer = ">=0.21.1"
 rich = ">=14.3.2"
@@ -76,7 +76,7 @@ cryptography = ">=46.0.4"
 jsonschema = ">=4.26.0"
 psutil = ">=7.2.2"
 pluggy = ">=1.6.0"
-tenacity = ">=9.1.2"
+tenacity = ">=9.1.4"
 textual = ">=7.5.0"
 cloup = { version = ">=3.0.8", optional = true }
 cement = { version = ">=3.0.14", optional = true }
@@ -91,7 +91,7 @@ elasticsearch = { version = ">=9.3.0", optional = true }
 opentelemetry-api = { version = ">=1.39.1", optional = true }
 opentelemetry-sdk = { version = ">=1.39.1", optional = true }
 hvac = { version = ">=2.4.0", optional = true }
-boto3 = { version = ">=1.42.39", optional = true }
+boto3 = { version = ">=1.42.44", optional = true }
 azure-keyvault-secrets = { version = ">=4.10.0", optional = true }
 azure-identity = { version = ">=1.25.1", optional = true }
 google-cloud-secret-manager = { version = ">=2.26.0", optional = true }
