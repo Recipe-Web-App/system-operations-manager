@@ -1,0 +1,244 @@
+"""Kubernetes plugin implementation.
+
+This plugin provides integration with Kubernetes clusters for:
+- Cluster Management: Context switching, status, node info
+- Workloads: Pods, Deployments, StatefulSets, DaemonSets, ReplicaSets
+- Networking: Services, Ingresses, NetworkPolicies
+- Configuration: ConfigMaps, Secrets
+- Storage: PVs, PVCs, StorageClasses
+- RBAC: ServiceAccounts, Roles, RoleBindings
+- Jobs: Jobs, CronJobs
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import structlog
+import typer
+from rich.console import Console
+
+from system_operations_manager.cli.output import Table
+from system_operations_manager.core.plugins.base import Plugin, hookimpl
+from system_operations_manager.integrations.kubernetes.client import KubernetesClient
+from system_operations_manager.integrations.kubernetes.config import KubernetesPluginConfig
+from system_operations_manager.integrations.kubernetes.exceptions import (
+    KubernetesConnectionError,
+    KubernetesError,
+)
+from system_operations_manager.plugins.kubernetes.commands.base import (
+    OutputOption,
+    handle_k8s_error,
+)
+from system_operations_manager.plugins.kubernetes.formatters import OutputFormat, get_formatter
+
+if TYPE_CHECKING:
+    pass
+
+logger = structlog.get_logger()
+console = Console()
+
+
+class KubernetesPlugin(Plugin):
+    """Kubernetes cluster management plugin.
+
+    Provides CLI commands and API access to Kubernetes clusters via
+    the official kubernetes Python client.
+    """
+
+    name = "kubernetes"
+    version = "0.1.0"
+    description = "Kubernetes cluster management and resource operations"
+
+    def __init__(self) -> None:
+        """Initialize Kubernetes plugin."""
+        super().__init__()
+        self._client: KubernetesClient | None = None
+        self._plugin_config: KubernetesPluginConfig | None = None
+
+    def on_initialize(self) -> None:
+        """Initialize Kubernetes plugin with configuration.
+
+        Parses the plugin configuration and creates the Kubernetes client.
+        Environment variables can override configuration file values.
+        """
+        try:
+            config_dict = self._config or {}
+            self._plugin_config = KubernetesPluginConfig.from_env(config_dict)
+            self._client = KubernetesClient(self._plugin_config)
+
+            logger.info(
+                "Kubernetes plugin initialized",
+                context=self._client.get_current_context(),
+                namespace=self._plugin_config.get_active_namespace(),
+            )
+        except KubernetesConnectionError:
+            # Don't fail plugin init on connection errors - commands will fail gracefully
+            logger.warning(
+                "Kubernetes plugin initialized without cluster connection",
+            )
+        except Exception as e:
+            logger.error("Failed to initialize Kubernetes plugin", error=str(e))
+            raise
+
+    @hookimpl
+    def register_commands(self, app: typer.Typer) -> None:
+        """Register Kubernetes commands with the CLI."""
+        k8s_app = typer.Typer(
+            name="k8s",
+            help="Kubernetes cluster management commands",
+            no_args_is_help=True,
+        )
+
+        self._register_status_commands(k8s_app)
+
+        app.add_typer(k8s_app, name="k8s")
+        logger.debug("Kubernetes commands registered")
+
+    def _register_status_commands(self, app: typer.Typer) -> None:
+        """Register status and cluster info commands."""
+        client = self._client
+        plugin_config = self._plugin_config
+
+        @app.command()
+        def status(
+            output: OutputOption = OutputFormat.TABLE,
+        ) -> None:
+            """Show Kubernetes cluster status and connectivity.
+
+            Examples:
+                ops k8s status
+                ops k8s status --output json
+            """
+            if not client:
+                console.print("[red]Error:[/red] Kubernetes plugin not configured")
+                raise typer.Exit(1)
+
+            try:
+                connected = client.check_connection()
+                context = client.get_current_context()
+                namespace = plugin_config.get_active_namespace() if plugin_config else "default"
+
+                data: dict[str, str | int] = {
+                    "context": context,
+                    "namespace": namespace,
+                    "connected": "yes" if connected else "no",
+                }
+
+                if connected:
+                    try:
+                        version = client.get_cluster_version()
+                        data["cluster_version"] = version
+                    except KubernetesError:
+                        data["cluster_version"] = "unknown"
+
+                    try:
+                        nodes = client.core_v1.list_node()
+                        data["nodes"] = len(nodes.items) if nodes.items else 0
+                    except Exception:
+                        data["nodes"] = "unknown"
+
+                if output == OutputFormat.TABLE:
+                    table = Table(title="Kubernetes Cluster Status")
+                    table.add_column("Property", style="cyan")
+                    table.add_column("Value", style="green")
+
+                    table.add_row("Context", str(data["context"]))
+                    table.add_row("Namespace", str(data["namespace"]))
+                    table.add_row(
+                        "Connected",
+                        "[green]Yes[/green]" if connected else "[red]No[/red]",
+                    )
+                    if connected:
+                        table.add_row("Cluster Version", str(data.get("cluster_version", "-")))
+                        table.add_row("Nodes", str(data.get("nodes", "-")))
+
+                    console.print(table)
+                else:
+                    formatter = get_formatter(output, console)
+                    formatter.format_dict(data, title="Kubernetes Cluster Status")
+
+            except KubernetesError as e:
+                handle_k8s_error(e)
+
+        @app.command()
+        def contexts(
+            output: OutputOption = OutputFormat.TABLE,
+        ) -> None:
+            """List available Kubernetes contexts.
+
+            Examples:
+                ops k8s contexts
+                ops k8s contexts --output json
+            """
+            if not client:
+                console.print("[red]Error:[/red] Kubernetes plugin not configured")
+                raise typer.Exit(1)
+
+            try:
+                ctx_list = client.list_contexts()
+
+                if output == OutputFormat.TABLE:
+                    table = Table(title="Kubernetes Contexts")
+                    table.add_column("", style="green", width=2)
+                    table.add_column("Name", style="cyan")
+                    table.add_column("Cluster", style="white")
+                    table.add_column("Namespace", style="white")
+
+                    for ctx in ctx_list:
+                        marker = "*" if ctx.get("active") else ""
+                        table.add_row(
+                            marker,
+                            ctx.get("name", ""),
+                            ctx.get("cluster", ""),
+                            ctx.get("namespace", "default"),
+                        )
+                    console.print(table)
+                else:
+                    formatter = get_formatter(output, console)
+                    formatter.format_dict(
+                        {"contexts": ctx_list},
+                        title="Kubernetes Contexts",
+                    )
+
+            except KubernetesError as e:
+                handle_k8s_error(e)
+
+        @app.command(name="use-context")
+        def use_context(
+            context_name: str = typer.Argument(help="Context name to switch to"),
+        ) -> None:
+            """Switch to a different Kubernetes context.
+
+            Examples:
+                ops k8s use-context production
+                ops k8s use-context minikube
+            """
+            if not client:
+                console.print("[red]Error:[/red] Kubernetes plugin not configured")
+                raise typer.Exit(1)
+
+            try:
+                client.switch_context(context_name)
+                console.print(f"[green]Switched to context '{context_name}'[/green]")
+            except KubernetesError as e:
+                handle_k8s_error(e)
+
+    @hookimpl
+    def cleanup(self) -> None:
+        """Cleanup Kubernetes plugin resources."""
+        if self._client:
+            self._client.close()
+            self._client = None
+        super().cleanup()
+        logger.debug("Kubernetes plugin cleaned up")
+
+    @property
+    def client(self) -> KubernetesClient | None:
+        """Get the Kubernetes client."""
+        return self._client
+
+    @property
+    def plugin_config(self) -> KubernetesPluginConfig | None:
+        """Get the Kubernetes plugin configuration."""
+        return self._plugin_config
