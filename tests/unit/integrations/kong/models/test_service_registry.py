@@ -181,6 +181,29 @@ class TestServiceRegistryEntry:
         assert "path_prefix" not in kong_dict
 
     @pytest.mark.unit
+    def test_to_kong_service_dict_omit_path_true(self) -> None:
+        """omit_path=True should exclude path from Kong dict."""
+        entry = ServiceRegistryEntry(name="api", host="api.local", path="/v1")
+        kong_dict = entry.to_kong_service_dict(omit_path=True)
+        assert "path" not in kong_dict
+        assert kong_dict["name"] == "api"
+        assert kong_dict["host"] == "api.local"
+
+    @pytest.mark.unit
+    def test_to_kong_service_dict_omit_path_false_default(self) -> None:
+        """Default omit_path=False should include path in Kong dict."""
+        entry = ServiceRegistryEntry(name="api", host="api.local", path="/v1")
+        kong_dict = entry.to_kong_service_dict()
+        assert kong_dict["path"] == "/v1"
+
+    @pytest.mark.unit
+    def test_to_kong_service_dict_omit_path_no_path_set(self) -> None:
+        """omit_path=True with no path set should not error."""
+        entry = ServiceRegistryEntry(name="api", host="api.local")
+        kong_dict = entry.to_kong_service_dict(omit_path=True)
+        assert "path" not in kong_dict
+
+    @pytest.mark.unit
     def test_has_openapi_spec(self) -> None:
         """Should correctly report if OpenAPI spec is configured."""
         entry_without = ServiceRegistryEntry(name="api", host="api.local")

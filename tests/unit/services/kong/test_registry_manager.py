@@ -555,6 +555,197 @@ class TestRegistryManagerDeploy:
         assert results.gateway[0].success is False
         assert "Connection refused" in (results.gateway[0].error or "")
 
+    @pytest.mark.unit
+    def test_deploy_omits_service_path_when_path_prefix_set(
+        self,
+        registry_manager: RegistryManager,
+        mock_service_manager: MagicMock,
+        mock_openapi_manager: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Service path should be omitted when entry has path_prefix."""
+        from system_operations_manager.integrations.kong.models.openapi import (
+            OpenAPISpec,
+            SyncApplyResult,
+            SyncResult,
+        )
+
+        spec_file = tmp_path / "spec.yaml"
+        spec_file.write_text("openapi: 3.0.0")
+
+        entry = ServiceRegistryEntry(
+            name="api",
+            host="api.local",
+            path="/api/v1",
+            openapi_spec=str(spec_file),
+            path_prefix="/api/v1",
+        )
+        registry_manager.add_service(entry)
+
+        mock_service_manager.get.side_effect = KongNotFoundError("service", "api", "Not found")
+        mock_openapi_manager.parse_openapi.return_value = OpenAPISpec(
+            title="Test", version="1.0"
+        )
+        mock_openapi_manager.generate_route_mappings.return_value = []
+        mock_openapi_manager.calculate_diff.return_value = SyncResult(service_name="api")
+        mock_openapi_manager.apply_sync.return_value = SyncApplyResult(service_name="api")
+
+        results = registry_manager.deploy(
+            mock_service_manager,
+            mock_openapi_manager,
+            skip_routes=False,
+            gateway_only=True,
+        )
+
+        assert results.gateway[0].service_status == "created"
+        create_call = mock_service_manager.create.call_args[0][0]
+        # The path should NOT be /api/v1 — it should be omitted
+        assert create_call.path != "/api/v1"
+
+    @pytest.mark.unit
+    def test_deploy_omits_service_path_when_spec_has_base_path(
+        self,
+        registry_manager: RegistryManager,
+        mock_service_manager: MagicMock,
+        mock_openapi_manager: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Service path should be omitted when OpenAPI spec has base_path."""
+        from system_operations_manager.integrations.kong.models.openapi import (
+            OpenAPISpec,
+            SyncApplyResult,
+            SyncResult,
+        )
+
+        spec_file = tmp_path / "api.yaml"
+        spec_file.write_text("openapi: 3.0.0")
+
+        entry = ServiceRegistryEntry(
+            name="api",
+            host="api.local",
+            path="/api/v1",
+            openapi_spec=str(spec_file),
+        )
+        registry_manager.add_service(entry)
+
+        mock_service_manager.get.side_effect = KongNotFoundError("service", "api", "Not found")
+        mock_openapi_manager.parse_openapi.return_value = OpenAPISpec(
+            title="Test", version="1.0", base_path="/api/v1"
+        )
+        mock_openapi_manager.generate_route_mappings.return_value = []
+        mock_openapi_manager.calculate_diff.return_value = SyncResult(service_name="api")
+        mock_openapi_manager.apply_sync.return_value = SyncApplyResult(service_name="api")
+
+        results = registry_manager.deploy(
+            mock_service_manager,
+            mock_openapi_manager,
+            skip_routes=False,
+            gateway_only=True,
+        )
+
+        assert results.gateway[0].service_status == "created"
+        create_call = mock_service_manager.create.call_args[0][0]
+        assert create_call.path != "/api/v1"
+
+    @pytest.mark.unit
+    def test_deploy_unchanged_service_clears_path_when_omit_needed(
+        self,
+        registry_manager: RegistryManager,
+        mock_service_manager: MagicMock,
+        mock_openapi_manager: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Unchanged service should have path cleared to '/' when omit_service_path is True."""
+        from system_operations_manager.integrations.kong.models.openapi import (
+            OpenAPISpec,
+            SyncApplyResult,
+            SyncResult,
+        )
+
+        spec_file = tmp_path / "spec.yaml"
+        spec_file.write_text("openapi: 3.0.0")
+
+        entry = ServiceRegistryEntry(
+            name="api",
+            host="api.local",
+            port=80,
+            path="/api/v1",
+            openapi_spec=str(spec_file),
+            path_prefix="/api/v1",
+        )
+        registry_manager.add_service(entry)
+
+        existing = Service(name="api", host="api.local", port=80, path="/api/v1")
+        mock_service_manager.get.return_value = existing
+        mock_openapi_manager.parse_openapi.return_value = OpenAPISpec(
+            title="Test", version="1.0"
+        )
+        mock_openapi_manager.generate_route_mappings.return_value = []
+        mock_openapi_manager.calculate_diff.return_value = SyncResult(service_name="api")
+        mock_openapi_manager.apply_sync.return_value = SyncApplyResult(service_name="api")
+
+        results = registry_manager.deploy(
+            mock_service_manager,
+            mock_openapi_manager,
+            skip_routes=False,
+            gateway_only=True,
+        )
+
+        # Service was "unchanged" but path needed clearing
+        assert results.gateway[0].service_status == "updated"
+        update_call = mock_service_manager.update.call_args[0][1]
+        assert update_call.path == "/"
+
+    @pytest.mark.unit
+    def test_deploy_unchanged_service_still_syncs_routes(
+        self,
+        registry_manager: RegistryManager,
+        mock_service_manager: MagicMock,
+        mock_openapi_manager: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Route sync should proceed even when service is unchanged."""
+        from system_operations_manager.integrations.kong.models.openapi import (
+            OpenAPISpec,
+            SyncApplyResult,
+            SyncResult,
+        )
+
+        spec_file = tmp_path / "api.yaml"
+        spec_file.write_text("openapi: 3.0.0")
+
+        entry = ServiceRegistryEntry(
+            name="api",
+            host="api.local",
+            port=80,
+            openapi_spec=str(spec_file),
+        )
+        registry_manager.add_service(entry)
+
+        existing = Service(name="api", host="api.local", port=80)
+        mock_service_manager.get.return_value = existing
+
+        mock_openapi_manager.parse_openapi.return_value = OpenAPISpec(
+            title="Test", version="1.0"
+        )
+        mock_openapi_manager.generate_route_mappings.return_value = []
+        mock_openapi_manager.calculate_diff.return_value = SyncResult(
+            service_name="api",
+        )
+        mock_openapi_manager.apply_sync.return_value = SyncApplyResult(
+            service_name="api",
+        )
+
+        registry_manager.deploy(
+            mock_service_manager,
+            mock_openapi_manager,
+            skip_routes=False,
+            gateway_only=True,
+        )
+
+        # Route sync should have been attempted (parse called for route sync)
+        mock_openapi_manager.parse_openapi.assert_called()
+
 
 class TestRegistryManagerDualDeploy:
     """Tests for dual deployment (Gateway + Konnect)."""
