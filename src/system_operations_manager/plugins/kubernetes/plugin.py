@@ -91,6 +91,7 @@ class KubernetesPlugin(Plugin):
         )
 
         self._register_status_commands(k8s_app)
+        self._register_entity_commands(k8s_app)
 
         app.add_typer(k8s_app, name="k8s")
         logger.debug("Kubernetes commands registered")
@@ -223,6 +224,72 @@ class KubernetesPlugin(Plugin):
                 console.print(f"[green]Switched to context '{context_name}'[/green]")
             except KubernetesError as e:
                 handle_k8s_error(e)
+
+    def _register_entity_commands(self, k8s_app: typer.Typer) -> None:
+        """Register all entity CRUD commands via command modules."""
+        from system_operations_manager.plugins.kubernetes.commands import (
+            register_cluster_commands,
+            register_config_commands,
+            register_job_commands,
+            register_namespace_commands,
+            register_networking_commands,
+            register_rbac_commands,
+            register_storage_commands,
+            register_workload_commands,
+        )
+        from system_operations_manager.services.kubernetes import (
+            ConfigurationManager,
+            JobManager,
+            NamespaceClusterManager,
+            NetworkingManager,
+            RBACManager,
+            StorageManager,
+            WorkloadManager,
+        )
+
+        def get_workload_manager() -> WorkloadManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return WorkloadManager(self._client)
+
+        def get_networking_manager() -> NetworkingManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return NetworkingManager(self._client)
+
+        def get_config_manager() -> ConfigurationManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return ConfigurationManager(self._client)
+
+        def get_namespace_cluster_manager() -> NamespaceClusterManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return NamespaceClusterManager(self._client)
+
+        def get_job_manager() -> JobManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return JobManager(self._client)
+
+        def get_storage_manager() -> StorageManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return StorageManager(self._client)
+
+        def get_rbac_manager() -> RBACManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return RBACManager(self._client)
+
+        register_workload_commands(k8s_app, get_workload_manager)
+        register_networking_commands(k8s_app, get_networking_manager)
+        register_config_commands(k8s_app, get_config_manager)
+        register_cluster_commands(k8s_app, get_namespace_cluster_manager)
+        register_namespace_commands(k8s_app, get_namespace_cluster_manager)
+        register_job_commands(k8s_app, get_job_manager)
+        register_storage_commands(k8s_app, get_storage_manager)
+        register_rbac_commands(k8s_app, get_rbac_manager)
 
     @hookimpl
     def cleanup(self) -> None:

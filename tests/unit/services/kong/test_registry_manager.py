@@ -583,9 +583,7 @@ class TestRegistryManagerDeploy:
         registry_manager.add_service(entry)
 
         mock_service_manager.get.side_effect = KongNotFoundError("service", "api", "Not found")
-        mock_openapi_manager.parse_openapi.return_value = OpenAPISpec(
-            title="Test", version="1.0"
-        )
+        mock_openapi_manager.parse_openapi.return_value = OpenAPISpec(title="Test", version="1.0")
         mock_openapi_manager.generate_route_mappings.return_value = []
         mock_openapi_manager.calculate_diff.return_value = SyncResult(service_name="api")
         mock_openapi_manager.apply_sync.return_value = SyncApplyResult(service_name="api")
@@ -677,9 +675,7 @@ class TestRegistryManagerDeploy:
 
         existing = Service(name="api", host="api.local", port=80, path="/api/v1")
         mock_service_manager.get.return_value = existing
-        mock_openapi_manager.parse_openapi.return_value = OpenAPISpec(
-            title="Test", version="1.0"
-        )
+        mock_openapi_manager.parse_openapi.return_value = OpenAPISpec(title="Test", version="1.0")
         mock_openapi_manager.generate_route_mappings.return_value = []
         mock_openapi_manager.calculate_diff.return_value = SyncResult(service_name="api")
         mock_openapi_manager.apply_sync.return_value = SyncApplyResult(service_name="api")
@@ -725,9 +721,7 @@ class TestRegistryManagerDeploy:
         existing = Service(name="api", host="api.local", port=80)
         mock_service_manager.get.return_value = existing
 
-        mock_openapi_manager.parse_openapi.return_value = OpenAPISpec(
-            title="Test", version="1.0"
-        )
+        mock_openapi_manager.parse_openapi.return_value = OpenAPISpec(title="Test", version="1.0")
         mock_openapi_manager.generate_route_mappings.return_value = []
         mock_openapi_manager.calculate_diff.return_value = SyncResult(
             service_name="api",

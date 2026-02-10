@@ -366,9 +366,7 @@ class TestRouteMapping:
         assert mappings[0].path == "/custom/users"
 
     @pytest.mark.unit
-    def test_route_mapping_no_prefix_no_base_path(
-        self, manager: OpenAPISyncManager
-    ) -> None:
+    def test_route_mapping_no_prefix_no_base_path(self, manager: OpenAPISyncManager) -> None:
         """Routes should keep raw paths when neither prefix nor base_path exist."""
         spec = OpenAPISpec(
             title="Test",
