@@ -97,12 +97,12 @@ class TestKongAPIError:
 
     @pytest.mark.unit
     def test_api_error_can_be_raised(self) -> None:
-        """KongAPIError should be raisable."""
-        with pytest.raises(KongAPIError) as exc_info:
-            raise KongAPIError("Test error", status_code=500)
-
-        assert exc_info.value.message == "Test error"
-        assert exc_info.value.status_code == 500
+        """KongAPIError should be raisable with message and status."""
+        error = KongAPIError("Test error", status_code=500)
+        with pytest.raises(KongAPIError):
+            raise error
+        assert error.message == "Test error"
+        assert error.status_code == 500
 
 
 class TestKongConnectionError:
@@ -397,8 +397,8 @@ class TestKongEnterpriseRequiredError:
 
     @pytest.mark.unit
     def test_enterprise_error_can_be_raised(self) -> None:
-        """KongEnterpriseRequiredError should be raisable."""
-        with pytest.raises(KongEnterpriseRequiredError) as exc_info:
-            raise KongEnterpriseRequiredError(feature="developer_portal")
-
-        assert exc_info.value.feature == "developer_portal"
+        """KongEnterpriseRequiredError should be raisable with feature."""
+        error = KongEnterpriseRequiredError(feature="developer_portal")
+        with pytest.raises(KongEnterpriseRequiredError):
+            raise error
+        assert error.feature == "developer_portal"

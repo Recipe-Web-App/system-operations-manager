@@ -199,7 +199,7 @@ class TestSyncPushInteractiveE2E:
         ) as mock_tui:
             mock_tui.return_value = []  # User cancelled
 
-            _result = cli_runner.invoke(app, ["kong", "sync", "push", "--interactive"])
+            cli_runner.invoke(app, ["kong", "sync", "push", "--interactive"])
 
             # If TUI was called, verify it received proper arguments
             if mock_tui.called:
@@ -246,7 +246,7 @@ class TestSyncPushInteractiveE2E:
         ) as mock_tui:
             mock_tui.return_value = [sample_resolution_keep_target]
 
-            _result = cli_runner.invoke(app, ["kong", "sync", "push", "--interactive", "--force"])
+            cli_runner.invoke(app, ["kong", "sync", "push", "--interactive", "--force"])
 
             # KEEP_TARGET should not sync the entity
             if mock_tui.called:
@@ -269,7 +269,7 @@ class TestSyncPushInteractiveE2E:
         ) as mock_tui:
             mock_tui.return_value = [sample_resolution_skip]
 
-            _result = cli_runner.invoke(app, ["kong", "sync", "push", "--interactive", "--force"])
+            cli_runner.invoke(app, ["kong", "sync", "push", "--interactive", "--force"])
 
             # SKIP should not sync the entity
             if mock_tui.called:
@@ -378,7 +378,7 @@ class TestSyncPullInteractiveE2E:
         ) as mock_tui:
             mock_tui.return_value = [resolution]
 
-            _result = cli_runner.invoke(
+            cli_runner.invoke(
                 app, ["kong", "sync", "pull", "--interactive", "--force", "--with-drift"]
             )
 
@@ -410,7 +410,7 @@ class TestSyncPullInteractiveE2E:
         ) as mock_tui:
             mock_tui.return_value = [resolution]
 
-            _result = cli_runner.invoke(
+            cli_runner.invoke(
                 app, ["kong", "sync", "pull", "--interactive", "--force", "--with-drift"]
             )
 

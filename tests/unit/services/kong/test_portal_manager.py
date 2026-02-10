@@ -239,7 +239,7 @@ class TestPortalManagerPublishSpec:
             "type": "spec",
         }
 
-        _spec = manager.publish_spec("custom-api", "openapi: 3.0.0", path="custom/path/api.yaml")
+        manager.publish_spec("custom-api", "openapi: 3.0.0", path="custom/path/api.yaml")
 
         call_args = mock_client.post.call_args
         assert call_args[1]["json"]["path"] == "custom/path/api.yaml"
@@ -393,7 +393,7 @@ class TestPortalManagerListDevelopers:
             "data": [{"id": "dev-1", "email": "alice@example.com", "status": "pending"}]
         }
 
-        _developers, _offset = manager.list_developers(status="pending")
+        manager.list_developers(status="pending")
 
         mock_client.get.assert_called_once_with("developers", params={"status": "pending"})
 
