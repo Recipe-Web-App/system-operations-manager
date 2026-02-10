@@ -56,6 +56,7 @@ test-unit = "scripts.test_scripts:unit"
 [tool.poetry.plugins."system_operations_manager.plugins"]
 core = "system_operations_manager.plugins.core:CorePlugin"
 kong = "system_operations_manager.plugins.kong:KongPlugin"
+kubernetes = "system_operations_manager.plugins.kubernetes:KubernetesPlugin"
 
 [tool.poetry.dependencies]
 python = ">=3.14.3,<4.0"
