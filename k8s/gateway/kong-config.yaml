@@ -27,8 +27,8 @@ env:
   konnect_mode: "on"
   vitals: "off"
   cluster_mtls: pki
-  cluster_telemetry_endpoint: "2ae749365b.us.tp0.konghq.com:443"
-  cluster_telemetry_server_name: "2ae749365b.us.tp0.konghq.com"
+  cluster_telemetry_endpoint: "7570908678.us.tp0.konghq.com:443"
+  cluster_telemetry_server_name: "7570908678.us.tp0.konghq.com"
   cluster_cert: /etc/secrets/konnect-client-tls/tls.crt
   cluster_cert_key: /etc/secrets/konnect-client-tls/tls.key
   lua_ssl_trusted_certificate: system
@@ -63,7 +63,7 @@ ingressController:
     license:
       enabled: true
     enabled: true
-    controlPlaneID: "1fc296f1-b64f-4c61-bf11-46f8d024f79e"
+    controlPlaneID: "dfb91298-9ef4-45b4-811b-f23665358e9a"
     tlsClientCertSecretName: konnect-client-tls
     apiHostname: "us.kic.api.konghq.com"
 
