@@ -85,13 +85,13 @@ Use [GitHub Issues](https://github.com/Recipe-Web-App/system-control/issues/new/
 A: See the Quick Start section in [README.md](../README.md#quick-start)
 
 **Q: How do I install the CLI?**
-A: Install with Poetry: `poetry install` or pip: `pip install system-operations-cli`
+A: Install with pipx: `pipx install . --python python3.14` (for development, use `poetry install`)
 
 **Q: Where does the CLI look for configuration?**
 A: Configuration is loaded in order: `~/.config/ops/config.yml` -> project `ops.yml` -> environment variables -> CLI arguments
 
 **Q: How do I enable shell completions?**
-A: Run `poetry run ops-install` to set up completions for your shell
+A: After installing via pipx, run `ops --install-completion` to set up completions for your shell
 
 ### CLI Usage
 
@@ -126,8 +126,9 @@ A: Plugins can implement `initialize()`, `register_commands()`, and `cleanup()` 
 
 **Q: Command not found?**
 
-- Ensure Poetry virtual environment is active: `poetry shell`
-- Or use `poetry run ops` prefix
+- Ensure `~/.local/bin` is on your PATH (pipx's default bin directory)
+- Verify installation: `pipx list | grep system-operations-cli`
+- Reinstall if needed: `pipx install . --python python3.14 --force`
 
 **Q: Configuration not loading?**
 
@@ -176,7 +177,7 @@ When reporting bugs, include:
 - Python version
 - CLI version (`ops --version`)
 - Operating system
-- Installation method (Poetry/pip)
+- Installation method (pipx/Poetry)
 - Exact error messages
 - Steps to reproduce
 - Expected vs actual behavior

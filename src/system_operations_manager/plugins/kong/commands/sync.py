@@ -322,6 +322,77 @@ def _record_skipped_resolutions(
             )
 
 
+def _build_service_id_map(
+    unified_service: UnifiedQueryService,
+) -> dict[str, str]:
+    """Build a mapping from gateway service IDs/names to Konnect service IDs.
+
+    This is needed because routes reference services by ID, and gateway IDs
+    differ from Konnect IDs for the same logical service.
+
+    Returns:
+        Dict mapping gateway service ID -> Konnect service ID,
+        plus gateway service name -> Konnect service ID.
+    """
+    service_map: dict[str, str] = {}
+    services = unified_service.list_services()
+
+    # Map from entities that exist in both gateway and konnect
+    for unified in services.synced:
+        if unified.gateway_id and unified.konnect_id:
+            service_map[unified.gateway_id] = unified.konnect_id
+        if unified.identifier and unified.konnect_id:
+            service_map[unified.identifier] = unified.konnect_id
+
+    # Also map from entities with drift (they exist in both)
+    for unified in services.with_drift:
+        if unified.gateway_id and unified.konnect_id:
+            service_map[unified.gateway_id] = unified.konnect_id
+        if unified.identifier and unified.konnect_id:
+            service_map[unified.identifier] = unified.konnect_id
+
+    # Also map konnect-only entities by name (for routes referencing by name)
+    for unified in services.konnect_only:
+        if unified.identifier and unified.konnect_id:
+            service_map[unified.identifier] = unified.konnect_id
+
+    return service_map
+
+
+def _remap_route_service_ref(
+    entity: Any,
+    service_id_map: dict[str, str],
+) -> Any:
+    """Remap a route's service reference from gateway IDs to Konnect IDs.
+
+    Args:
+        entity: A Route entity from the gateway.
+        service_id_map: Mapping of gateway service ID/name -> Konnect service ID.
+
+    Returns:
+        The entity with remapped service reference (modified in place).
+    """
+    if not hasattr(entity, "service") or entity.service is None:
+        return entity
+
+    service_ref = entity.service
+    # Try to map by ID first, then by name
+    mapped_id = None
+    if service_ref.id:
+        mapped_id = service_id_map.get(service_ref.id)
+    if not mapped_id and service_ref.name:
+        mapped_id = service_id_map.get(service_ref.name)
+
+    if mapped_id:
+        from system_operations_manager.integrations.kong.models.base import (
+            KongEntityReference,
+        )
+
+        entity.service = KongEntityReference.from_id(mapped_id)
+
+    return entity
+
+
 def _push_entity_type(
     entity_type: str,
     unified_service: UnifiedQueryService,
@@ -389,11 +460,20 @@ def _push_entity_type(
 
     created, updated, errors = 0, 0, 0
 
+    # Build service ID map for route remapping (gateway ID -> Konnect ID)
+    service_id_map: dict[str, str] = {}
+    if entity_type == "routes":
+        service_id_map = _build_service_id_map(unified_service)
+
     # Create entities that only exist in Gateway
     for unified in entities.gateway_only:
         entity = unified.gateway_entity
         if entity is None:
             continue
+
+        # Remap route service references from gateway IDs to Konnect IDs
+        if entity_type == "routes" and service_id_map:
+            entity = _remap_route_service_ref(entity, service_id_map)
 
         if dry_run:
             console.print(f"  [cyan]Would create:[/cyan] {unified.identifier}")
@@ -468,6 +548,10 @@ def _push_entity_type(
         konnect_id = unified.konnect_id
         if entity is None or konnect_id is None:
             continue
+
+        # Remap route service references from gateway IDs to Konnect IDs
+        if entity_type == "routes" and service_id_map:
+            entity = _remap_route_service_ref(entity, service_id_map)
 
         entity_key = f"{entity_type}:{unified.identifier}"
 

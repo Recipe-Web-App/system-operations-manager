@@ -216,17 +216,19 @@ class TestUnifiedEntityList:
 
     @pytest.mark.unit
     def test_filter_by_source_gateway(self, sample_list: UnifiedEntityList[Service]) -> None:
-        """filter_by_source should filter by gateway."""
+        """filter_by_source should filter by gateway (includes BOTH)."""
         filtered = sample_list.filter_by_source(EntitySource.GATEWAY)
-        assert len(filtered) == 1
-        assert filtered.entities[0].source == EntitySource.GATEWAY
+        assert len(filtered) == 3
+        sources = {e.source for e in filtered.entities}
+        assert sources == {EntitySource.GATEWAY, EntitySource.BOTH}
 
     @pytest.mark.unit
     def test_filter_by_source_string(self, sample_list: UnifiedEntityList[Service]) -> None:
-        """filter_by_source should accept string source."""
+        """filter_by_source should accept string source (includes BOTH)."""
         filtered = sample_list.filter_by_source("konnect")
-        assert len(filtered) == 1
-        assert filtered.entities[0].source == EntitySource.KONNECT
+        assert len(filtered) == 3
+        sources = {e.source for e in filtered.entities}
+        assert sources == {EntitySource.KONNECT, EntitySource.BOTH}
 
 
 class TestDetectDrift:

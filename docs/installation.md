@@ -7,7 +7,8 @@ This guide covers the installation and initial setup of the System Control CLI.
 ### System Requirements
 
 - **Operating System**: Linux, macOS, or Windows
-- **Python**: 3.8 or higher
+- **Python**: 3.14 or higher
+- **pipx**: For isolated CLI installation ([install pipx](https://pipx.pypa.io/stable/installation/))
 - **Memory**: 512 MB RAM minimum, 1 GB recommended
 - **Disk Space**: 100 MB for installation, additional space for logs and configuration
 
@@ -20,35 +21,43 @@ This guide covers the installation and initial setup of the System Control CLI.
 
 ## Installation Methods
 
-### Method 1: PyPI Installation (Recommended)
+### Method 1: pipx Installation (Recommended)
+
+pipx installs `ops` in an isolated virtual environment and makes it available globally
+without affecting your system Python or other projects.
 
 ```bash
-# Install the latest stable version
-pip install system-control-cli
+# Install from local source
+pipx install . --python python3.14
 
 # Install with optional dependencies
-pip install "system-control-cli[kubernetes,monitoring,vault]"
+pipx install ".[kubernetes,monitoring,vault]" --python python3.14
 
-# Install development version
-pip install --pre system-control-cli
+# Install with all optional dependencies
+pipx install ".[all]" --python python3.14
+
+# Install in editable/development mode (code changes take effect immediately)
+pipx install -e . --python python3.14
 ```
 
-### Method 2: Installation from Source
+### Method 2: Poetry (For Development)
+
+Use Poetry for contributing to the project or running tests:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/system-control.git
+git clone https://github.com/Recipe-Web-App/system-control.git
 cd system-control
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# Install in development mode
-pip install -e .
+# Install dependencies
+poetry install
 
 # Install with all optional dependencies
-pip install -e ".[all]"
+poetry install --all-extras
+
+# Run commands via Poetry
+poetry run ops --version
+poetry run ops status
 ```
 
 ### Method 3: Docker Installation
@@ -58,11 +67,11 @@ pip install -e ".[all]"
 docker pull systemcontrol/cli:latest
 
 # Create an alias for convenience
-echo 'alias sysctl="docker run --rm -it -v $(pwd):/workspace systemcontrol/cli"' >> ~/.bashrc
+echo 'alias ops="docker run --rm -it -v $(pwd):/workspace systemcontrol/cli"' >> ~/.bashrc
 source ~/.bashrc
 
 # Run commands
-sysctl --version
+ops --version
 ```
 
 ## Optional Dependencies
@@ -70,28 +79,28 @@ sysctl --version
 ### Kubernetes Integration
 
 ```bash
-pip install "system-control-cli[kubernetes]"
-# Installs: kubernetes, kubectl-wrapper
+pipx install ".[kubernetes]" --python python3.14
+# Installs: kubernetes, kr8s, ruamel-yaml
 ```
 
 ### Monitoring Integration
 
 ```bash
-pip install "system-control-cli[monitoring]"
-# Installs: prometheus-client, grafana-api
+pipx install ".[monitoring]" --python python3.14
+# Installs: prometheus-client, grafana-api, elasticsearch, opentelemetry
 ```
 
 ### Secret Management
 
 ```bash
-pip install "system-control-cli[vault]"
-# Installs: hvac (HashiCorp Vault client)
+pipx install ".[vault]" --python python3.14
+# Installs: hvac (HashiCorp Vault), boto3, azure-keyvault, google-cloud-secret-manager
 ```
 
 ### All Optional Dependencies
 
 ```bash
-pip install "system-control-cli[all]"
+pipx install ".[all]" --python python3.14
 ```
 
 ## Initial Setup
@@ -100,32 +109,36 @@ pip install "system-control-cli[all]"
 
 ```bash
 # Check version
-sysctl --version
+ops --version
 
 # View help
-sysctl --help
-
-# Check system requirements
-sysctl doctor
+ops --help
 ```
 
-### 2. Initialize Configuration
+### 2. Install Shell Completion
+
+```bash
+# Auto-detect shell and install completion
+ops --install-completion
+```
+
+### 3. Initialize Configuration
 
 ```bash
 # Create default configuration
-sysctl init
+ops init
 
 # Initialize with specific profile
-sysctl init --profile production
+ops init --profile production
 
-# Interactive setup
-sysctl init --interactive
+# Overwrite existing configuration
+ops init --force
 ```
 
 This creates the following configuration structure:
 
 ```text
-~/.config/system-control/
+~/.config/ops/
 ├── config.yaml              # Main configuration
 ├── profiles/                 # Profile-specific configs
 │   ├── development.yaml
@@ -136,165 +149,41 @@ This creates the following configuration structure:
 └── logs/                     # Application logs
 ```
 
-### 3. Configure Profiles
+### 4. Configure Profiles
 
 Edit the configuration files or use the CLI:
 
 ```bash
-# Set default profile
-sysctl config set-profile development
-
-# Configure environment-specific settings
-sysctl config set deployment.strategy blue-green --profile production
-sysctl config set monitoring.enabled true --profile production
-
 # View current configuration
-sysctl config show
-sysctl config show --profile production
+ops config show
+ops config show --profile production
 ```
 
-## Platform-Specific Setup
-
-### Linux/macOS
+## Upgrading
 
 ```bash
-# Install system dependencies (Ubuntu/Debian)
-sudo apt-get update
-sudo apt-get install -y python3-pip python3-venv git openssh-client
+# Upgrade to latest version
+pipx upgrade system-operations-cli
 
-# Install system dependencies (CentOS/RHEL/Fedora)
-sudo yum install -y python3-pip git openssh-clients
-# or
-sudo dnf install -y python3-pip git openssh-clients
-
-# macOS with Homebrew
-brew install python3 git openssh
-
-# Add shell completion
-echo 'eval "$(_SYSCTL_COMPLETE=bash_source sysctl)"' >> ~/.bashrc
-# or for zsh
-echo 'eval "$(_SYSCTL_COMPLETE=zsh_source sysctl)"' >> ~/.zshrc
+# Force reinstall
+pipx install . --python python3.14 --force
 ```
 
-### Windows
-
-```powershell
-# Install Python from python.org or Microsoft Store
-# Install Git from git-scm.com
-
-# Install using pip
-pip install system-control-cli
-
-# Add to PATH (if needed)
-# Add Python Scripts directory to system PATH
-
-# PowerShell completion
-# Add to PowerShell profile
-Register-ArgumentCompleter -Native -CommandName sysctl -ScriptBlock {
-    param($commandName, $wordToComplete, $cursorPosition)
-    sysctl completion powershell | ForEach-Object {
-        [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
-    }
-}
-```
-
-## Environment Configuration
-
-### Environment Variables
-
-Common environment variables:
+### Backup Before Upgrade
 
 ```bash
-# Configuration directory
-export SYSCTL_CONFIG_DIR="$HOME/.config/system-control"
-
-# Default profile
-export SYSCTL_PROFILE="development"
-
-# Log level
-export SYSCTL_LOG_LEVEL="INFO"
-
-# Disable colors (for scripting)
-export SYSCTL_NO_COLOR="1"
-
-# API server settings
-export SYSCTL_API_HOST="localhost"
-export SYSCTL_API_PORT="8080"
+# Backup configuration
+cp -r ~/.config/ops ~/.config/ops.backup
 ```
 
-### Configuration File
-
-Basic `~/.config/system-control/config.yaml`:
-
-```yaml
-# Global settings
-default_profile: "development"
-log_level: "INFO"
-color_output: true
-confirm_destructive_operations: true
-
-# Plugin settings
-plugins:
-  enabled:
-    - "kubernetes"
-    - "monitoring"
-    - "deployment"
-  directories:
-    - "~/.config/system-control/plugins"
-    - "/usr/local/share/system-control/plugins"
-
-# API server settings
-api:
-  enabled: false
-  host: "localhost"
-  port: 8080
-  auth:
-    enabled: false
-
-# Integration settings
-integrations:
-  kubernetes:
-    config_path: "~/.kube/config"
-    context: ""
-
-  vault:
-    url: "https://vault.example.com:8200"
-    auth_method: "token"
-
-  monitoring:
-    prometheus_url: "http://prometheus.example.com:9090"
-    grafana_url: "http://grafana.example.com:3000"
-```
-
-## Verification
-
-### Basic Functionality Test
+## Uninstallation
 
 ```bash
-# Test configuration
-sysctl config validate
+# Uninstall the CLI
+pipx uninstall system-operations-cli
 
-# Test plugin loading
-sysctl plugins list
-
-# Test connectivity (if integrations configured)
-sysctl test connectivity
-
-# View system status
-sysctl status
-```
-
-### Integration Tests
-
-```bash
-# Test Kubernetes integration
-sysctl k8s test-connection
-
-# Test monitoring integration
-sysctl monitoring test-connection
-
-# Test vault integration
-sysctl vault test-connection
+# Remove configuration (optional)
+rm -rf ~/.config/ops
 ```
 
 ## Troubleshooting
@@ -304,51 +193,33 @@ sysctl vault test-connection
 #### 1. Command Not Found
 
 ```bash
-# Check if installed
-pip show system-control-cli
+# Check if installed via pipx
+pipx list | grep system-operations-cli
 
-# Check PATH
-which sysctl
+# Ensure ~/.local/bin is on your PATH
+echo $PATH | tr ':' '\n' | grep local/bin
 
 # Reinstall if needed
-pip uninstall system-control-cli
-pip install system-control-cli
+pipx install . --python python3.14 --force
 ```
 
-#### 2. Permission Errors
+#### 2. Python Version Error
+
+The CLI requires Python 3.14+. Check your available Python versions:
 
 ```bash
-# Install for user only
-pip install --user system-control-cli
-
-# Fix permissions
-chmod +x ~/.local/bin/sysctl
+python3 --version
+python3.14 --version
 ```
 
-#### 3. Configuration Issues
-
-```bash
-# Reset configuration
-sysctl init --reset
-
-# Validate configuration
-sysctl config validate --verbose
-
-# Check logs
-sysctl logs show
-```
-
-#### 4. Plugin Loading Errors
+#### 3. Plugin Loading Errors
 
 ```bash
 # List available plugins
-sysctl plugins available
+ops plugins list
 
 # Check plugin status
-sysctl plugins status
-
-# Reload plugins
-sysctl plugins reload
+ops plugins status
 ```
 
 ### Debug Mode
@@ -356,14 +227,11 @@ sysctl plugins reload
 Enable debug mode for detailed troubleshooting:
 
 ```bash
-# Set log level
-export SYSCTL_LOG_LEVEL="DEBUG"
-
 # Run with debug flag
-sysctl --debug command
+ops --debug status
 
-# View debug logs
-sysctl logs show --level debug
+# Run with verbose output
+ops --verbose status
 ```
 
 ### Getting Help
@@ -371,45 +239,9 @@ sysctl logs show --level debug
 If you encounter issues:
 
 1. **Check Documentation**: Review relevant documentation sections
-2. **Search Issues**: Check [GitHub issues](../../issues) for similar problems
+2. **Search Issues**: Check [GitHub issues](https://github.com/Recipe-Web-App/system-control/issues) for similar problems
 3. **Enable Debug Mode**: Use `--debug` flag for detailed output
-4. **Check Logs**: Review logs in `~/.config/system-control/logs/`
-5. **Report Bugs**: Create a new issue with debug information
-
-## Upgrading
-
-### Upgrade from PyPI
-
-```bash
-# Upgrade to latest version
-pip install --upgrade system-control-cli
-
-# Upgrade with all optional dependencies
-pip install --upgrade "system-control-cli[all]"
-```
-
-### Backup Before Upgrade
-
-```bash
-# Backup configuration
-cp -r ~/.config/system-control ~/.config/system-control.backup
-
-# After upgrade, migrate if needed
-sysctl config migrate
-```
-
-## Uninstallation
-
-```bash
-# Uninstall package
-pip uninstall system-control-cli
-
-# Remove configuration (optional)
-rm -rf ~/.config/system-control
-
-# Remove completion (if added manually)
-# Remove sysctl completion lines from shell configuration
-```
+4. **Report Bugs**: Create a new issue with debug information
 
 ## Next Steps
 

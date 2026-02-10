@@ -7,43 +7,36 @@ information for contributors.
 
 ### Prerequisites
 
-- Python 3.8 or higher
+- Python 3.14 or higher
 - Git
-- Virtual environment tool (venv, conda, or similar)
+- Poetry (`pip install poetry`)
 
 ### Development Setup
 
 1. **Fork and clone the repository**
 
    ```bash
-   git clone https://github.com/yourusername/system-control.git
+   git clone https://github.com/Recipe-Web-App/system-control.git
    cd system-control
    ```
 
-2. **Create a virtual environment**
+2. **Install dependencies with Poetry**
 
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   poetry install --all-extras
    ```
 
-3. **Install development dependencies**
-
-   ```bash
-   pip install -e ".[dev]"
-   ```
-
-4. **Install pre-commit hooks**
+3. **Install pre-commit hooks**
 
    ```bash
    pre-commit install
    ```
 
-5. **Verify installation**
+4. **Verify installation**
 
    ```bash
-   sysctl --version
-   python -m pytest
+   poetry run ops --version
+   pytest
    ```
 
 ## 📁 Project Structure

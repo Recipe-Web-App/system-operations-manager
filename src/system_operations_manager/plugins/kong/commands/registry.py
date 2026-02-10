@@ -463,12 +463,21 @@ def register_registry_commands(
             console.print("[dim]Calculating changes...[/dim]\n")
             summary = registry_manager.calculate_diff(service_manager, service_names)
 
-            if not summary.has_changes:
+            # Check for OpenAPI specs that may need route sync
+            services_with_specs = sum(
+                1
+                for s in registry.services
+                if s.has_openapi_spec and (not service_names or s.name in service_names)
+            )
+            has_route_sync = services_with_specs > 0 and not skip_routes
+
+            if not summary.has_changes and not has_route_sync:
                 console.print("[green]All services are in sync - no changes needed[/green]")
                 raise typer.Exit(0)
 
-            # Display diff
-            _display_deploy_summary(summary, output)
+            if summary.has_changes:
+                # Display diff
+                _display_deploy_summary(summary, output)
 
             # Show deployment targets
             console.print("\n[bold]Deployment targets:[/bold]")
@@ -480,17 +489,17 @@ def register_registry_commands(
             else:
                 console.print("  • [dim]Konnect: skipped (not configured)[/dim]")
 
-            # Check for OpenAPI specs
-            services_with_specs = sum(
-                1
-                for s in registry.services
-                if s.has_openapi_spec and (not service_names or s.name in service_names)
-            )
-            if services_with_specs > 0 and not skip_routes:
-                console.print(
-                    f"\n[dim]{services_with_specs} service(s) have OpenAPI specs - "
-                    f"routes will be synced after service creation[/dim]"
-                )
+            if has_route_sync:
+                if not summary.has_changes:
+                    console.print(
+                        f"\n[dim]Services are in sync, but {services_with_specs} "
+                        f"service(s) have OpenAPI specs - routes will be synced[/dim]"
+                    )
+                else:
+                    console.print(
+                        f"\n[dim]{services_with_specs} service(s) have OpenAPI specs - "
+                        f"routes will be synced after service creation[/dim]"
+                    )
 
             # Handle dry run
             if dry_run:

@@ -126,8 +126,13 @@ class ServiceRegistryEntry(BaseModel):
             return str(Path(v).expanduser())
         return v
 
-    def to_kong_service_dict(self) -> dict[str, Any]:
+    def to_kong_service_dict(self, *, omit_path: bool = False) -> dict[str, Any]:
         """Convert to dictionary suitable for Kong service creation.
+
+        Args:
+            omit_path: If True, exclude ``path`` from the output. Use this
+                when routes already carry the full prefix (e.g. from the
+                OpenAPI spec ``servers`` base path) to avoid double-prefixing.
 
         Returns:
             Dictionary with Kong service fields only (excludes OpenAPI settings).
@@ -140,7 +145,7 @@ class ServiceRegistryEntry(BaseModel):
             "enabled": self.enabled,
         }
         # Add optional fields if set
-        if self.path is not None:
+        if self.path is not None and not omit_path:
             kong_fields["path"] = self.path
         if self.tags is not None:
             kong_fields["tags"] = self.tags

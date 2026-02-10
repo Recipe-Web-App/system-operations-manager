@@ -329,6 +329,60 @@ class TestRouteMapping:
         assert mappings_strip[0].strip_path is True
         assert mappings_no_strip[0].strip_path is False
 
+    @pytest.mark.unit
+    def test_route_mapping_base_path_fallback(self, manager: OpenAPISyncManager) -> None:
+        """Should use spec.base_path when no explicit path_prefix is set."""
+        spec = OpenAPISpec(
+            title="Test",
+            version="1.0.0",
+            base_path="/api/v1",
+            operations=[
+                OpenAPIOperation(path="/users", method="GET", operation_id="list"),
+            ],
+            all_tags=[],
+        )
+
+        mappings = manager.generate_route_mappings(spec, "svc")
+
+        assert mappings[0].path == "/api/v1/users"
+
+    @pytest.mark.unit
+    def test_route_mapping_path_prefix_overrides_base_path(
+        self, manager: OpenAPISyncManager
+    ) -> None:
+        """Explicit path_prefix should take precedence over spec.base_path."""
+        spec = OpenAPISpec(
+            title="Test",
+            version="1.0.0",
+            base_path="/api/v1",
+            operations=[
+                OpenAPIOperation(path="/users", method="GET", operation_id="list"),
+            ],
+            all_tags=[],
+        )
+
+        mappings = manager.generate_route_mappings(spec, "svc", path_prefix="/custom")
+
+        assert mappings[0].path == "/custom/users"
+
+    @pytest.mark.unit
+    def test_route_mapping_no_prefix_no_base_path(
+        self, manager: OpenAPISyncManager
+    ) -> None:
+        """Routes should keep raw paths when neither prefix nor base_path exist."""
+        spec = OpenAPISpec(
+            title="Test",
+            version="1.0.0",
+            operations=[
+                OpenAPIOperation(path="/users", method="GET", operation_id="list"),
+            ],
+            all_tags=[],
+        )
+
+        mappings = manager.generate_route_mappings(spec, "svc")
+
+        assert mappings[0].path == "/users"
+
 
 class TestDiffCalculation:
     """Tests for diff calculation."""
@@ -457,6 +511,93 @@ class TestDiffCalculation:
         result = manager.calculate_diff("svc", mappings)
 
         assert result.has_changes is False
+
+    @pytest.mark.unit
+    def test_calculate_diff_creates_include_strip_path_false(
+        self,
+        manager: OpenAPISyncManager,
+        mock_route_manager: MagicMock,
+        mock_service_manager: MagicMock,
+    ) -> None:
+        """New route with strip_path=False should propagate to SyncChange."""
+        mock_service_manager.get.return_value = MagicMock()
+        mock_route_manager.list_by_service.return_value = ([], None)
+
+        mappings = [
+            RouteMapping(
+                route_name="svc-users",
+                path="/users",
+                methods=["GET"],
+                tags=["service:svc"],
+                strip_path=False,
+            ),
+        ]
+
+        result = manager.calculate_diff("svc", mappings)
+
+        assert len(result.creates) == 1
+        assert result.creates[0].strip_path is False
+
+    @pytest.mark.unit
+    def test_calculate_diff_creates_include_strip_path_true(
+        self,
+        manager: OpenAPISyncManager,
+        mock_route_manager: MagicMock,
+        mock_service_manager: MagicMock,
+    ) -> None:
+        """New route with strip_path=True should propagate to SyncChange."""
+        mock_service_manager.get.return_value = MagicMock()
+        mock_route_manager.list_by_service.return_value = ([], None)
+
+        mappings = [
+            RouteMapping(
+                route_name="svc-users",
+                path="/users",
+                methods=["GET"],
+                tags=["service:svc"],
+                strip_path=True,
+            ),
+        ]
+
+        result = manager.calculate_diff("svc", mappings)
+
+        assert len(result.creates) == 1
+        assert result.creates[0].strip_path is True
+
+    @pytest.mark.unit
+    def test_calculate_diff_updates_detect_strip_path_change(
+        self,
+        manager: OpenAPISyncManager,
+        mock_route_manager: MagicMock,
+        mock_service_manager: MagicMock,
+    ) -> None:
+        """Changing strip_path should be detected as an update."""
+        mock_service_manager.get.return_value = MagicMock()
+
+        existing_route = Route(
+            id="route-1",
+            name="svc-users",
+            paths=["/users"],
+            methods=["GET"],
+            tags=["service:svc"],
+            strip_path=True,
+        )
+        mock_route_manager.list_by_service.return_value = ([existing_route], None)
+
+        mappings = [
+            RouteMapping(
+                route_name="svc-users",
+                path="/users",
+                methods=["GET"],
+                tags=["service:svc"],
+                strip_path=False,
+            ),
+        ]
+
+        result = manager.calculate_diff("svc", mappings)
+
+        assert len(result.updates) == 1
+        assert result.updates[0].strip_path is False
 
 
 class TestBreakingChangeDetection:
@@ -608,6 +749,85 @@ class TestSyncApply:
 
         assert len(result.succeeded) == 1
         mock_route_manager.create_for_service.assert_called_once()
+
+    @pytest.mark.unit
+    def test_apply_create_passes_strip_path_false(
+        self,
+        manager: OpenAPISyncManager,
+        mock_route_manager: MagicMock,
+    ) -> None:
+        """Route created with strip_path=False should pass it to the Route model."""
+        from system_operations_manager.integrations.kong.models.openapi import (
+            SyncChange,
+        )
+
+        sync_result = SyncResult(
+            creates=[
+                SyncChange(
+                    operation="create",
+                    route_name="svc-users",
+                    path="/api/v1/users",
+                    methods=["GET"],
+                    tags=["service:svc"],
+                    strip_path=False,
+                ),
+            ],
+            updates=[],
+            deletes=[],
+            service_name="svc",
+        )
+
+        mock_route_manager.create_for_service.return_value = MagicMock()
+
+        manager.apply_sync(sync_result)
+
+        call_args = mock_route_manager.create_for_service.call_args
+        route_arg = call_args[0][1] if len(call_args[0]) > 1 else call_args[1].get("route")
+        assert route_arg.strip_path is False
+
+    @pytest.mark.unit
+    def test_apply_update_passes_strip_path(
+        self,
+        manager: OpenAPISyncManager,
+        mock_route_manager: MagicMock,
+    ) -> None:
+        """Route updated with strip_path=False should pass it to the Route model."""
+        from system_operations_manager.integrations.kong.models.openapi import (
+            SyncChange,
+        )
+
+        sync_result = SyncResult(
+            creates=[],
+            updates=[
+                SyncChange(
+                    operation="update",
+                    route_name="svc-users",
+                    path="/api/v1/users",
+                    methods=["GET", "POST"],
+                    tags=["service:svc"],
+                    strip_path=False,
+                ),
+            ],
+            deletes=[],
+            service_name="svc",
+        )
+
+        # Mock finding the existing route
+        existing_route = Route(
+            id="route-1",
+            name="svc-users",
+            paths=["/users"],
+            methods=["GET"],
+            strip_path=True,
+        )
+        mock_route_manager.list_by_service.return_value = ([existing_route], None)
+        mock_route_manager.update.return_value = MagicMock()
+
+        manager.apply_sync(sync_result)
+
+        call_args = mock_route_manager.update.call_args
+        route_arg = call_args[0][1] if len(call_args[0]) > 1 else call_args[1].get("route")
+        assert route_arg.strip_path is False
 
 
 class TestPathSanitization:

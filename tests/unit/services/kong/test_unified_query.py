@@ -531,8 +531,9 @@ class TestUnifiedQueryServiceSourceFiltering:
         result = unified_service.list_services()
         filtered = result.filter_by_source(EntitySource.GATEWAY)
 
-        assert len(filtered) == 1
-        assert filtered.entities[0].entity.name == "gw-only"
+        assert len(filtered) == 2
+        names = {e.entity.name for e in filtered.entities}
+        assert names == {"gw-only", "shared"}
 
     @pytest.mark.unit
     def test_filter_by_konnect_source(

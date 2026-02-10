@@ -101,6 +101,7 @@ class SyncChange(BaseModel):
     path: str = Field(description="Route path")
     methods: list[str] = Field(default_factory=list, description="HTTP methods")
     tags: list[str] = Field(default_factory=list, description="Route tags")
+    strip_path: bool = Field(default=True, description="Strip path when proxying")
     is_breaking: bool = Field(default=False, description="Is this a breaking change")
     breaking_reason: str | None = Field(default=None, description="Why this is breaking")
     field_changes: dict[str, tuple[Any, Any]] | None = Field(

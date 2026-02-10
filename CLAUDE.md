@@ -9,7 +9,13 @@ System Control CLI is a Python-based CLI framework for managing distributed syst
 ## Development Commands
 
 ```bash
-# Install with Poetry
+# Install globally with pipx (recommended for end users)
+pipx install . --python python3.14          # Production install
+pipx install -e . --python python3.14       # Editable/dev install
+pipx install ".[all]" --python python3.14   # With all extras
+pipx uninstall system-operations-cli        # Uninstall
+
+# Install with Poetry (for development)
 poetry install                      # Core dependencies
 poetry install --all-extras         # All optional dependencies
 
