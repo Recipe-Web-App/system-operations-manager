@@ -26,9 +26,9 @@ class TestOutputFormat:
 
     def test_output_format_values(self) -> None:
         """OutputFormat should have TABLE, JSON, YAML values."""
-        assert OutputFormat.TABLE == "table"
-        assert OutputFormat.JSON == "json"
-        assert OutputFormat.YAML == "yaml"
+        assert OutputFormat.TABLE.value == "table"
+        assert OutputFormat.JSON.value == "json"
+        assert OutputFormat.YAML.value == "yaml"
 
     def test_output_format_is_str_subclass(self) -> None:
         """OutputFormat should be a string subclass."""

@@ -268,7 +268,7 @@ class TestEventSummary:
         assert event.namespace == "default"
         assert event.type == "Warning"
         assert event.reason == "FailedScheduling"
-        assert "insufficient cpu" in event.message
+        assert event.message is not None and "insufficient cpu" in event.message
         assert event.source_component == "default-scheduler"
         assert event.count == 5
         assert event.involved_object_kind == "Pod"
