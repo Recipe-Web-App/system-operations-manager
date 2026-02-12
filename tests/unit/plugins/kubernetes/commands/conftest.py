@@ -39,3 +39,15 @@ def get_namespace_cluster_manager(
 ) -> Callable[[], MagicMock]:
     """Create a factory function that returns mock NamespaceClusterManager."""
     return lambda: mock_namespace_cluster_manager
+
+
+@pytest.fixture
+def mock_manifest_manager() -> MagicMock:
+    """Create a mock ManifestManager."""
+    return MagicMock()
+
+
+@pytest.fixture
+def get_manifest_manager(mock_manifest_manager: MagicMock) -> Callable[[], MagicMock]:
+    """Create a factory function that returns mock ManifestManager."""
+    return lambda: mock_manifest_manager
