@@ -24,7 +24,7 @@ def mock_config_manager() -> MagicMock:
     # Default return values
     manager.list_config_maps.return_value = []
     manager.get_config_map.return_value = MagicMock(
-        model_dump=lambda: {
+        model_dump=lambda **kwargs: {
             "name": "test-config",
             "namespace": "default",
             "data": {"key1": "value1"},
@@ -32,30 +32,30 @@ def mock_config_manager() -> MagicMock:
     )
     manager.get_config_map_data.return_value = {"key1": "value1"}
     manager.create_config_map.return_value = MagicMock(
-        model_dump=lambda: {"name": "test-config", "namespace": "default"}
+        model_dump=lambda **kwargs: {"name": "test-config", "namespace": "default"}
     )
     manager.update_config_map.return_value = MagicMock(
-        model_dump=lambda: {"name": "test-config", "namespace": "default"}
+        model_dump=lambda **kwargs: {"name": "test-config", "namespace": "default"}
     )
     manager.delete_config_map.return_value = None
 
     # Secrets
     manager.list_secrets.return_value = []
     manager.get_secret.return_value = MagicMock(
-        model_dump=lambda: {
+        model_dump=lambda **kwargs: {
             "name": "test-secret",
             "namespace": "default",
             "type": "Opaque",
         }
     )
     manager.create_secret.return_value = MagicMock(
-        model_dump=lambda: {"name": "test-secret", "namespace": "default"}
+        model_dump=lambda **kwargs: {"name": "test-secret", "namespace": "default"}
     )
     manager.create_tls_secret.return_value = MagicMock(
-        model_dump=lambda: {"name": "test-tls", "namespace": "default"}
+        model_dump=lambda **kwargs: {"name": "test-tls", "namespace": "default"}
     )
     manager.create_docker_registry_secret.return_value = MagicMock(
-        model_dump=lambda: {"name": "test-registry", "namespace": "default"}
+        model_dump=lambda **kwargs: {"name": "test-registry", "namespace": "default"}
     )
     manager.delete_secret.return_value = None
 

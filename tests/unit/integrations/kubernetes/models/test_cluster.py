@@ -59,6 +59,11 @@ class TestNamespaceSummary:
         """Test from_k8s_object with terminating namespace."""
         obj = MagicMock()
         obj.metadata.name = "old-namespace"
+        obj.metadata.namespace = None
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
         obj.status.phase = "Terminating"
 
         ns = NamespaceSummary.from_k8s_object(obj)
@@ -129,7 +134,10 @@ class TestNodeSummary:
         """Test from_k8s_object with not ready node."""
         obj = MagicMock()
         obj.metadata.name = "node-2"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
         obj.metadata.labels = {}
+        obj.metadata.annotations = None
 
         ready_condition = MagicMock()
         ready_condition.type = "Ready"
@@ -148,7 +156,10 @@ class TestNodeSummary:
         """Test from_k8s_object with node without roles."""
         obj = MagicMock()
         obj.metadata.name = "worker-1"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
         obj.metadata.labels = {"kubernetes.io/hostname": "worker-1"}
+        obj.metadata.annotations = None
 
         obj.status.conditions = []
         obj.status.addresses = []
@@ -163,7 +174,10 @@ class TestNodeSummary:
         """Test from_k8s_object with worker role."""
         obj = MagicMock()
         obj.metadata.name = "worker-2"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
         obj.metadata.labels = {"node-role.kubernetes.io/worker": ""}
+        obj.metadata.annotations = None
 
         obj.status.conditions = []
         obj.status.addresses = []
@@ -178,7 +192,10 @@ class TestNodeSummary:
         """Test from_k8s_object with no conditions."""
         obj = MagicMock()
         obj.metadata.name = "node-3"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
         obj.metadata.labels = {}
+        obj.metadata.annotations = None
         obj.status.conditions = None
         obj.status.addresses = []
         obj.status.node_info = None
@@ -192,7 +209,10 @@ class TestNodeSummary:
         """Test from_k8s_object extracts internal IP correctly."""
         obj = MagicMock()
         obj.metadata.name = "node-4"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
         obj.metadata.labels = {}
+        obj.metadata.annotations = None
 
         external_addr = MagicMock()
         external_addr.type = "ExternalIP"
@@ -259,6 +279,8 @@ class TestEventSummary:
         obj = MagicMock()
         obj.metadata.name = "event-456"
         obj.metadata.namespace = "kube-system"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
 
         obj.type = "Normal"
         obj.reason = "Started"
@@ -280,6 +302,8 @@ class TestEventSummary:
         obj = MagicMock()
         obj.metadata.name = "event-789"
         obj.metadata.namespace = "default"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
 
         obj.type = None
         obj.reason = None
@@ -300,9 +324,16 @@ class TestEventSummary:
         """Test from_k8s_object with no source."""
         obj = MagicMock()
         obj.metadata.name = "event-abc"
+        obj.metadata.namespace = None
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
         obj.source = None
         obj.involved_object = None
         obj.type = "Normal"
+        obj.reason = None
+        obj.message = None
+        obj.first_timestamp = None
+        obj.last_timestamp = None
         obj.count = 1
 
         event = EventSummary.from_k8s_object(obj)

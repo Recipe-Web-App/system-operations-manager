@@ -482,16 +482,9 @@ class TestRoleBindingOperations:
         mock_rb = MagicMock()
         mock_k8s_client.rbac_v1.create_namespaced_role_binding.return_value = mock_rb
 
-        # Mock kubernetes.client classes to avoid ImportError
-        with (
-            patch("kubernetes.client.V1ObjectMeta"),
-            patch("kubernetes.client.V1RoleBinding"),
-            patch("kubernetes.client.V1RoleRef"),
-            patch("kubernetes.client.V1Subject"),
-            patch(
-                "system_operations_manager.services.kubernetes.rbac_manager.RoleBindingSummary.from_k8s_object"
-            ) as mock_from_k8s,
-        ):
+        with patch(
+            "system_operations_manager.services.kubernetes.rbac_manager.RoleBindingSummary.from_k8s_object"
+        ) as mock_from_k8s:
             mock_summary = MagicMock()
             mock_from_k8s.return_value = mock_summary
 
@@ -513,14 +506,7 @@ class TestRoleBindingOperations:
         )
         mock_k8s_client.translate_api_exception.side_effect = RuntimeError("Translated error")
 
-        # Mock kubernetes.client classes to avoid ImportError
-        with (
-            patch("kubernetes.client.V1ObjectMeta"),
-            patch("kubernetes.client.V1RoleBinding"),
-            patch("kubernetes.client.V1RoleRef"),
-            patch("kubernetes.client.V1Subject"),
-            pytest.raises(RuntimeError, match="Translated error"),
-        ):
+        with pytest.raises(RuntimeError, match="Translated error"):
             rbac_manager.create_role_binding(
                 "test-rb", role_ref={"name": "role"}, subjects=[{"name": "sa"}]
             )
@@ -633,16 +619,9 @@ class TestClusterRoleBindingOperations:
         mock_crb = MagicMock()
         mock_k8s_client.rbac_v1.create_cluster_role_binding.return_value = mock_crb
 
-        # Mock kubernetes.client classes to avoid ImportError
-        with (
-            patch("kubernetes.client.V1ObjectMeta"),
-            patch("kubernetes.client.V1ClusterRoleBinding"),
-            patch("kubernetes.client.V1RoleRef"),
-            patch("kubernetes.client.V1Subject"),
-            patch(
-                "system_operations_manager.services.kubernetes.rbac_manager.RoleBindingSummary.from_k8s_object"
-            ) as mock_from_k8s,
-        ):
+        with patch(
+            "system_operations_manager.services.kubernetes.rbac_manager.RoleBindingSummary.from_k8s_object"
+        ) as mock_from_k8s:
             mock_summary = MagicMock()
             mock_from_k8s.return_value = mock_summary
 
@@ -662,14 +641,7 @@ class TestClusterRoleBindingOperations:
         mock_k8s_client.rbac_v1.create_cluster_role_binding.side_effect = Exception("Create error")
         mock_k8s_client.translate_api_exception.side_effect = RuntimeError("Translated error")
 
-        # Mock kubernetes.client classes to avoid ImportError
-        with (
-            patch("kubernetes.client.V1ObjectMeta"),
-            patch("kubernetes.client.V1ClusterRoleBinding"),
-            patch("kubernetes.client.V1RoleRef"),
-            patch("kubernetes.client.V1Subject"),
-            pytest.raises(RuntimeError, match="Translated error"),
-        ):
+        with pytest.raises(RuntimeError, match="Translated error"):
             rbac_manager.create_cluster_role_binding(
                 "test-crb", role_ref={"name": "cluster-role"}, subjects=[{"name": "sa"}]
             )

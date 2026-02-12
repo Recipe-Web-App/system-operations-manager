@@ -470,12 +470,18 @@ class TestWorkloadManagerDeployments:
 
         mock_rs1 = MagicMock()
         mock_rs1.metadata.annotations = {"deployment.kubernetes.io/revision": "2"}
-        mock_rs1.metadata.owner_references = [MagicMock(kind="Deployment", name="test-deploy")]
+        owner1 = MagicMock()
+        owner1.kind = "Deployment"
+        owner1.name = "test-deploy"
+        mock_rs1.metadata.owner_references = [owner1]
         mock_rs1.spec.template = MagicMock()
 
         mock_rs2 = MagicMock()
         mock_rs2.metadata.annotations = {"deployment.kubernetes.io/revision": "1"}
-        mock_rs2.metadata.owner_references = [MagicMock(kind="Deployment", name="test-deploy")]
+        owner2 = MagicMock()
+        owner2.kind = "Deployment"
+        owner2.name = "test-deploy"
+        mock_rs2.metadata.owner_references = [owner2]
         mock_rs2.spec.template = MagicMock()
 
         mock_rs_list = MagicMock()

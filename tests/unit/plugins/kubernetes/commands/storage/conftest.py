@@ -23,7 +23,7 @@ def mock_storage_manager() -> MagicMock:
     # Persistent Volumes
     manager.list_persistent_volumes.return_value = []
     manager.get_persistent_volume.return_value = MagicMock(
-        model_dump=lambda: {
+        model_dump=lambda **kwargs: {
             "name": "test-pv",
             "capacity": "10Gi",
             "status": "Available",
@@ -34,21 +34,21 @@ def mock_storage_manager() -> MagicMock:
     # Persistent Volume Claims
     manager.list_persistent_volume_claims.return_value = []
     manager.get_persistent_volume_claim.return_value = MagicMock(
-        model_dump=lambda: {
+        model_dump=lambda **kwargs: {
             "name": "test-pvc",
             "namespace": "default",
             "status": "Bound",
         }
     )
     manager.create_persistent_volume_claim.return_value = MagicMock(
-        model_dump=lambda: {"name": "test-pvc", "namespace": "default"}
+        model_dump=lambda **kwargs: {"name": "test-pvc", "namespace": "default"}
     )
     manager.delete_persistent_volume_claim.return_value = None
 
     # Storage Classes
     manager.list_storage_classes.return_value = []
     manager.get_storage_class.return_value = MagicMock(
-        model_dump=lambda: {
+        model_dump=lambda **kwargs: {
             "name": "standard",
             "provisioner": "kubernetes.io/gce-pd",
         }

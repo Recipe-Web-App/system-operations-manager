@@ -132,8 +132,8 @@ class TestTableFormatter:
     ) -> None:
         """format_list should format resources with specified columns."""
         resources = [
-            MagicMock(model_dump=lambda: {"name": "pod-1", "status": "Running"}),
-            MagicMock(model_dump=lambda: {"name": "pod-2", "status": "Pending"}),
+            MagicMock(model_dump=lambda **kwargs: {"name": "pod-1", "status": "Running"}),
+            MagicMock(model_dump=lambda **kwargs: {"name": "pod-2", "status": "Pending"}),
         ]
         columns = [("name", "Name"), ("status", "Status")]
 
@@ -316,8 +316,8 @@ class TestJsonFormatter:
     def test_format_list(self, formatter: JsonFormatter, console_output: StringIO) -> None:
         """format_list should output valid JSON with data and total."""
         resources = [
-            MagicMock(model_dump=lambda: {"name": "item1"}),
-            MagicMock(model_dump=lambda: {"name": "item2"}),
+            MagicMock(model_dump=lambda **kwargs: {"name": "item1"}),
+            MagicMock(model_dump=lambda **kwargs: {"name": "item2"}),
         ]
 
         formatter.format_list(resources, [], title="Items")
@@ -391,8 +391,8 @@ class TestYamlFormatter:
     def test_format_list(self, formatter: YamlFormatter, console_output: StringIO) -> None:
         """format_list should output valid YAML list."""
         resources = [
-            MagicMock(model_dump=lambda: {"name": "item1"}),
-            MagicMock(model_dump=lambda: {"name": "item2"}),
+            MagicMock(model_dump=lambda **kwargs: {"name": "item1"}),
+            MagicMock(model_dump=lambda **kwargs: {"name": "item2"}),
         ]
 
         formatter.format_list(resources, [], title="Items")

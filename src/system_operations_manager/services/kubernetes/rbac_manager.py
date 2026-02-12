@@ -418,10 +418,10 @@ class RBACManager(K8sBaseManager):
             Created role binding summary.
         """
         from kubernetes.client import (
+            RbacV1Subject,
             V1ObjectMeta,
             V1RoleBinding,
             V1RoleRef,
-            V1Subject,
         )
 
         ns = self._resolve_namespace(namespace)
@@ -434,7 +434,7 @@ class RBACManager(K8sBaseManager):
                 api_group=role_ref.get("api_group", "rbac.authorization.k8s.io"),
             ),
             subjects=[
-                V1Subject(
+                RbacV1Subject(
                     kind=s.get("kind", "ServiceAccount"),
                     name=s["name"],
                     namespace=s.get("namespace"),
@@ -536,10 +536,10 @@ class RBACManager(K8sBaseManager):
             Created cluster role binding summary.
         """
         from kubernetes.client import (
+            RbacV1Subject,
             V1ClusterRoleBinding,
             V1ObjectMeta,
             V1RoleRef,
-            V1Subject,
         )
 
         body = V1ClusterRoleBinding(
@@ -550,7 +550,7 @@ class RBACManager(K8sBaseManager):
                 api_group=role_ref.get("api_group", "rbac.authorization.k8s.io"),
             ),
             subjects=[
-                V1Subject(
+                RbacV1Subject(
                     kind=s.get("kind", "ServiceAccount"),
                     name=s["name"],
                     namespace=s.get("namespace"),

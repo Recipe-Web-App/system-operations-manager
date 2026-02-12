@@ -131,6 +131,10 @@ class TestServiceSummary:
         obj = MagicMock()
         obj.metadata.name = "lb-service"
         obj.metadata.namespace = "production"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.type = "LoadBalancer"
         obj.spec.cluster_ip = "10.96.1.1"
@@ -154,6 +158,10 @@ class TestServiceSummary:
         obj = MagicMock()
         obj.metadata.name = "lb-hostname-service"
         obj.metadata.namespace = "default"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.type = "LoadBalancer"
         obj.spec.cluster_ip = "10.96.1.2"
@@ -175,6 +183,10 @@ class TestServiceSummary:
         obj = MagicMock()
         obj.metadata.name = "nodeport-service"
         obj.metadata.namespace = "default"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.type = "NodePort"
         obj.spec.cluster_ip = "10.96.2.1"
@@ -201,6 +213,10 @@ class TestServiceSummary:
         obj = MagicMock()
         obj.metadata.name = "external-service"
         obj.metadata.namespace = "default"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.type = "ClusterIP"
         obj.spec.cluster_ip = "10.96.3.1"
@@ -218,6 +234,10 @@ class TestServiceSummary:
         obj = MagicMock()
         obj.metadata.name = "multi-port-service"
         obj.metadata.namespace = "default"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.type = "ClusterIP"
         obj.spec.cluster_ip = "10.96.4.1"
@@ -569,6 +589,11 @@ class TestNetworkPolicySummary:
         """Test from_k8s_object with minimal NetworkPolicy."""
         obj = MagicMock()
         obj.metadata.name = "minimal-np"
+        obj.metadata.namespace = None
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.pod_selector.match_labels = None
         obj.spec.policy_types = None

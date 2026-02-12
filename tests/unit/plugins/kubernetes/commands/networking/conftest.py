@@ -23,48 +23,48 @@ def mock_networking_manager() -> MagicMock:
     # Services
     manager.list_services.return_value = []
     manager.get_service.return_value = MagicMock(
-        model_dump=lambda: {
+        model_dump=lambda **kwargs: {
             "name": "test-service",
             "namespace": "default",
             "type": "ClusterIP",
         }
     )
     manager.create_service.return_value = MagicMock(
-        model_dump=lambda: {"name": "test-service", "namespace": "default"}
+        model_dump=lambda **kwargs: {"name": "test-service", "namespace": "default"}
     )
     manager.update_service.return_value = MagicMock(
-        model_dump=lambda: {"name": "test-service", "namespace": "default"}
+        model_dump=lambda **kwargs: {"name": "test-service", "namespace": "default"}
     )
     manager.delete_service.return_value = None
 
     # Ingresses
     manager.list_ingresses.return_value = []
     manager.get_ingress.return_value = MagicMock(
-        model_dump=lambda: {
+        model_dump=lambda **kwargs: {
             "name": "test-ingress",
             "namespace": "default",
             "class_name": "nginx",
         }
     )
     manager.create_ingress.return_value = MagicMock(
-        model_dump=lambda: {"name": "test-ingress", "namespace": "default"}
+        model_dump=lambda **kwargs: {"name": "test-ingress", "namespace": "default"}
     )
     manager.update_ingress.return_value = MagicMock(
-        model_dump=lambda: {"name": "test-ingress", "namespace": "default"}
+        model_dump=lambda **kwargs: {"name": "test-ingress", "namespace": "default"}
     )
     manager.delete_ingress.return_value = None
 
     # Network Policies
     manager.list_network_policies.return_value = []
     manager.get_network_policy.return_value = MagicMock(
-        model_dump=lambda: {
+        model_dump=lambda **kwargs: {
             "name": "test-netpol",
             "namespace": "default",
             "policy_types": ["Ingress"],
         }
     )
     manager.create_network_policy.return_value = MagicMock(
-        model_dump=lambda: {"name": "test-netpol", "namespace": "default"}
+        model_dump=lambda **kwargs: {"name": "test-netpol", "namespace": "default"}
     )
     manager.delete_network_policy.return_value = None
 

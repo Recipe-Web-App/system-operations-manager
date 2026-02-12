@@ -97,9 +97,7 @@ class TestKubernetesClientAPIProperties:
 
         assert client._core_v1 is None
 
-        with patch(
-            "system_operations_manager.integrations.kubernetes.client.CoreV1Api"
-        ) as mock_api:
+        with patch("kubernetes.client.CoreV1Api") as mock_api:
             _ = client.core_v1
             mock_api.assert_called_once()
             assert client._core_v1 is not None
@@ -110,9 +108,7 @@ class TestKubernetesClientAPIProperties:
         plugin_config = KubernetesPluginConfig()
         client = KubernetesClient(plugin_config)
 
-        with patch(
-            "system_operations_manager.integrations.kubernetes.client.AppsV1Api"
-        ) as mock_api:
+        with patch("kubernetes.client.AppsV1Api") as mock_api:
             _ = client.apps_v1
             mock_api.assert_called_once()
 
@@ -122,9 +118,7 @@ class TestKubernetesClientAPIProperties:
         plugin_config = KubernetesPluginConfig()
         client = KubernetesClient(plugin_config)
 
-        with patch(
-            "system_operations_manager.integrations.kubernetes.client.BatchV1Api"
-        ) as mock_api:
+        with patch("kubernetes.client.BatchV1Api") as mock_api:
             _ = client.batch_v1
             mock_api.assert_called_once()
 
@@ -134,9 +128,7 @@ class TestKubernetesClientAPIProperties:
         plugin_config = KubernetesPluginConfig()
         client = KubernetesClient(plugin_config)
 
-        with patch(
-            "system_operations_manager.integrations.kubernetes.client.NetworkingV1Api"
-        ) as mock_api:
+        with patch("kubernetes.client.NetworkingV1Api") as mock_api:
             _ = client.networking_v1
             mock_api.assert_called_once()
 
@@ -146,9 +138,7 @@ class TestKubernetesClientAPIProperties:
         plugin_config = KubernetesPluginConfig()
         client = KubernetesClient(plugin_config)
 
-        with patch(
-            "system_operations_manager.integrations.kubernetes.client.RbacAuthorizationV1Api"
-        ) as mock_api:
+        with patch("kubernetes.client.RbacAuthorizationV1Api") as mock_api:
             _ = client.rbac_v1
             mock_api.assert_called_once()
 
@@ -158,9 +148,7 @@ class TestKubernetesClientAPIProperties:
         plugin_config = KubernetesPluginConfig()
         client = KubernetesClient(plugin_config)
 
-        with patch(
-            "system_operations_manager.integrations.kubernetes.client.StorageV1Api"
-        ) as mock_api:
+        with patch("kubernetes.client.StorageV1Api") as mock_api:
             _ = client.storage_v1
             mock_api.assert_called_once()
 
@@ -170,9 +158,7 @@ class TestKubernetesClientAPIProperties:
         plugin_config = KubernetesPluginConfig()
         client = KubernetesClient(plugin_config)
 
-        with patch(
-            "system_operations_manager.integrations.kubernetes.client.VersionApi"
-        ) as mock_api:
+        with patch("kubernetes.client.VersionApi") as mock_api:
             _ = client.version_api
             mock_api.assert_called_once()
 
@@ -182,9 +168,7 @@ class TestKubernetesClientAPIProperties:
         plugin_config = KubernetesPluginConfig()
         client = KubernetesClient(plugin_config)
 
-        with patch(
-            "system_operations_manager.integrations.kubernetes.client.CoreV1Api"
-        ) as mock_api:
+        with patch("kubernetes.client.CoreV1Api") as mock_api:
             api1 = client.core_v1
             api2 = client.core_v1
             mock_api.assert_called_once()
@@ -234,7 +218,7 @@ class TestKubernetesClientContextManagement:
         plugin_config = KubernetesPluginConfig()
         client = KubernetesClient(plugin_config)
 
-        with patch("system_operations_manager.integrations.kubernetes.client.CoreV1Api"):
+        with patch("kubernetes.client.CoreV1Api"):
             _ = client.core_v1
             assert client._core_v1 is not None
 
@@ -249,7 +233,7 @@ class TestKubernetesClientContextManagement:
         plugin_config = KubernetesPluginConfig()
         client = KubernetesClient(plugin_config)
 
-        mock_config.load_kube_config.side_effect = [None, ConfigException("Invalid")]
+        mock_config.load_kube_config.side_effect = ConfigException("Invalid")
 
         with pytest.raises(KubernetesConnectionError) as exc_info:
             client.switch_context("invalid-context")
@@ -427,7 +411,7 @@ class TestKubernetesClientConnectionCheck:
     """Test KubernetesClient connection checking."""
 
     @patch("kubernetes.config")
-    @patch("system_operations_manager.integrations.kubernetes.client.VersionApi")
+    @patch("kubernetes.client.VersionApi")
     def test_check_connection_success(
         self, mock_version_api: MagicMock, mock_config: MagicMock
     ) -> None:
@@ -443,7 +427,7 @@ class TestKubernetesClientConnectionCheck:
         mock_api_instance.get_code.assert_called_once()
 
     @patch("kubernetes.config")
-    @patch("system_operations_manager.integrations.kubernetes.client.VersionApi")
+    @patch("kubernetes.client.VersionApi")
     def test_check_connection_failure(
         self, mock_version_api: MagicMock, mock_config: MagicMock
     ) -> None:
@@ -459,7 +443,7 @@ class TestKubernetesClientConnectionCheck:
         assert result is False
 
     @patch("kubernetes.config")
-    @patch("system_operations_manager.integrations.kubernetes.client.VersionApi")
+    @patch("kubernetes.client.VersionApi")
     def test_get_cluster_version(self, mock_version_api: MagicMock, mock_config: MagicMock) -> None:
         """Test getting cluster version."""
         mock_version_info = MagicMock()
@@ -477,7 +461,7 @@ class TestKubernetesClientConnectionCheck:
         assert version == "v1.28"
 
     @patch("kubernetes.config")
-    @patch("system_operations_manager.integrations.kubernetes.client.VersionApi")
+    @patch("kubernetes.client.VersionApi")
     def test_get_cluster_version_error(
         self, mock_version_api: MagicMock, mock_config: MagicMock
     ) -> None:
@@ -536,7 +520,7 @@ class TestKubernetesClientLifecycle:
         plugin_config = KubernetesPluginConfig()
         client = KubernetesClient(plugin_config)
 
-        with patch("system_operations_manager.integrations.kubernetes.client.CoreV1Api"):
+        with patch("kubernetes.client.CoreV1Api"):
             _ = client.core_v1
             assert client._core_v1 is not None
 
@@ -550,7 +534,7 @@ class TestKubernetesClientLifecycle:
 
         with KubernetesClient(plugin_config) as client:
             assert isinstance(client, KubernetesClient)
-            with patch("system_operations_manager.integrations.kubernetes.client.CoreV1Api"):
+            with patch("kubernetes.client.CoreV1Api"):
                 _ = client.core_v1
                 assert client._core_v1 is not None
 
@@ -562,9 +546,9 @@ class TestKubernetesClientLifecycle:
         plugin_config = KubernetesPluginConfig()
         client = KubernetesClient(plugin_config)
 
-        with patch("system_operations_manager.integrations.kubernetes.client.CoreV1Api"):
+        with patch("kubernetes.client.CoreV1Api"):
             _ = client.core_v1
-        with patch("system_operations_manager.integrations.kubernetes.client.AppsV1Api"):
+        with patch("kubernetes.client.AppsV1Api"):
             _ = client.apps_v1
 
         client._invalidate_api_cache()

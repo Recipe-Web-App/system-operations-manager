@@ -48,6 +48,10 @@ class TestConfigMapSummary:
         obj = MagicMock()
         obj.metadata.name = "data-config"
         obj.metadata.namespace = "prod"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.data = {"key1": "value1", "key2": "value2"}
         obj.binary_data = None
@@ -63,6 +67,10 @@ class TestConfigMapSummary:
         obj = MagicMock()
         obj.metadata.name = "binary-config"
         obj.metadata.namespace = "default"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.data = None
         obj.binary_data = {"file.bin": "AQIDBAU="}
@@ -77,6 +85,10 @@ class TestConfigMapSummary:
         obj = MagicMock()
         obj.metadata.name = "empty-config"
         obj.metadata.namespace = "default"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.data = {}
         obj.binary_data = {}
@@ -90,6 +102,11 @@ class TestConfigMapSummary:
         """Test from_k8s_object with no data or binary_data."""
         obj = MagicMock()
         obj.metadata.name = "no-data"
+        obj.metadata.namespace = None
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
         obj.data = None
         obj.binary_data = None
 
@@ -102,6 +119,11 @@ class TestConfigMapSummary:
         """Test that data_keys are sorted alphabetically."""
         obj = MagicMock()
         obj.metadata.name = "sorted-config"
+        obj.metadata.namespace = None
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
         obj.data = {"zzz": "last", "aaa": "first", "mmm": "middle"}
         obj.binary_data = None
 
@@ -113,6 +135,11 @@ class TestConfigMapSummary:
         """Test that binary_data_keys are sorted alphabetically."""
         obj = MagicMock()
         obj.metadata.name = "sorted-binary"
+        obj.metadata.namespace = None
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
         obj.data = None
         obj.binary_data = {"file3.bin": "c", "file1.bin": "a", "file2.bin": "b"}
 
@@ -158,6 +185,10 @@ class TestSecretSummary:
         obj = MagicMock()
         obj.metadata.name = "api-key"
         obj.metadata.namespace = "default"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.type = "Opaque"
         obj.data = {"api-key": "c2VjcmV0"}
@@ -172,6 +203,10 @@ class TestSecretSummary:
         obj = MagicMock()
         obj.metadata.name = "tls-cert"
         obj.metadata.namespace = "ingress"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.type = "kubernetes.io/tls"
         obj.data = {
@@ -190,6 +225,10 @@ class TestSecretSummary:
         obj = MagicMock()
         obj.metadata.name = "empty-secret"
         obj.metadata.namespace = "default"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.type = "Opaque"
         obj.data = {}
@@ -202,6 +241,11 @@ class TestSecretSummary:
         """Test from_k8s_object with None data."""
         obj = MagicMock()
         obj.metadata.name = "no-data-secret"
+        obj.metadata.namespace = None
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
         obj.type = "Opaque"
         obj.data = None
 
@@ -213,6 +257,11 @@ class TestSecretSummary:
         """Test from_k8s_object with default type."""
         obj = MagicMock()
         obj.metadata.name = "default-type"
+        obj.metadata.namespace = None
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
         obj.type = None
         obj.data = {"key": "value"}
 
@@ -224,6 +273,11 @@ class TestSecretSummary:
         """Test that data_keys are sorted alphabetically."""
         obj = MagicMock()
         obj.metadata.name = "sorted-secret"
+        obj.metadata.namespace = None
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
         obj.type = "Opaque"
         obj.data = {
             "zzz-key": "last",
@@ -239,6 +293,11 @@ class TestSecretSummary:
         """Test that actual secret values are never exposed."""
         obj = MagicMock()
         obj.metadata.name = "secure-secret"
+        obj.metadata.namespace = None
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
         obj.type = "Opaque"
         obj.data = {
             "password": "dGhpc2lzc2VjcmV0",

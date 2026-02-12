@@ -181,6 +181,10 @@ class TestPodSummary:
         obj = MagicMock()
         obj.metadata.name = "multi-container-pod"
         obj.metadata.namespace = "default"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.node_name = "node-2"
         obj.spec.containers = [MagicMock(), MagicMock(), MagicMock()]
@@ -229,6 +233,10 @@ class TestPodSummary:
         obj = MagicMock()
         obj.metadata.name = "pending-pod"
         obj.metadata.namespace = "default"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.node_name = None
         obj.spec.containers = [MagicMock()]
@@ -251,6 +259,10 @@ class TestPodSummary:
         obj = MagicMock()
         obj.metadata.name = "failed-pod"
         obj.metadata.namespace = "default"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.node_name = "node-3"
         obj.spec.containers = [MagicMock()]
@@ -315,6 +327,10 @@ class TestDeploymentSummary:
         obj = MagicMock()
         obj.metadata.name = "app-deployment"
         obj.metadata.namespace = "production"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.replicas = 5
         obj.spec.strategy.type = "Recreate"
@@ -332,6 +348,10 @@ class TestDeploymentSummary:
         obj = MagicMock()
         obj.metadata.name = "updating-deployment"
         obj.metadata.namespace = "default"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.replicas = 10
         obj.spec.strategy.type = "RollingUpdate"
@@ -350,6 +370,11 @@ class TestDeploymentSummary:
         """Test from_k8s_object with minimal Deployment."""
         obj = MagicMock()
         obj.metadata.name = "minimal-deployment"
+        obj.metadata.namespace = None
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.replicas = None
         obj.spec.strategy.type = None
@@ -402,6 +427,10 @@ class TestStatefulSetSummary:
         obj = MagicMock()
         obj.metadata.name = "scaling-sts"
         obj.metadata.namespace = "default"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.replicas = 5
         obj.spec.service_name = "app-svc"
@@ -417,6 +446,11 @@ class TestStatefulSetSummary:
         """Test from_k8s_object with minimal StatefulSet."""
         obj = MagicMock()
         obj.metadata.name = "minimal-sts"
+        obj.metadata.namespace = None
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.replicas = None
         obj.spec.service_name = None
@@ -468,6 +502,10 @@ class TestDaemonSetSummary:
         obj = MagicMock()
         obj.metadata.name = "rollout-ds"
         obj.metadata.namespace = "default"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.template.spec.node_selector = None
 
@@ -486,6 +524,10 @@ class TestDaemonSetSummary:
         obj = MagicMock()
         obj.metadata.name = "all-nodes-ds"
         obj.metadata.namespace = "default"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.template.spec.node_selector = None
 
@@ -501,6 +543,11 @@ class TestDaemonSetSummary:
         """Test from_k8s_object with minimal DaemonSet."""
         obj = MagicMock()
         obj.metadata.name = "minimal-ds"
+        obj.metadata.namespace = None
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.template.spec.node_selector = None
 
@@ -559,6 +606,10 @@ class TestReplicaSetSummary:
         obj = MagicMock()
         obj.metadata.name = "standalone-rs"
         obj.metadata.namespace = "default"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.metadata.owner_references = None
 
@@ -574,6 +625,10 @@ class TestReplicaSetSummary:
         obj = MagicMock()
         obj.metadata.name = "scaling-rs"
         obj.metadata.namespace = "production"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.metadata.owner_references = []
 
@@ -589,6 +644,11 @@ class TestReplicaSetSummary:
         """Test from_k8s_object with minimal ReplicaSet."""
         obj = MagicMock()
         obj.metadata.name = "minimal-rs"
+        obj.metadata.namespace = None
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.metadata.owner_references = None
 

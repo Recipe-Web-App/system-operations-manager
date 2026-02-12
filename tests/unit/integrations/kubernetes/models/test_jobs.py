@@ -50,6 +50,10 @@ class TestJobSummary:
         obj = MagicMock()
         obj.metadata.name = "completed-job"
         obj.metadata.namespace = "production"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.completions = 5
         obj.status.succeeded = 5
@@ -70,6 +74,10 @@ class TestJobSummary:
         obj = MagicMock()
         obj.metadata.name = "failed-job"
         obj.metadata.namespace = "default"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.completions = 1
         obj.status.succeeded = 0
@@ -88,6 +96,10 @@ class TestJobSummary:
         obj = MagicMock()
         obj.metadata.name = "unlimited-job"
         obj.metadata.namespace = "default"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.completions = None
         obj.status.succeeded = 100
@@ -105,6 +117,11 @@ class TestJobSummary:
         """Test from_k8s_object with minimal Job."""
         obj = MagicMock()
         obj.metadata.name = "minimal-job"
+        obj.metadata.namespace = None
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.completions = None
         obj.status.succeeded = None
@@ -125,6 +142,11 @@ class TestJobSummary:
         """Test from_k8s_object handles zero values correctly."""
         obj = MagicMock()
         obj.metadata.name = "zero-job"
+        obj.metadata.namespace = None
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.completions = 0
         obj.status.succeeded = 0
@@ -184,6 +206,10 @@ class TestCronJobSummary:
         obj = MagicMock()
         obj.metadata.name = "suspended-job"
         obj.metadata.namespace = "default"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.schedule = "*/5 * * * *"
         obj.spec.suspend = True
@@ -201,6 +227,10 @@ class TestCronJobSummary:
         obj = MagicMock()
         obj.metadata.name = "new-cronjob"
         obj.metadata.namespace = "default"
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.schedule = "0 0 * * 0"
         obj.spec.suspend = False
@@ -218,6 +248,11 @@ class TestCronJobSummary:
         """Test from_k8s_object with minimal CronJob."""
         obj = MagicMock()
         obj.metadata.name = "minimal-cron"
+        obj.metadata.namespace = None
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
 
         obj.spec.schedule = None
         obj.spec.suspend = None
@@ -245,6 +280,11 @@ class TestCronJobSummary:
         for schedule in test_cases:
             obj = MagicMock()
             obj.metadata.name = "test-cron"
+            obj.metadata.namespace = None
+            obj.metadata.uid = None
+            obj.metadata.creation_timestamp = None
+            obj.metadata.labels = None
+            obj.metadata.annotations = None
             obj.spec.schedule = schedule
             obj.spec.suspend = False
             obj.status.active = []
@@ -256,6 +296,11 @@ class TestCronJobSummary:
         """Test from_k8s_object with multiple active jobs."""
         obj = MagicMock()
         obj.metadata.name = "busy-cron"
+        obj.metadata.namespace = None
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
         obj.spec.schedule = "* * * * *"
         obj.spec.suspend = False
 
@@ -270,6 +315,11 @@ class TestCronJobSummary:
         """Test from_k8s_object with explicitly False suspend."""
         obj = MagicMock()
         obj.metadata.name = "active-cron"
+        obj.metadata.namespace = None
+        obj.metadata.uid = None
+        obj.metadata.creation_timestamp = None
+        obj.metadata.labels = None
+        obj.metadata.annotations = None
         obj.spec.schedule = "0 0 * * *"
         obj.spec.suspend = False
         obj.status.active = []

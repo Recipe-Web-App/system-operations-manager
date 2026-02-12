@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -45,8 +46,7 @@ class TestSafeGet:
 
     def test_safe_get_missing_attr(self) -> None:
         """Test getting missing attribute returns default."""
-        obj = MagicMock()
-        obj.name = "test"
+        obj = SimpleNamespace(name="test")
         result = _safe_get(obj, "missing", default="default-value")
         assert result == "default-value"
 
@@ -64,7 +64,7 @@ class TestSafeGet:
 
     def test_safe_get_default_none(self) -> None:
         """Test default is None when not specified."""
-        obj = MagicMock()
+        obj = SimpleNamespace()
         result = _safe_get(obj, "missing")
         assert result is None
 
