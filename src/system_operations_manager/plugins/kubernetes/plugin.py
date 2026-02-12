@@ -234,6 +234,7 @@ class KubernetesPlugin(Plugin):
             register_manifest_commands,
             register_namespace_commands,
             register_networking_commands,
+            register_policy_commands,
             register_rbac_commands,
             register_storage_commands,
             register_workload_commands,
@@ -241,6 +242,7 @@ class KubernetesPlugin(Plugin):
         from system_operations_manager.services.kubernetes import (
             ConfigurationManager,
             JobManager,
+            KyvernoManager,
             ManifestManager,
             NamespaceClusterManager,
             NetworkingManager,
@@ -289,6 +291,11 @@ class KubernetesPlugin(Plugin):
                 raise RuntimeError("Kubernetes client not initialized")
             return ManifestManager(self._client)
 
+        def get_kyverno_manager() -> KyvernoManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return KyvernoManager(self._client)
+
         register_workload_commands(k8s_app, get_workload_manager)
         register_networking_commands(k8s_app, get_networking_manager)
         register_config_commands(k8s_app, get_config_manager)
@@ -298,6 +305,7 @@ class KubernetesPlugin(Plugin):
         register_storage_commands(k8s_app, get_storage_manager)
         register_rbac_commands(k8s_app, get_rbac_manager)
         register_manifest_commands(k8s_app, get_manifest_manager)
+        register_policy_commands(k8s_app, get_kyverno_manager)
 
     @hookimpl
     def cleanup(self) -> None:

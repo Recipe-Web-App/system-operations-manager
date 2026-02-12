@@ -9,6 +9,7 @@ from system_operations_manager.services.kubernetes.configuration_manager import 
     ConfigurationManager,
 )
 from system_operations_manager.services.kubernetes.job_manager import JobManager
+from system_operations_manager.services.kubernetes.kyverno_manager import KyvernoManager
 from system_operations_manager.services.kubernetes.manifest_manager import ManifestManager
 from system_operations_manager.services.kubernetes.namespace_manager import NamespaceClusterManager
 from system_operations_manager.services.kubernetes.networking_manager import NetworkingManager
@@ -20,6 +21,7 @@ __all__ = [
     "ConfigurationManager",
     "JobManager",
     "KubernetesService",
+    "KyvernoManager",
     "ManifestManager",
     "NamespaceClusterManager",
     "NetworkingManager",

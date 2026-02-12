@@ -17,6 +17,12 @@ from system_operations_manager.integrations.kubernetes.models.jobs import (
     CronJobSummary,
     JobSummary,
 )
+from system_operations_manager.integrations.kubernetes.models.kyverno import (
+    KyvernoPolicySummary,
+    KyvernoRuleSummary,
+    PolicyReportResult,
+    PolicyReportSummary,
+)
 from system_operations_manager.integrations.kubernetes.models.networking import (
     IngressRule,
     IngressSummary,
@@ -56,6 +62,8 @@ __all__ = [
     "IngressSummary",
     "JobSummary",
     "K8sEntityBase",
+    "KyvernoPolicySummary",
+    "KyvernoRuleSummary",
     "NamespaceSummary",
     "NetworkPolicySummary",
     "NodeSummary",
@@ -63,6 +71,8 @@ __all__ = [
     "PersistentVolumeClaimSummary",
     "PersistentVolumeSummary",
     "PodSummary",
+    "PolicyReportResult",
+    "PolicyReportSummary",
     "PolicyRule",
     "ReplicaSetSummary",
     "RoleBindingSummary",

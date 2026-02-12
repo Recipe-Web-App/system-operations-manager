@@ -31,6 +31,7 @@ if TYPE_CHECKING:
         AppsV1Api,
         BatchV1Api,
         CoreV1Api,
+        CustomObjectsApi,
         NetworkingV1Api,
         RbacAuthorizationV1Api,
         StorageV1Api,
@@ -86,6 +87,7 @@ class KubernetesClient:
         self._core_v1: CoreV1Api | None = None
         self._apps_v1: AppsV1Api | None = None
         self._batch_v1: BatchV1Api | None = None
+        self._custom_objects: CustomObjectsApi | None = None
         self._networking_v1: NetworkingV1Api | None = None
         self._rbac_v1: RbacAuthorizationV1Api | None = None
         self._storage_v1: StorageV1Api | None = None
@@ -144,6 +146,7 @@ class KubernetesClient:
         self._core_v1 = None
         self._apps_v1 = None
         self._batch_v1 = None
+        self._custom_objects = None
         self._networking_v1 = None
         self._rbac_v1 = None
         self._storage_v1 = None
@@ -179,6 +182,15 @@ class KubernetesClient:
 
             self._batch_v1 = BatchV1Api()
         return self._batch_v1
+
+    @property
+    def custom_objects(self) -> CustomObjectsApi:
+        """Get CustomObjectsApi instance (CRDs like Kyverno policies, reports)."""
+        if self._custom_objects is None:
+            from kubernetes.client import CustomObjectsApi
+
+            self._custom_objects = CustomObjectsApi()
+        return self._custom_objects
 
     @property
     def networking_v1(self) -> NetworkingV1Api:
