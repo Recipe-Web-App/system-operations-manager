@@ -8,6 +8,9 @@ from system_operations_manager.services.kubernetes.client import KubernetesServi
 from system_operations_manager.services.kubernetes.configuration_manager import (
     ConfigurationManager,
 )
+from system_operations_manager.services.kubernetes.externalsecrets_manager import (
+    ExternalSecretsManager,
+)
 from system_operations_manager.services.kubernetes.job_manager import JobManager
 from system_operations_manager.services.kubernetes.kyverno_manager import KyvernoManager
 from system_operations_manager.services.kubernetes.manifest_manager import ManifestManager
@@ -19,6 +22,7 @@ from system_operations_manager.services.kubernetes.workload_manager import Workl
 
 __all__ = [
     "ConfigurationManager",
+    "ExternalSecretsManager",
     "JobManager",
     "KubernetesService",
     "KyvernoManager",

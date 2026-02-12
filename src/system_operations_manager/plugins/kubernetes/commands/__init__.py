@@ -6,6 +6,9 @@ from system_operations_manager.plugins.kubernetes.commands.clusters import (
 from system_operations_manager.plugins.kubernetes.commands.config_resources import (
     register_config_commands,
 )
+from system_operations_manager.plugins.kubernetes.commands.externalsecrets import (
+    register_external_secrets_commands,
+)
 from system_operations_manager.plugins.kubernetes.commands.jobs import register_job_commands
 from system_operations_manager.plugins.kubernetes.commands.manifests import (
     register_manifest_commands,
@@ -28,6 +31,7 @@ from system_operations_manager.plugins.kubernetes.commands.workloads import (
 __all__ = [
     "register_cluster_commands",
     "register_config_commands",
+    "register_external_secrets_commands",
     "register_job_commands",
     "register_manifest_commands",
     "register_namespace_commands",

@@ -13,6 +13,12 @@ from system_operations_manager.integrations.kubernetes.models.configuration impo
     ConfigMapSummary,
     SecretSummary,
 )
+from system_operations_manager.integrations.kubernetes.models.external_secrets import (
+    ExternalSecretDataRef,
+    ExternalSecretSummary,
+    SecretStoreProviderSummary,
+    SecretStoreSummary,
+)
 from system_operations_manager.integrations.kubernetes.models.jobs import (
     CronJobSummary,
     JobSummary,
@@ -54,6 +60,8 @@ from system_operations_manager.integrations.kubernetes.models.workloads import (
 __all__ = [
     "ConfigMapSummary",
     "ContainerStatus",
+    "ExternalSecretDataRef",
+    "ExternalSecretSummary",
     "CronJobSummary",
     "DaemonSetSummary",
     "DeploymentSummary",
@@ -77,6 +85,8 @@ __all__ = [
     "ReplicaSetSummary",
     "RoleBindingSummary",
     "RoleSummary",
+    "SecretStoreProviderSummary",
+    "SecretStoreSummary",
     "SecretSummary",
     "ServiceAccountSummary",
     "ServicePort",
