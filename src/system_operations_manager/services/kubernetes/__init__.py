@@ -16,6 +16,7 @@ from system_operations_manager.services.kubernetes.kyverno_manager import Kyvern
 from system_operations_manager.services.kubernetes.manifest_manager import ManifestManager
 from system_operations_manager.services.kubernetes.namespace_manager import NamespaceClusterManager
 from system_operations_manager.services.kubernetes.networking_manager import NetworkingManager
+from system_operations_manager.services.kubernetes.optimization_manager import OptimizationManager
 from system_operations_manager.services.kubernetes.rbac_manager import RBACManager
 from system_operations_manager.services.kubernetes.storage_manager import StorageManager
 from system_operations_manager.services.kubernetes.workload_manager import WorkloadManager
@@ -29,6 +30,7 @@ __all__ = [
     "ManifestManager",
     "NamespaceClusterManager",
     "NetworkingManager",
+    "OptimizationManager",
     "RBACManager",
     "StorageManager",
     "WorkloadManager",
