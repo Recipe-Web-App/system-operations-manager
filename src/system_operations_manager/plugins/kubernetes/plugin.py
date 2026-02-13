@@ -232,6 +232,7 @@ class KubernetesPlugin(Plugin):
             register_cluster_commands,
             register_config_commands,
             register_external_secrets_commands,
+            register_helm_commands,
             register_job_commands,
             register_kustomize_commands,
             register_manifest_commands,
@@ -249,6 +250,7 @@ class KubernetesPlugin(Plugin):
             ArgoCDManager,
             ConfigurationManager,
             ExternalSecretsManager,
+            HelmManager,
             JobManager,
             KustomizeManager,
             KyvernoManager,
@@ -303,6 +305,11 @@ class KubernetesPlugin(Plugin):
                 raise RuntimeError("Kubernetes client not initialized")
             return ManifestManager(self._client)
 
+        def get_helm_manager() -> HelmManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return HelmManager(self._client)
+
         def get_kustomize_manager() -> KustomizeManager:
             if not self._client:
                 raise RuntimeError("Kubernetes client not initialized")
@@ -346,6 +353,7 @@ class KubernetesPlugin(Plugin):
         register_job_commands(k8s_app, get_job_manager)
         register_storage_commands(k8s_app, get_storage_manager)
         register_rbac_commands(k8s_app, get_rbac_manager)
+        register_helm_commands(k8s_app, get_helm_manager)
         register_kustomize_commands(k8s_app, get_kustomize_manager)
         register_manifest_commands(k8s_app, get_manifest_manager)
         register_policy_commands(k8s_app, get_kyverno_manager)
