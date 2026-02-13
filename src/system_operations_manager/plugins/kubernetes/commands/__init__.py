@@ -1,5 +1,8 @@
 """Kubernetes CLI command modules."""
 
+from system_operations_manager.plugins.kubernetes.commands.argocd import (
+    register_argocd_commands,
+)
 from system_operations_manager.plugins.kubernetes.commands.clusters import (
     register_cluster_commands,
 )
@@ -26,12 +29,19 @@ from system_operations_manager.plugins.kubernetes.commands.policies import (
     register_policy_commands,
 )
 from system_operations_manager.plugins.kubernetes.commands.rbac import register_rbac_commands
+from system_operations_manager.plugins.kubernetes.commands.rollouts import (
+    register_rollout_commands,
+)
 from system_operations_manager.plugins.kubernetes.commands.storage import register_storage_commands
+from system_operations_manager.plugins.kubernetes.commands.workflows import (
+    register_workflow_commands,
+)
 from system_operations_manager.plugins.kubernetes.commands.workloads import (
     register_workload_commands,
 )
 
 __all__ = [
+    "register_argocd_commands",
     "register_cluster_commands",
     "register_config_commands",
     "register_external_secrets_commands",
@@ -42,6 +52,8 @@ __all__ = [
     "register_optimization_commands",
     "register_policy_commands",
     "register_rbac_commands",
+    "register_rollout_commands",
     "register_storage_commands",
+    "register_workflow_commands",
     "register_workload_commands",
 ]

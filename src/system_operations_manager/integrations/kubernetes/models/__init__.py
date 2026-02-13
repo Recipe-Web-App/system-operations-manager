@@ -1,5 +1,21 @@
 """Kubernetes resource display models."""
 
+from system_operations_manager.integrations.kubernetes.models.argo_rollouts import (
+    AnalysisRunSummary,
+    AnalysisTemplateSummary,
+    RolloutSummary,
+)
+from system_operations_manager.integrations.kubernetes.models.argo_workflows import (
+    CronWorkflowSummary,
+    WorkflowArtifact,
+    WorkflowSummary,
+    WorkflowTemplateSummary,
+)
+from system_operations_manager.integrations.kubernetes.models.argocd import (
+    ApplicationDestination,
+    ApplicationSummary,
+    AppProjectSummary,
+)
 from system_operations_manager.integrations.kubernetes.models.base import (
     K8sEntityBase,
     OwnerReference,
@@ -58,14 +74,20 @@ from system_operations_manager.integrations.kubernetes.models.workloads import (
 )
 
 __all__ = [
+    "AnalysisRunSummary",
+    "AnalysisTemplateSummary",
+    "AppProjectSummary",
+    "ApplicationDestination",
+    "ApplicationSummary",
     "ConfigMapSummary",
     "ContainerStatus",
-    "ExternalSecretDataRef",
-    "ExternalSecretSummary",
     "CronJobSummary",
+    "CronWorkflowSummary",
     "DaemonSetSummary",
     "DeploymentSummary",
     "EventSummary",
+    "ExternalSecretDataRef",
+    "ExternalSecretSummary",
     "IngressRule",
     "IngressSummary",
     "JobSummary",
@@ -85,6 +107,7 @@ __all__ = [
     "ReplicaSetSummary",
     "RoleBindingSummary",
     "RoleSummary",
+    "RolloutSummary",
     "SecretStoreProviderSummary",
     "SecretStoreSummary",
     "SecretSummary",
@@ -94,4 +117,7 @@ __all__ = [
     "StatefulSetSummary",
     "StorageClassSummary",
     "Subject",
+    "WorkflowArtifact",
+    "WorkflowSummary",
+    "WorkflowTemplateSummary",
 ]

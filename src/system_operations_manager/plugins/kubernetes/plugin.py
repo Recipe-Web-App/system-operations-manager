@@ -228,6 +228,7 @@ class KubernetesPlugin(Plugin):
     def _register_entity_commands(self, k8s_app: typer.Typer) -> None:
         """Register all entity CRUD commands via command modules."""
         from system_operations_manager.plugins.kubernetes.commands import (
+            register_argocd_commands,
             register_cluster_commands,
             register_config_commands,
             register_external_secrets_commands,
@@ -238,10 +239,13 @@ class KubernetesPlugin(Plugin):
             register_optimization_commands,
             register_policy_commands,
             register_rbac_commands,
+            register_rollout_commands,
             register_storage_commands,
+            register_workflow_commands,
             register_workload_commands,
         )
         from system_operations_manager.services.kubernetes import (
+            ArgoCDManager,
             ConfigurationManager,
             ExternalSecretsManager,
             JobManager,
@@ -251,7 +255,9 @@ class KubernetesPlugin(Plugin):
             NetworkingManager,
             OptimizationManager,
             RBACManager,
+            RolloutsManager,
             StorageManager,
+            WorkflowsManager,
             WorkloadManager,
         )
 
@@ -310,6 +316,21 @@ class KubernetesPlugin(Plugin):
                 raise RuntimeError("Kubernetes client not initialized")
             return OptimizationManager(self._client)
 
+        def get_argocd_manager() -> ArgoCDManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return ArgoCDManager(self._client)
+
+        def get_rollouts_manager() -> RolloutsManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return RolloutsManager(self._client)
+
+        def get_workflows_manager() -> WorkflowsManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return WorkflowsManager(self._client)
+
         register_workload_commands(k8s_app, get_workload_manager)
         register_networking_commands(k8s_app, get_networking_manager)
         register_config_commands(k8s_app, get_config_manager)
@@ -322,6 +343,9 @@ class KubernetesPlugin(Plugin):
         register_policy_commands(k8s_app, get_kyverno_manager)
         register_external_secrets_commands(k8s_app, get_external_secrets_manager)
         register_optimization_commands(k8s_app, get_optimization_manager)
+        register_argocd_commands(k8s_app, get_argocd_manager)
+        register_rollout_commands(k8s_app, get_rollouts_manager)
+        register_workflow_commands(k8s_app, get_workflows_manager)
 
     @hookimpl
     def cleanup(self) -> None:

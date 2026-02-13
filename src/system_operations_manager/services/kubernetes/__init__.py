@@ -4,6 +4,7 @@ Provides centralized Kubernetes integration for the system operations manager.
 Includes resource managers for all major Kubernetes resource types.
 """
 
+from system_operations_manager.services.kubernetes.argocd_manager import ArgoCDManager
 from system_operations_manager.services.kubernetes.client import KubernetesService
 from system_operations_manager.services.kubernetes.configuration_manager import (
     ConfigurationManager,
@@ -18,10 +19,13 @@ from system_operations_manager.services.kubernetes.namespace_manager import Name
 from system_operations_manager.services.kubernetes.networking_manager import NetworkingManager
 from system_operations_manager.services.kubernetes.optimization_manager import OptimizationManager
 from system_operations_manager.services.kubernetes.rbac_manager import RBACManager
+from system_operations_manager.services.kubernetes.rollouts_manager import RolloutsManager
 from system_operations_manager.services.kubernetes.storage_manager import StorageManager
+from system_operations_manager.services.kubernetes.workflows_manager import WorkflowsManager
 from system_operations_manager.services.kubernetes.workload_manager import WorkloadManager
 
 __all__ = [
+    "ArgoCDManager",
     "ConfigurationManager",
     "ExternalSecretsManager",
     "JobManager",
@@ -32,6 +36,8 @@ __all__ = [
     "NetworkingManager",
     "OptimizationManager",
     "RBACManager",
+    "RolloutsManager",
     "StorageManager",
+    "WorkflowsManager",
     "WorkloadManager",
 ]
