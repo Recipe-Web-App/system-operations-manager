@@ -42,6 +42,18 @@ def get_namespace_cluster_manager(
 
 
 @pytest.fixture
+def mock_kustomize_manager() -> MagicMock:
+    """Create a mock KustomizeManager."""
+    return MagicMock()
+
+
+@pytest.fixture
+def get_kustomize_manager(mock_kustomize_manager: MagicMock) -> Callable[[], MagicMock]:
+    """Create a factory function that returns mock KustomizeManager."""
+    return lambda: mock_kustomize_manager
+
+
+@pytest.fixture
 def mock_manifest_manager() -> MagicMock:
     """Create a mock ManifestManager."""
     return MagicMock()

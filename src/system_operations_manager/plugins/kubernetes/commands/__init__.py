@@ -13,6 +13,9 @@ from system_operations_manager.plugins.kubernetes.commands.externalsecrets impor
     register_external_secrets_commands,
 )
 from system_operations_manager.plugins.kubernetes.commands.jobs import register_job_commands
+from system_operations_manager.plugins.kubernetes.commands.kustomize import (
+    register_kustomize_commands,
+)
 from system_operations_manager.plugins.kubernetes.commands.manifests import (
     register_manifest_commands,
 )
@@ -46,6 +49,7 @@ __all__ = [
     "register_config_commands",
     "register_external_secrets_commands",
     "register_job_commands",
+    "register_kustomize_commands",
     "register_manifest_commands",
     "register_namespace_commands",
     "register_networking_commands",

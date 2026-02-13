@@ -13,6 +13,7 @@ from system_operations_manager.services.kubernetes.externalsecrets_manager impor
     ExternalSecretsManager,
 )
 from system_operations_manager.services.kubernetes.job_manager import JobManager
+from system_operations_manager.services.kubernetes.kustomize_manager import KustomizeManager
 from system_operations_manager.services.kubernetes.kyverno_manager import KyvernoManager
 from system_operations_manager.services.kubernetes.manifest_manager import ManifestManager
 from system_operations_manager.services.kubernetes.namespace_manager import NamespaceClusterManager
@@ -30,6 +31,7 @@ __all__ = [
     "ExternalSecretsManager",
     "JobManager",
     "KubernetesService",
+    "KustomizeManager",
     "KyvernoManager",
     "ManifestManager",
     "NamespaceClusterManager",
