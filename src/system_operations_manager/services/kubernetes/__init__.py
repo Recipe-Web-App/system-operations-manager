@@ -12,6 +12,7 @@ from system_operations_manager.services.kubernetes.configuration_manager import 
 from system_operations_manager.services.kubernetes.externalsecrets_manager import (
     ExternalSecretsManager,
 )
+from system_operations_manager.services.kubernetes.flux_manager import FluxManager
 from system_operations_manager.services.kubernetes.helm_manager import HelmManager
 from system_operations_manager.services.kubernetes.job_manager import JobManager
 from system_operations_manager.services.kubernetes.kustomize_manager import KustomizeManager
@@ -30,6 +31,7 @@ __all__ = [
     "ArgoCDManager",
     "ConfigurationManager",
     "ExternalSecretsManager",
+    "FluxManager",
     "HelmManager",
     "JobManager",
     "KubernetesService",

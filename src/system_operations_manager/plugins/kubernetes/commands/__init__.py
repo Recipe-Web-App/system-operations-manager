@@ -12,6 +12,9 @@ from system_operations_manager.plugins.kubernetes.commands.config_resources impo
 from system_operations_manager.plugins.kubernetes.commands.externalsecrets import (
     register_external_secrets_commands,
 )
+from system_operations_manager.plugins.kubernetes.commands.flux import (
+    register_flux_commands,
+)
 from system_operations_manager.plugins.kubernetes.commands.helm import (
     register_helm_commands,
 )
@@ -51,6 +54,7 @@ __all__ = [
     "register_cluster_commands",
     "register_config_commands",
     "register_external_secrets_commands",
+    "register_flux_commands",
     "register_helm_commands",
     "register_job_commands",
     "register_kustomize_commands",
