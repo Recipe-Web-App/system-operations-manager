@@ -232,8 +232,8 @@ def _bridge_connection(
                 pass
 
             time.sleep(0.01)
-    except Exception:
-        pass
+    except Exception as exc:
+        console.log(f"[port-forward] Error in TCP bridge: {exc}")
     finally:
         with contextlib.suppress(OSError):
             client_sock.close()
