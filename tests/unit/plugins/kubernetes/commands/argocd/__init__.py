@@ -1,0 +1,1 @@
+"""ArgoCD command tests."""

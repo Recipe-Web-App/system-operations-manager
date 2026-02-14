@@ -91,6 +91,7 @@ class KubernetesPlugin(Plugin):
         )
 
         self._register_status_commands(k8s_app)
+        self._register_entity_commands(k8s_app)
 
         app.add_typer(k8s_app, name="k8s")
         logger.debug("Kubernetes commands registered")
@@ -223,6 +224,176 @@ class KubernetesPlugin(Plugin):
                 console.print(f"[green]Switched to context '{context_name}'[/green]")
             except KubernetesError as e:
                 handle_k8s_error(e)
+
+    def _register_entity_commands(self, k8s_app: typer.Typer) -> None:
+        """Register all entity CRUD commands via command modules."""
+        from system_operations_manager.plugins.kubernetes.commands import (
+            register_argocd_commands,
+            register_certs_commands,
+            register_cluster_commands,
+            register_config_commands,
+            register_external_secrets_commands,
+            register_flux_commands,
+            register_helm_commands,
+            register_job_commands,
+            register_kustomize_commands,
+            register_manifest_commands,
+            register_multicluster_commands,
+            register_namespace_commands,
+            register_networking_commands,
+            register_optimization_commands,
+            register_policy_commands,
+            register_rbac_commands,
+            register_rollout_commands,
+            register_storage_commands,
+            register_streaming_commands,
+            register_workflow_commands,
+            register_workload_commands,
+        )
+        from system_operations_manager.services.kubernetes import (
+            ArgoCDManager,
+            CertManagerManager,
+            ConfigurationManager,
+            ExternalSecretsManager,
+            FluxManager,
+            HelmManager,
+            JobManager,
+            KustomizeManager,
+            KyvernoManager,
+            ManifestManager,
+            MultiClusterManager,
+            NamespaceClusterManager,
+            NetworkingManager,
+            OptimizationManager,
+            RBACManager,
+            RolloutsManager,
+            StorageManager,
+            StreamingManager,
+            WorkflowsManager,
+            WorkloadManager,
+        )
+
+        def get_workload_manager() -> WorkloadManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return WorkloadManager(self._client)
+
+        def get_networking_manager() -> NetworkingManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return NetworkingManager(self._client)
+
+        def get_config_manager() -> ConfigurationManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return ConfigurationManager(self._client)
+
+        def get_namespace_cluster_manager() -> NamespaceClusterManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return NamespaceClusterManager(self._client)
+
+        def get_job_manager() -> JobManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return JobManager(self._client)
+
+        def get_storage_manager() -> StorageManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return StorageManager(self._client)
+
+        def get_rbac_manager() -> RBACManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return RBACManager(self._client)
+
+        def get_manifest_manager() -> ManifestManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return ManifestManager(self._client)
+
+        def get_multicluster_manager() -> MultiClusterManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return MultiClusterManager(self._client)
+
+        def get_helm_manager() -> HelmManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return HelmManager(self._client)
+
+        def get_kustomize_manager() -> KustomizeManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return KustomizeManager(self._client)
+
+        def get_kyverno_manager() -> KyvernoManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return KyvernoManager(self._client)
+
+        def get_external_secrets_manager() -> ExternalSecretsManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return ExternalSecretsManager(self._client)
+
+        def get_flux_manager() -> FluxManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return FluxManager(self._client)
+
+        def get_optimization_manager() -> OptimizationManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return OptimizationManager(self._client)
+
+        def get_argocd_manager() -> ArgoCDManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return ArgoCDManager(self._client)
+
+        def get_rollouts_manager() -> RolloutsManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return RolloutsManager(self._client)
+
+        def get_workflows_manager() -> WorkflowsManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return WorkflowsManager(self._client)
+
+        def get_certmanager_manager() -> CertManagerManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return CertManagerManager(self._client)
+
+        def get_streaming_manager() -> StreamingManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return StreamingManager(self._client)
+
+        register_workload_commands(k8s_app, get_workload_manager)
+        register_networking_commands(k8s_app, get_networking_manager)
+        register_config_commands(k8s_app, get_config_manager)
+        register_cluster_commands(k8s_app, get_namespace_cluster_manager)
+        register_namespace_commands(k8s_app, get_namespace_cluster_manager)
+        register_job_commands(k8s_app, get_job_manager)
+        register_storage_commands(k8s_app, get_storage_manager)
+        register_rbac_commands(k8s_app, get_rbac_manager)
+        register_helm_commands(k8s_app, get_helm_manager)
+        register_kustomize_commands(k8s_app, get_kustomize_manager)
+        register_manifest_commands(k8s_app, get_manifest_manager)
+        register_policy_commands(k8s_app, get_kyverno_manager)
+        register_external_secrets_commands(k8s_app, get_external_secrets_manager)
+        register_flux_commands(k8s_app, get_flux_manager)
+        register_optimization_commands(k8s_app, get_optimization_manager)
+        register_argocd_commands(k8s_app, get_argocd_manager)
+        register_rollout_commands(k8s_app, get_rollouts_manager)
+        register_workflow_commands(k8s_app, get_workflows_manager)
+        register_certs_commands(k8s_app, get_certmanager_manager)
+        register_streaming_commands(k8s_app, get_streaming_manager)
+        register_multicluster_commands(k8s_app, get_multicluster_manager)
 
     @hookimpl
     def cleanup(self) -> None:

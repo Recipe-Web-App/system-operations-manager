@@ -42,7 +42,7 @@ class K8sEntityBase(BaseModel):
             if hours > 0:
                 return f"{hours}h"
             return f"{minutes}m"
-        except ValueError, TypeError:
+        except (ValueError, TypeError):
             return "Unknown"
 
 

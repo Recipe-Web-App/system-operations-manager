@@ -69,7 +69,7 @@ def _find_python_for_pipx() -> str | None:
                 major, minor = result.stdout.strip().split(".")
                 if (int(major), int(minor)) >= MIN_PYTHON_VERSION:
                     return path
-            except (subprocess.CalledProcessError, ValueError):
+            except subprocess.CalledProcessError, ValueError:
                 continue
     return None
 
@@ -94,7 +94,7 @@ def _is_installed_via_pipx() -> bool:
             check=True,
         )
         return PACKAGE_NAME in result.stdout
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except subprocess.CalledProcessError, FileNotFoundError:
         return False
 
 

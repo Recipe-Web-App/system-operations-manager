@@ -33,3 +33,5 @@ ignores:
   - "**/dist/**"
   - "**/build/**"
   - "CLAUDE.md"
+  - ".beads/**"
+  - ".claude/**"

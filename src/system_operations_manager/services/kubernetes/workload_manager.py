@@ -469,7 +469,7 @@ class WorkloadManager(K8sBaseManager):
                 rev_str = annotations.get("deployment.kubernetes.io/revision", "0")
                 try:
                     return int(rev_str)
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     return 0
 
             owned_rs.sort(key=_get_revision, reverse=True)
