@@ -454,7 +454,8 @@ def _run_interactive_session(ws_client: Any) -> None:
                 if data:
                     ws_client.write_stdin(data)
     except KeyboardInterrupt:
-        pass
+        # User requested to interrupt the interactive session (e.g. via Ctrl+C).
+        console.print("[yellow]Interactive session interrupted by user.[/yellow]", file=sys.stderr)
     finally:
         termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
         ws_client.close()
@@ -478,7 +479,8 @@ def _run_non_interactive_session(ws_client: Any) -> None:
                 sys.stderr.write(ws_client.read_stderr())
                 sys.stderr.flush()
     except KeyboardInterrupt:
-        pass
+        # Gracefully handle user cancellation without a traceback.
+        console.print("[yellow]Execution interrupted by user.[/yellow]", file=sys.stderr)
     finally:
         ws_client.close()
 
