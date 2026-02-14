@@ -245,6 +245,7 @@ class KubernetesPlugin(Plugin):
             register_rbac_commands,
             register_rollout_commands,
             register_storage_commands,
+            register_streaming_commands,
             register_workflow_commands,
             register_workload_commands,
         )
@@ -265,6 +266,7 @@ class KubernetesPlugin(Plugin):
             RBACManager,
             RolloutsManager,
             StorageManager,
+            StreamingManager,
             WorkflowsManager,
             WorkloadManager,
         )
@@ -359,6 +361,11 @@ class KubernetesPlugin(Plugin):
                 raise RuntimeError("Kubernetes client not initialized")
             return CertManagerManager(self._client)
 
+        def get_streaming_manager() -> StreamingManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return StreamingManager(self._client)
+
         register_workload_commands(k8s_app, get_workload_manager)
         register_networking_commands(k8s_app, get_networking_manager)
         register_config_commands(k8s_app, get_config_manager)
@@ -378,6 +385,7 @@ class KubernetesPlugin(Plugin):
         register_rollout_commands(k8s_app, get_rollouts_manager)
         register_workflow_commands(k8s_app, get_workflows_manager)
         register_certs_commands(k8s_app, get_certmanager_manager)
+        register_streaming_commands(k8s_app, get_streaming_manager)
 
     @hookimpl
     def cleanup(self) -> None:

@@ -25,6 +25,7 @@ from system_operations_manager.services.kubernetes.optimization_manager import O
 from system_operations_manager.services.kubernetes.rbac_manager import RBACManager
 from system_operations_manager.services.kubernetes.rollouts_manager import RolloutsManager
 from system_operations_manager.services.kubernetes.storage_manager import StorageManager
+from system_operations_manager.services.kubernetes.streaming_manager import StreamingManager
 from system_operations_manager.services.kubernetes.workflows_manager import WorkflowsManager
 from system_operations_manager.services.kubernetes.workload_manager import WorkloadManager
 
@@ -46,6 +47,7 @@ __all__ = [
     "RBACManager",
     "RolloutsManager",
     "StorageManager",
+    "StreamingManager",
     "WorkflowsManager",
     "WorkloadManager",
 ]

@@ -45,6 +45,9 @@ from system_operations_manager.plugins.kubernetes.commands.rollouts import (
     register_rollout_commands,
 )
 from system_operations_manager.plugins.kubernetes.commands.storage import register_storage_commands
+from system_operations_manager.plugins.kubernetes.commands.streaming import (
+    register_streaming_commands,
+)
 from system_operations_manager.plugins.kubernetes.commands.workflows import (
     register_workflow_commands,
 )
@@ -70,6 +73,7 @@ __all__ = [
     "register_rbac_commands",
     "register_rollout_commands",
     "register_storage_commands",
+    "register_streaming_commands",
     "register_workflow_commands",
     "register_workload_commands",
 ]
