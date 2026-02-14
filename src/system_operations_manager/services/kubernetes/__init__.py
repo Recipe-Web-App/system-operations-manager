@@ -19,6 +19,7 @@ from system_operations_manager.services.kubernetes.job_manager import JobManager
 from system_operations_manager.services.kubernetes.kustomize_manager import KustomizeManager
 from system_operations_manager.services.kubernetes.kyverno_manager import KyvernoManager
 from system_operations_manager.services.kubernetes.manifest_manager import ManifestManager
+from system_operations_manager.services.kubernetes.multicluster_manager import MultiClusterManager
 from system_operations_manager.services.kubernetes.namespace_manager import NamespaceClusterManager
 from system_operations_manager.services.kubernetes.networking_manager import NetworkingManager
 from system_operations_manager.services.kubernetes.optimization_manager import OptimizationManager
@@ -41,6 +42,7 @@ __all__ = [
     "KustomizeManager",
     "KyvernoManager",
     "ManifestManager",
+    "MultiClusterManager",
     "NamespaceClusterManager",
     "NetworkingManager",
     "OptimizationManager",

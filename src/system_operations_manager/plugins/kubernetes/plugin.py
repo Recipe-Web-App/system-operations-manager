@@ -238,6 +238,7 @@ class KubernetesPlugin(Plugin):
             register_job_commands,
             register_kustomize_commands,
             register_manifest_commands,
+            register_multicluster_commands,
             register_namespace_commands,
             register_networking_commands,
             register_optimization_commands,
@@ -260,6 +261,7 @@ class KubernetesPlugin(Plugin):
             KustomizeManager,
             KyvernoManager,
             ManifestManager,
+            MultiClusterManager,
             NamespaceClusterManager,
             NetworkingManager,
             OptimizationManager,
@@ -310,6 +312,11 @@ class KubernetesPlugin(Plugin):
             if not self._client:
                 raise RuntimeError("Kubernetes client not initialized")
             return ManifestManager(self._client)
+
+        def get_multicluster_manager() -> MultiClusterManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return MultiClusterManager(self._client)
 
         def get_helm_manager() -> HelmManager:
             if not self._client:
@@ -386,6 +393,7 @@ class KubernetesPlugin(Plugin):
         register_workflow_commands(k8s_app, get_workflows_manager)
         register_certs_commands(k8s_app, get_certmanager_manager)
         register_streaming_commands(k8s_app, get_streaming_manager)
+        register_multicluster_commands(k8s_app, get_multicluster_manager)
 
     @hookimpl
     def cleanup(self) -> None:

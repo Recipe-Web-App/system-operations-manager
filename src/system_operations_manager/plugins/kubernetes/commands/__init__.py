@@ -28,6 +28,9 @@ from system_operations_manager.plugins.kubernetes.commands.kustomize import (
 from system_operations_manager.plugins.kubernetes.commands.manifests import (
     register_manifest_commands,
 )
+from system_operations_manager.plugins.kubernetes.commands.multicluster import (
+    register_multicluster_commands,
+)
 from system_operations_manager.plugins.kubernetes.commands.namespaces import (
     register_namespace_commands,
 )
@@ -66,6 +69,7 @@ __all__ = [
     "register_job_commands",
     "register_kustomize_commands",
     "register_manifest_commands",
+    "register_multicluster_commands",
     "register_namespace_commands",
     "register_networking_commands",
     "register_optimization_commands",

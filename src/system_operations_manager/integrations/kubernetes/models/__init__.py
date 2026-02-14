@@ -45,6 +45,14 @@ from system_operations_manager.integrations.kubernetes.models.kyverno import (
     PolicyReportResult,
     PolicyReportSummary,
 )
+from system_operations_manager.integrations.kubernetes.models.multicluster import (
+    ClusterDeployResult,
+    ClusterStatus,
+    ClusterSyncResult,
+    MultiClusterDeployResult,
+    MultiClusterStatusResult,
+    MultiClusterSyncResult,
+)
 from system_operations_manager.integrations.kubernetes.models.networking import (
     IngressRule,
     IngressSummary,
@@ -79,6 +87,9 @@ __all__ = [
     "AppProjectSummary",
     "ApplicationDestination",
     "ApplicationSummary",
+    "ClusterDeployResult",
+    "ClusterStatus",
+    "ClusterSyncResult",
     "ConfigMapSummary",
     "ContainerStatus",
     "CronJobSummary",
@@ -94,6 +105,9 @@ __all__ = [
     "K8sEntityBase",
     "KyvernoPolicySummary",
     "KyvernoRuleSummary",
+    "MultiClusterDeployResult",
+    "MultiClusterStatusResult",
+    "MultiClusterSyncResult",
     "NamespaceSummary",
     "NetworkPolicySummary",
     "NodeSummary",
