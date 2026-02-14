@@ -3,6 +3,9 @@
 from system_operations_manager.plugins.kubernetes.commands.argocd import (
     register_argocd_commands,
 )
+from system_operations_manager.plugins.kubernetes.commands.certs import (
+    register_certs_commands,
+)
 from system_operations_manager.plugins.kubernetes.commands.clusters import (
     register_cluster_commands,
 )
@@ -51,6 +54,7 @@ from system_operations_manager.plugins.kubernetes.commands.workloads import (
 
 __all__ = [
     "register_argocd_commands",
+    "register_certs_commands",
     "register_cluster_commands",
     "register_config_commands",
     "register_external_secrets_commands",

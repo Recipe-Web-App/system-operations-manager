@@ -229,6 +229,7 @@ class KubernetesPlugin(Plugin):
         """Register all entity CRUD commands via command modules."""
         from system_operations_manager.plugins.kubernetes.commands import (
             register_argocd_commands,
+            register_certs_commands,
             register_cluster_commands,
             register_config_commands,
             register_external_secrets_commands,
@@ -249,6 +250,7 @@ class KubernetesPlugin(Plugin):
         )
         from system_operations_manager.services.kubernetes import (
             ArgoCDManager,
+            CertManagerManager,
             ConfigurationManager,
             ExternalSecretsManager,
             FluxManager,
@@ -352,6 +354,11 @@ class KubernetesPlugin(Plugin):
                 raise RuntimeError("Kubernetes client not initialized")
             return WorkflowsManager(self._client)
 
+        def get_certmanager_manager() -> CertManagerManager:
+            if not self._client:
+                raise RuntimeError("Kubernetes client not initialized")
+            return CertManagerManager(self._client)
+
         register_workload_commands(k8s_app, get_workload_manager)
         register_networking_commands(k8s_app, get_networking_manager)
         register_config_commands(k8s_app, get_config_manager)
@@ -370,6 +377,7 @@ class KubernetesPlugin(Plugin):
         register_argocd_commands(k8s_app, get_argocd_manager)
         register_rollout_commands(k8s_app, get_rollouts_manager)
         register_workflow_commands(k8s_app, get_workflows_manager)
+        register_certs_commands(k8s_app, get_certmanager_manager)
 
     @hookimpl
     def cleanup(self) -> None:

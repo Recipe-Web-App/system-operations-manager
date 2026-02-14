@@ -5,6 +5,7 @@ Includes resource managers for all major Kubernetes resource types.
 """
 
 from system_operations_manager.services.kubernetes.argocd_manager import ArgoCDManager
+from system_operations_manager.services.kubernetes.certmanager_manager import CertManagerManager
 from system_operations_manager.services.kubernetes.client import KubernetesService
 from system_operations_manager.services.kubernetes.configuration_manager import (
     ConfigurationManager,
@@ -29,6 +30,7 @@ from system_operations_manager.services.kubernetes.workload_manager import Workl
 
 __all__ = [
     "ArgoCDManager",
+    "CertManagerManager",
     "ConfigurationManager",
     "ExternalSecretsManager",
     "FluxManager",
