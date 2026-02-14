@@ -43,3 +43,87 @@ DataTable {
 DataTable > .datatable--cursor {
     background: $accent;
 }
+
+/* ============================================ */
+/* Dashboard Screen Styles                      */
+/* ============================================ */
+
+#dashboard-container {
+    padding: 1;
+}
+
+#dashboard-header {
+    height: 3;
+    dock: top;
+    padding: 0 1;
+}
+
+#dashboard-header #cluster-info {
+    width: 1fr;
+}
+
+#dashboard-header RefreshTimer {
+    width: auto;
+}
+
+#dashboard-top {
+    height: auto;
+    max-height: 50%;
+    padding: 0;
+}
+
+#node-panel {
+    width: 60%;
+    border: solid $primary;
+    padding: 1;
+    margin-right: 1;
+}
+
+#node-panel #node-table {
+    height: auto;
+    max-height: 100%;
+}
+
+#pod-summary-panel {
+    width: 40%;
+}
+
+#pod-phase-panel {
+    border: solid $accent;
+    padding: 1;
+    margin-bottom: 1;
+    height: auto;
+}
+
+#pod-ns-panel {
+    border: solid $accent;
+    padding: 1;
+    height: auto;
+}
+
+#resource-bars-panel {
+    border: solid $warning;
+    padding: 1;
+    margin-top: 1;
+    height: auto;
+    max-height: 30%;
+}
+
+#events-panel {
+    border: solid $error;
+    padding: 1;
+    margin-top: 1;
+    height: auto;
+    max-height: 30%;
+}
+
+#events-panel #events-table {
+    height: auto;
+    max-height: 100%;
+}
+
+.panel-title {
+    text-style: bold;
+    margin-bottom: 1;
+    color: $text;
+}

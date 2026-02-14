@@ -2,7 +2,8 @@
 
 Provides selector widgets for namespace, cluster context, and resource
 type filtering. Each widget supports both quick-cycle (lowercase key)
-and popup selection (uppercase key) modes.
+and popup selection (uppercase key) modes. Also includes dashboard
+widgets for resource utilization bars and auto-refresh timers.
 """
 
 from __future__ import annotations
@@ -10,9 +11,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from textual.app import ComposeResult
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical
 from textual.message import Message
 from textual.screen import ModalScreen
+from textual.timer import Timer
 from textual.widgets import Label, OptionList
 from textual.widgets.option_list import Option
 
@@ -435,3 +437,199 @@ class ResourceTypeFilter(BaseWidget):
                 break
         self.query_one("#type-value", Label).update(self.display_value)
         self.post_message(self.ResourceTypeChanged(self._current))
+
+
+class ResourceBar(BaseWidget):
+    """Horizontal bar showing resource capacity and optional utilization.
+
+    Renders a visual bar like: ``CPU [||||||||....] 4/8 cores``
+    When actual usage is unknown: ``CPU [????????????] N/A / 8 cores``
+
+    Color coding by utilization ratio:
+    - Green: < 70%
+    - Yellow: 70-90%
+    - Red: >= 90%
+    """
+
+    DEFAULT_CSS = """
+    ResourceBar {
+        height: 1;
+        width: 100%;
+        padding: 0 2;
+    }
+    """
+
+    def __init__(
+        self,
+        label: str,
+        capacity: int | float,
+        used: int | float | None = None,
+        unit: str = "",
+        bar_width: int = 20,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize the resource bar.
+
+        Args:
+            label: Resource label (e.g. "CPU", "Mem", "Pods").
+            capacity: Total capacity value.
+            used: Current usage, or None if unknown.
+            unit: Unit suffix for display (e.g. " cores", " Gi").
+            bar_width: Character width of the bar.
+            **kwargs: Additional widget arguments.
+        """
+        super().__init__(**kwargs)
+        self._label = label
+        self._capacity = capacity
+        self._used = used
+        self._unit = unit
+        self._bar_width = bar_width
+
+    def compose(self) -> ComposeResult:
+        """Compose the widget layout."""
+        yield Horizontal(
+            Label(f"{self._label:>6}  ", classes="bar-label"),
+            Label(self._render_bar(), id=f"bar-{self._label.lower()}", classes="bar-value"),
+        )
+
+    def _render_bar(self) -> str:
+        """Render the bar string with Rich markup colors.
+
+        Returns:
+            Formatted bar string with utilization display.
+        """
+        if self._used is None:
+            bar = "?" * self._bar_width
+            return f"[dim][{bar}][/dim]  N/A / {self._capacity}{self._unit}"
+
+        ratio = self._used / self._capacity if self._capacity > 0 else 0
+        filled = int(ratio * self._bar_width)
+        empty = self._bar_width - filled
+
+        if ratio >= 0.9:
+            color = "red"
+        elif ratio >= 0.7:
+            color = "yellow"
+        else:
+            color = "green"
+
+        filled_str = "\u2588" * filled
+        empty_str = "\u2591" * empty
+        bar = f"[{color}]{filled_str}[/{color}][dim]{empty_str}[/dim]"
+        return f"{bar}  {self._used}/{self._capacity}{self._unit}"
+
+    def update_values(self, capacity: int | float, used: int | float | None = None) -> None:
+        """Update bar values and re-render.
+
+        Args:
+            capacity: New capacity value.
+            used: New usage value, or None if unknown.
+        """
+        self._capacity = capacity
+        self._used = used
+        self.query_one(f"#bar-{self._label.lower()}", Label).update(self._render_bar())
+
+
+REFRESH_DEFAULT_INTERVAL = 30
+REFRESH_MIN_INTERVAL = 5
+REFRESH_MAX_INTERVAL = 300
+REFRESH_STEP = 5
+
+
+class RefreshTimer(BaseWidget):
+    """Auto-refresh countdown timer.
+
+    Displays a countdown and emits ``RefreshTriggered`` when it reaches
+    zero. The interval can be adjusted with ``increase_interval()``
+    and ``decrease_interval()``.
+    """
+
+    DEFAULT_CSS = """
+    RefreshTimer {
+        width: auto;
+        height: 1;
+        padding: 0 1;
+    }
+    """
+
+    class RefreshTriggered(Message):
+        """Emitted when the auto-refresh timer fires."""
+
+    class IntervalChanged(Message):
+        """Emitted when the refresh interval is adjusted."""
+
+        def __init__(self, interval: int) -> None:
+            """Initialize with the new interval.
+
+            Args:
+                interval: New interval in seconds.
+            """
+            self.interval = interval
+            super().__init__()
+
+    def __init__(
+        self,
+        interval: int = REFRESH_DEFAULT_INTERVAL,
+        **kwargs: Any,
+    ) -> None:
+        """Initialize the refresh timer.
+
+        Args:
+            interval: Refresh interval in seconds.
+            **kwargs: Additional widget arguments.
+        """
+        super().__init__(**kwargs)
+        self._interval = interval
+        self._remaining = interval
+        self._timer_handle: Timer | None = None
+        self._paused = False
+
+    def compose(self) -> ComposeResult:
+        """Compose the widget layout."""
+        yield Label("Refresh: ", classes="timer-label")
+        yield Label(f"{self._remaining}s", id="timer-value", classes="timer-value")
+
+    def on_mount(self) -> None:
+        """Start the countdown timer."""
+        self._timer_handle = self.set_interval(1, self._tick)
+
+    def _tick(self) -> None:
+        """Handle each tick of the countdown."""
+        if self._paused:
+            return
+        self._remaining -= 1
+        self.query_one("#timer-value", Label).update(f"{self._remaining}s")
+        if self._remaining <= 0:
+            self._remaining = self._interval
+            self.post_message(self.RefreshTriggered())
+
+    def increase_interval(self) -> None:
+        """Increase refresh interval by the step size."""
+        self._interval = min(self._interval + REFRESH_STEP, REFRESH_MAX_INTERVAL)
+        self._remaining = self._interval
+        self._update_display()
+        self.post_message(self.IntervalChanged(self._interval))
+
+    def decrease_interval(self) -> None:
+        """Decrease refresh interval by the step size."""
+        self._interval = max(self._interval - REFRESH_STEP, REFRESH_MIN_INTERVAL)
+        self._remaining = self._interval
+        self._update_display()
+        self.post_message(self.IntervalChanged(self._interval))
+
+    def reset(self) -> None:
+        """Reset countdown to full interval."""
+        self._remaining = self._interval
+        self._update_display()
+
+    def pause(self) -> None:
+        """Pause the countdown."""
+        self._paused = True
+
+    def resume(self) -> None:
+        """Resume the countdown."""
+        self._paused = False
+
+    def _update_display(self) -> None:
+        """Update the displayed countdown value."""
+        self.query_one("#timer-value", Label).update(f"{self._remaining}s")

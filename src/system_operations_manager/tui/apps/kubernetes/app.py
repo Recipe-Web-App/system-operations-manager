@@ -13,7 +13,10 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.widgets import Footer, Header
 
-from system_operations_manager.tui.apps.kubernetes.screens import ResourceListScreen
+from system_operations_manager.tui.apps.kubernetes.screens import (
+    DashboardScreen,
+    ResourceListScreen,
+)
 from system_operations_manager.tui.apps.kubernetes.types import (
     CLUSTER_SCOPED_TYPES,
     RESOURCE_TYPE_ORDER,
@@ -27,6 +30,7 @@ if TYPE_CHECKING:
 __all__ = [
     "CLUSTER_SCOPED_TYPES",
     "RESOURCE_TYPE_ORDER",
+    "DashboardScreen",
     "KubernetesApp",
     "ResourceType",
 ]
@@ -48,6 +52,7 @@ class KubernetesApp(App[None]):
     BINDINGS = [
         Binding("q", "quit", "Quit", show=True),
         Binding("escape", "back", "Back", show=True),
+        Binding("d", "dashboard", "Dashboard", show=True),
         Binding("question_mark", "help", "Help", show=True),
     ]
 
@@ -78,11 +83,15 @@ class KubernetesApp(App[None]):
         if len(self.screen_stack) > 1:
             self.pop_screen()
 
+    def action_dashboard(self) -> None:
+        """Open the cluster status dashboard."""
+        self.push_screen(DashboardScreen(client=self._client))
+
     def action_help(self) -> None:
         """Show keyboard shortcut help."""
         self.notify(
             "j/k: navigate | Enter: select | n/N: namespace | "
-            "c/C: cluster | f/F: resource type | r: refresh | q: quit"
+            "c/C: cluster | f/F: resource type | r: refresh | d: dashboard | q: quit"
         )
 
     @on(ResourceListScreen.ResourceSelected)
