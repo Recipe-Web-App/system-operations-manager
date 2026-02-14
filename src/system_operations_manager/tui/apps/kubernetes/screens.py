@@ -1,7 +1,8 @@
 """Screen definitions for Kubernetes resource browser TUI.
 
 This module provides the main resource list screen with DataTable display,
-namespace/cluster selectors, and resource type filtering.
+namespace/cluster selectors, and resource type filtering. Also includes
+the cluster status dashboard screen with auto-refresh.
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ from typing import TYPE_CHECKING, Any
 import structlog
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal
+from textual.containers import Container, Horizontal, Vertical
 from textual.message import Message
 from textual.widgets import DataTable, Label
 
@@ -24,12 +25,15 @@ from system_operations_manager.tui.apps.kubernetes.types import (
 from system_operations_manager.tui.apps.kubernetes.widgets import (
     ClusterSelector,
     NamespaceSelector,
+    RefreshTimer,
+    ResourceBar,
     ResourceTypeFilter,
 )
 from system_operations_manager.tui.base import BaseScreen
 
 if TYPE_CHECKING:
     from system_operations_manager.integrations.kubernetes.client import KubernetesClient
+    from system_operations_manager.integrations.kubernetes.models.cluster import NodeSummary
     from system_operations_manager.services.kubernetes.configuration_manager import (
         ConfigurationManager,
     )
@@ -575,3 +579,362 @@ class ResourceListScreen(BaseScreen[None]):
         """Handle resource type change from filter widget."""
         self._current_type = event.resource_type
         self._load_resources()
+
+
+# Column definitions for dashboard tables
+DASHBOARD_NODE_COLUMNS: list[tuple[str, int]] = [
+    ("Name", 20),
+    ("Status", 10),
+    ("Roles", 15),
+    ("Version", 12),
+    ("CPU", 6),
+    ("Memory", 10),
+    ("Pods", 6),
+]
+
+DASHBOARD_EVENT_COLUMNS: list[tuple[str, int]] = [
+    ("Type", 8),
+    ("Reason", 15),
+    ("Object", 25),
+    ("Message", 40),
+    ("Count", 6),
+]
+
+DASHBOARD_MAX_EVENTS = 20
+DASHBOARD_MAX_NAMESPACES = 10
+
+POD_PHASE_COLORS: dict[str, str] = {
+    "Running": "green",
+    "Succeeded": "green",
+    "Pending": "yellow",
+    "Failed": "red",
+    "Unknown": "dim",
+}
+
+POD_PHASE_ORDER: list[str] = ["Running", "Pending", "Failed", "Succeeded", "Unknown"]
+
+
+class DashboardScreen(BaseScreen[None]):
+    """Cluster status dashboard with auto-refresh.
+
+    Shows node health, pod status summary, resource capacity bars,
+    and recent warning events in a single overview screen with
+    configurable auto-refresh.
+    """
+
+    BINDINGS = [
+        ("escape", "back", "Back"),
+        ("r", "refresh", "Refresh"),
+        ("plus", "increase_interval", "+Interval"),
+        ("minus", "decrease_interval", "-Interval"),
+    ]
+
+    def __init__(self, client: KubernetesClient) -> None:
+        """Initialize the dashboard screen.
+
+        Args:
+            client: Kubernetes API client.
+        """
+        super().__init__()
+        self._client = client
+
+    # =========================================================================
+    # Lazy-loaded managers
+    # =========================================================================
+
+    @property
+    def _namespace_mgr(self) -> NamespaceClusterManager:
+        """Lazy-load NamespaceClusterManager."""
+        from system_operations_manager.services.kubernetes.namespace_manager import (
+            NamespaceClusterManager,
+        )
+
+        return NamespaceClusterManager(self._client)
+
+    @property
+    def _workload_mgr(self) -> WorkloadManager:
+        """Lazy-load WorkloadManager."""
+        from system_operations_manager.services.kubernetes.workload_manager import WorkloadManager
+
+        return WorkloadManager(self._client)
+
+    # =========================================================================
+    # Layout
+    # =========================================================================
+
+    def compose(self) -> ComposeResult:
+        """Compose the dashboard layout."""
+        yield Container(
+            Horizontal(
+                Label("", id="cluster-info"),
+                RefreshTimer(id="refresh-timer"),
+                id="dashboard-header",
+            ),
+            Horizontal(
+                Container(
+                    Label("[bold]Node Health[/bold]", classes="panel-title"),
+                    DataTable(id="node-table"),
+                    id="node-panel",
+                ),
+                Vertical(
+                    Container(
+                        Label("[bold]Pod Status[/bold]", classes="panel-title"),
+                        Label("", id="pod-phase-summary"),
+                        id="pod-phase-panel",
+                    ),
+                    Container(
+                        Label("[bold]Pods by Namespace[/bold]", classes="panel-title"),
+                        Label("", id="pod-ns-summary"),
+                        id="pod-ns-panel",
+                    ),
+                    id="pod-summary-panel",
+                ),
+                id="dashboard-top",
+            ),
+            Container(
+                Label("[bold]Resource Capacity[/bold]", classes="panel-title"),
+                Vertical(id="resource-bars"),
+                id="resource-bars-panel",
+            ),
+            Container(
+                Label("[bold]Recent Warnings[/bold]", classes="panel-title"),
+                DataTable(id="events-table"),
+                id="events-panel",
+            ),
+            id="dashboard-container",
+        )
+
+    # =========================================================================
+    # Data loading
+    # =========================================================================
+
+    def on_mount(self) -> None:
+        """Configure tables and load initial data."""
+        self._setup_tables()
+        self._refresh_all()
+
+    def _setup_tables(self) -> None:
+        """Configure DataTable columns for node and event tables."""
+        node_table = self.query_one("#node-table", DataTable)
+        node_table.cursor_type = "row"
+        node_table.zebra_stripes = True
+        for col_label, width in DASHBOARD_NODE_COLUMNS:
+            node_table.add_column(col_label, width=width)
+
+        events_table = self.query_one("#events-table", DataTable)
+        events_table.cursor_type = "row"
+        events_table.zebra_stripes = True
+        for col_label, width in DASHBOARD_EVENT_COLUMNS:
+            events_table.add_column(col_label, width=width)
+
+    def _refresh_all(self) -> None:
+        """Refresh all dashboard panels."""
+        self._load_cluster_info()
+        self._load_nodes()
+        self._load_pod_summary()
+        self._load_events()
+
+    def _load_cluster_info(self) -> None:
+        """Load and display cluster information header."""
+        try:
+            info = self._namespace_mgr.get_cluster_info()
+            version = info.get("version", "unknown")
+            context = info.get("context", "unknown")
+            node_count = info.get("node_count", "?")
+            ns_count = info.get("namespace_count", "?")
+            self.query_one("#cluster-info", Label).update(
+                f"[bold]Cluster:[/bold] {context}  "
+                f"[bold]K8s:[/bold] {version}  "
+                f"[bold]Nodes:[/bold] {node_count}  "
+                f"[bold]Namespaces:[/bold] {ns_count}"
+            )
+        except Exception as e:
+            logger.warning("dashboard_cluster_info_failed", error=str(e))
+            self.query_one("#cluster-info", Label).update("[red]Failed to load cluster info[/red]")
+
+    def _load_nodes(self) -> None:
+        """Load node health data into the node table and resource bars."""
+        try:
+            nodes = self._namespace_mgr.list_nodes()
+            table = self.query_one("#node-table", DataTable)
+            table.clear()
+
+            for node in nodes:
+                status_color = {"Ready": "green", "NotReady": "red"}.get(node.status, "dim")
+                status = f"[{status_color}]{node.status}[/{status_color}]"
+                roles = ", ".join(node.roles)
+                table.add_row(
+                    node.name,
+                    status,
+                    roles,
+                    node.version or "",
+                    node.cpu_capacity or "?",
+                    node.memory_capacity or "?",
+                    node.pods_capacity or "?",
+                )
+
+            self._update_resource_bars(nodes)
+        except Exception as e:
+            logger.warning("dashboard_nodes_failed", error=str(e))
+            self.notify_user(f"Failed to load nodes: {e}", severity="error")
+
+    def _load_pod_summary(self) -> None:
+        """Load pod counts by phase and namespace."""
+        try:
+            pods = self._workload_mgr.list_pods(all_namespaces=True)
+
+            phase_counts: dict[str, int] = {}
+            ns_counts: dict[str, int] = {}
+            for pod in pods:
+                phase = getattr(pod, "phase", "Unknown") or "Unknown"
+                phase_counts[phase] = phase_counts.get(phase, 0) + 1
+                ns = pod.namespace or "unknown"
+                ns_counts[ns] = ns_counts.get(ns, 0) + 1
+
+            # Phase summary
+            parts: list[str] = []
+            for phase in POD_PHASE_ORDER:
+                count = phase_counts.get(phase, 0)
+                if count > 0:
+                    color = POD_PHASE_COLORS.get(phase, "dim")
+                    parts.append(f"[{color}]{phase}: {count}[/{color}]")
+            total = len(pods)
+            summary = f"Total: {total}  " + "  ".join(parts)
+            self.query_one("#pod-phase-summary", Label).update(summary)
+
+            # Namespace summary (top N)
+            sorted_ns = sorted(ns_counts.items(), key=lambda x: x[1], reverse=True)
+            sorted_ns = sorted_ns[:DASHBOARD_MAX_NAMESPACES]
+            ns_lines = [f"  {ns_name}: [bold]{count}[/bold]" for ns_name, count in sorted_ns]
+            self.query_one("#pod-ns-summary", Label).update("\n".join(ns_lines))
+        except Exception as e:
+            logger.warning("dashboard_pods_failed", error=str(e))
+            self.query_one("#pod-phase-summary", Label).update("[red]Failed to load pods[/red]")
+
+    def _update_resource_bars(self, nodes: list[NodeSummary]) -> None:
+        """Update resource capacity bars from node data.
+
+        Shows capacity bars per node. Actual usage is marked N/A
+        since it requires metrics-server which may not be available.
+
+        Args:
+            nodes: List of node summaries with capacity data.
+        """
+        bars_container = self.query_one("#resource-bars", Vertical)
+        bars_container.remove_children()
+
+        for node in nodes:
+            cpu_cap = self._parse_cpu(node.cpu_capacity) if node.cpu_capacity else None
+            mem_cap = self._parse_memory(node.memory_capacity) if node.memory_capacity else None
+            pod_cap = int(node.pods_capacity) if node.pods_capacity else None
+
+            bars_container.mount(Label(f"  [bold]{node.name}[/bold]"))
+
+            if cpu_cap is not None:
+                bars_container.mount(
+                    ResourceBar(label="CPU", capacity=cpu_cap, used=None, unit=" cores")
+                )
+            if mem_cap is not None:
+                bars_container.mount(
+                    ResourceBar(label="Mem", capacity=mem_cap, used=None, unit=" Gi")
+                )
+            if pod_cap is not None:
+                bars_container.mount(
+                    ResourceBar(label="Pods", capacity=pod_cap, used=None, unit="")
+                )
+
+    @staticmethod
+    def _parse_cpu(cpu_str: str) -> int | None:
+        """Parse CPU capacity string to whole cores.
+
+        Args:
+            cpu_str: CPU string like ``"8"`` or ``"4000m"``.
+
+        Returns:
+            Number of cores, or None if unparseable.
+        """
+        try:
+            if cpu_str.endswith("m"):
+                return int(cpu_str[:-1]) // 1000
+            return int(cpu_str)
+        except ValueError, TypeError:
+            return None
+
+    @staticmethod
+    def _parse_memory(mem_str: str) -> int | None:
+        """Parse memory capacity string to GiB.
+
+        Args:
+            mem_str: Memory string like ``"16Gi"`` or ``"16384Mi"``.
+
+        Returns:
+            Memory in GiB, or None if unparseable.
+        """
+        try:
+            if mem_str.endswith("Ki"):
+                return int(mem_str[:-2]) // (1024 * 1024)
+            if mem_str.endswith("Mi"):
+                return int(mem_str[:-2]) // 1024
+            if mem_str.endswith("Gi"):
+                return int(mem_str[:-2])
+            return int(mem_str) // (1024**3)
+        except ValueError, TypeError:
+            return None
+
+    def _load_events(self) -> None:
+        """Load recent warning events into the events table."""
+        try:
+            events = self._namespace_mgr.list_events(all_namespaces=True)
+            warnings = [e for e in events if e.type == "Warning"]
+            warnings.sort(
+                key=lambda e: e.last_timestamp or e.creation_timestamp or "",
+                reverse=True,
+            )
+            warnings = warnings[:DASHBOARD_MAX_EVENTS]
+
+            table = self.query_one("#events-table", DataTable)
+            table.clear()
+
+            for evt in warnings:
+                type_markup = f"[yellow]{evt.type}[/yellow]"
+                obj = f"{evt.involved_object_kind or ''}/{evt.involved_object_name or ''}"
+                msg = (evt.message or "")[:60]
+                table.add_row(type_markup, evt.reason or "", obj, msg, str(evt.count))
+        except Exception as e:
+            logger.warning("dashboard_events_failed", error=str(e))
+
+    # =========================================================================
+    # Keyboard Actions
+    # =========================================================================
+
+    def action_back(self) -> None:
+        """Navigate back to previous screen."""
+        self.go_back()
+
+    def action_refresh(self) -> None:
+        """Manually refresh all dashboard panels."""
+        self._refresh_all()
+        self.query_one("#refresh-timer", RefreshTimer).reset()
+        self.notify_user("Dashboard refreshed")
+
+    def action_increase_interval(self) -> None:
+        """Increase the auto-refresh interval."""
+        self.query_one("#refresh-timer", RefreshTimer).increase_interval()
+
+    def action_decrease_interval(self) -> None:
+        """Decrease the auto-refresh interval."""
+        self.query_one("#refresh-timer", RefreshTimer).decrease_interval()
+
+    # =========================================================================
+    # Widget Event Handlers
+    # =========================================================================
+
+    @on(RefreshTimer.RefreshTriggered)
+    def handle_auto_refresh(self, event: RefreshTimer.RefreshTriggered) -> None:
+        """Handle auto-refresh timer firing."""
+        self._refresh_all()
+
+    @on(RefreshTimer.IntervalChanged)
+    def handle_interval_changed(self, event: RefreshTimer.IntervalChanged) -> None:
+        """Handle refresh interval change."""
+        self.notify_user(f"Refresh interval: {event.interval}s")
