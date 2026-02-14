@@ -216,6 +216,7 @@ def _bridge_connection(
                     break
                 pf_socket.sendall(data)
             except BlockingIOError:
+                # Expected for non-blocking sockets when no data is available yet.
                 # Non-blocking socket: no data available right now, try again on next loop
                 pass
 
@@ -225,6 +226,7 @@ def _bridge_connection(
                 if not data:
                     break
                 client_sock.sendall(data)
+                # Expected for non-blocking sockets when no data is available yet.
             except BlockingIOError:
                 # Non-blocking socket: no data available right now, try again on next loop
                 pass
