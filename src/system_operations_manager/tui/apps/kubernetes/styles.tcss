@@ -1,0 +1,45 @@
+/* Kubernetes Resource Browser TUI Styles */
+
+/* Main screen container */
+#resource-list-container {
+    padding: 1;
+}
+
+/* Toolbar with selectors */
+#toolbar {
+    height: 3;
+    dock: top;
+    padding: 0 1;
+}
+
+#toolbar NamespaceSelector,
+#toolbar ClusterSelector,
+#toolbar ResourceTypeFilter {
+    margin-right: 2;
+}
+
+/* Resource table */
+#resource-table {
+    height: auto;
+    max-height: 85%;
+}
+
+/* Status bar */
+#status-bar {
+    dock: bottom;
+    height: 1;
+    padding: 0 1;
+}
+
+/* General styling */
+Screen {
+    background: $surface;
+}
+
+DataTable {
+    background: $surface-darken-1;
+}
+
+DataTable > .datatable--cursor {
+    background: $accent;
+}
