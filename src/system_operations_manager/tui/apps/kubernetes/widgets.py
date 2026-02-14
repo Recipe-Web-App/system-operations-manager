@@ -19,7 +19,7 @@ from textual.widgets.option_list import Option
 from system_operations_manager.tui.base import BaseWidget
 
 if TYPE_CHECKING:
-    from system_operations_manager.tui.apps.kubernetes.app import ResourceType
+    from system_operations_manager.tui.apps.kubernetes.types import ResourceType
 
 ALL_NAMESPACES_LABEL = "All Namespaces"
 
@@ -94,9 +94,7 @@ class SelectorPopup(ModalScreen[str | None]):
             idx = self._options.index(self._current)
             option_list.highlighted = idx
 
-    def on_option_list_option_selected(
-        self, event: OptionList.OptionSelected
-    ) -> None:
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         """Handle option selection."""
         self.dismiss(str(event.option.prompt))
 
@@ -136,13 +134,13 @@ class NamespaceSelector(BaseWidget):
     class NamespaceChanged(Message):
         """Emitted when the selected namespace changes."""
 
-        def __init__(self, namespace: str | None) -> None:
+        def __init__(self, selected_namespace: str | None) -> None:
             """Initialize with the new namespace.
 
             Args:
-                namespace: New namespace name, or None for all namespaces.
+                selected_namespace: New namespace name, or None for all namespaces.
             """
-            self.namespace = namespace
+            self.selected_namespace = selected_namespace
             super().__init__()
 
     def __init__(

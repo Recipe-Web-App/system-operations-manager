@@ -6,6 +6,7 @@ namespace/cluster selectors, and resource type filtering.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
 
 import structlog
@@ -16,8 +17,7 @@ from textual.message import Message
 from textual.widgets import DataTable, Label
 
 from system_operations_manager.integrations.kubernetes.models.base import K8sEntityBase
-from system_operations_manager.tui.apps.kubernetes.app import (
-    CLUSTER_SCOPED_TYPES,
+from system_operations_manager.tui.apps.kubernetes.types import (
     RESOURCE_TYPE_ORDER,
     ResourceType,
 )
@@ -30,27 +30,16 @@ from system_operations_manager.tui.base import BaseScreen
 
 if TYPE_CHECKING:
     from system_operations_manager.integrations.kubernetes.client import KubernetesClient
-    from system_operations_manager.integrations.kubernetes.models.cluster import (
-        EventSummary,
-        NamespaceSummary,
-        NodeSummary,
+    from system_operations_manager.services.kubernetes.configuration_manager import (
+        ConfigurationManager,
     )
-    from system_operations_manager.integrations.kubernetes.models.configuration import (
-        ConfigMapSummary,
-        SecretSummary,
+    from system_operations_manager.services.kubernetes.namespace_manager import (
+        NamespaceClusterManager,
     )
-    from system_operations_manager.integrations.kubernetes.models.networking import (
-        IngressSummary,
-        NetworkPolicySummary,
-        ServiceSummary,
+    from system_operations_manager.services.kubernetes.networking_manager import (
+        NetworkingManager,
     )
-    from system_operations_manager.integrations.kubernetes.models.workloads import (
-        DaemonSetSummary,
-        DeploymentSummary,
-        PodSummary,
-        ReplicaSetSummary,
-        StatefulSetSummary,
-    )
+    from system_operations_manager.services.kubernetes.workload_manager import WorkloadManager
 
 logger = structlog.get_logger()
 
@@ -181,7 +170,14 @@ def _resource_to_row(resource: K8sEntityBase, resource_type: ResourceType) -> tu
 
     if resource_type == ResourceType.DEPLOYMENTS:
         ready = f"{r.ready_replicas}/{r.replicas}"
-        return (r.name, r.namespace or "", ready, str(r.updated_replicas), str(r.available_replicas), r.age)
+        return (
+            r.name,
+            r.namespace or "",
+            ready,
+            str(r.updated_replicas),
+            str(r.available_replicas),
+            r.age,
+        )
 
     if resource_type == ResourceType.STATEFULSETS:
         ready = f"{r.ready_replicas}/{r.replicas}"
@@ -306,7 +302,7 @@ class ResourceListScreen(BaseScreen[None]):
         """
         super().__init__()
         self._client = client
-        self._resources: list[K8sEntityBase] = []
+        self._resources: Sequence[K8sEntityBase] = []
         self._current_type = ResourceType.PODS
         self._current_namespace: str | None = client.default_namespace
         self._namespaces: list[str] = []
@@ -394,7 +390,7 @@ class ResourceListScreen(BaseScreen[None]):
                 f"[red]Error loading {self._current_type.value}[/red]"
             )
 
-    def _fetch_resources(self) -> list[K8sEntityBase]:
+    def _fetch_resources(self) -> Sequence[K8sEntityBase]:
         """Fetch resources from the appropriate manager.
 
         Returns:
@@ -445,14 +441,14 @@ class ResourceListScreen(BaseScreen[None]):
         return []
 
     @property
-    def _workload_mgr(self) -> Any:
+    def _workload_mgr(self) -> WorkloadManager:
         """Lazy-load WorkloadManager."""
         from system_operations_manager.services.kubernetes.workload_manager import WorkloadManager
 
         return WorkloadManager(self._client)
 
     @property
-    def _networking_mgr(self) -> Any:
+    def _networking_mgr(self) -> NetworkingManager:
         """Lazy-load NetworkingManager."""
         from system_operations_manager.services.kubernetes.networking_manager import (
             NetworkingManager,
@@ -461,7 +457,7 @@ class ResourceListScreen(BaseScreen[None]):
         return NetworkingManager(self._client)
 
     @property
-    def _config_mgr(self) -> Any:
+    def _config_mgr(self) -> ConfigurationManager:
         """Lazy-load ConfigurationManager."""
         from system_operations_manager.services.kubernetes.configuration_manager import (
             ConfigurationManager,
@@ -470,7 +466,7 @@ class ResourceListScreen(BaseScreen[None]):
         return ConfigurationManager(self._client)
 
     @property
-    def _namespace_mgr(self) -> Any:
+    def _namespace_mgr(self) -> NamespaceClusterManager:
         """Lazy-load NamespaceClusterManager."""
         from system_operations_manager.services.kubernetes.namespace_manager import (
             NamespaceClusterManager,
@@ -560,7 +556,7 @@ class ResourceListScreen(BaseScreen[None]):
     @on(NamespaceSelector.NamespaceChanged)
     def handle_namespace_changed(self, event: NamespaceSelector.NamespaceChanged) -> None:
         """Handle namespace change from selector widget."""
-        self._current_namespace = event.namespace
+        self._current_namespace = event.selected_namespace
         self._load_resources()
 
     @on(ClusterSelector.ClusterChanged)
@@ -575,9 +571,7 @@ class ResourceListScreen(BaseScreen[None]):
             self.notify_user(f"Failed to switch context: {e}", severity="error")
 
     @on(ResourceTypeFilter.ResourceTypeChanged)
-    def handle_resource_type_changed(
-        self, event: ResourceTypeFilter.ResourceTypeChanged
-    ) -> None:
+    def handle_resource_type_changed(self, event: ResourceTypeFilter.ResourceTypeChanged) -> None:
         """Handle resource type change from filter widget."""
         self._current_type = event.resource_type
         self._load_resources()

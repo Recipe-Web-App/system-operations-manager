@@ -6,7 +6,6 @@ interactive Kubernetes resource browsing in the TUI.
 
 from __future__ import annotations
 
-from enum import Enum
 from typing import TYPE_CHECKING
 
 from textual import on
@@ -15,44 +14,22 @@ from textual.binding import Binding
 from textual.widgets import Footer, Header
 
 from system_operations_manager.tui.apps.kubernetes.screens import ResourceListScreen
+from system_operations_manager.tui.apps.kubernetes.types import (
+    CLUSTER_SCOPED_TYPES,
+    RESOURCE_TYPE_ORDER,
+    ResourceType,
+)
 
 if TYPE_CHECKING:
     from system_operations_manager.integrations.kubernetes.client import KubernetesClient
 
-
-class ResourceType(Enum):
-    """Kubernetes resource types available in the TUI browser."""
-
-    # Workloads
-    PODS = "Pods"
-    DEPLOYMENTS = "Deployments"
-    STATEFULSETS = "StatefulSets"
-    DAEMONSETS = "DaemonSets"
-    REPLICASETS = "ReplicaSets"
-
-    # Networking
-    SERVICES = "Services"
-    INGRESSES = "Ingresses"
-    NETWORK_POLICIES = "NetworkPolicies"
-
-    # Configuration
-    CONFIGMAPS = "ConfigMaps"
-    SECRETS = "Secrets"
-
-    # Cluster
-    NAMESPACES = "Namespaces"
-    NODES = "Nodes"
-    EVENTS = "Events"
-
-
-# Resource types that are cluster-scoped (not namespaced)
-CLUSTER_SCOPED_TYPES = frozenset({
-    ResourceType.NAMESPACES,
-    ResourceType.NODES,
-})
-
-# Ordered list for cycling through types
-RESOURCE_TYPE_ORDER = list(ResourceType)
+# Re-export for backward compatibility
+__all__ = [
+    "CLUSTER_SCOPED_TYPES",
+    "RESOURCE_TYPE_ORDER",
+    "KubernetesApp",
+    "ResourceType",
+]
 
 
 class KubernetesApp(App[None]):
@@ -109,14 +86,10 @@ class KubernetesApp(App[None]):
         )
 
     @on(ResourceListScreen.ResourceSelected)
-    def handle_resource_selected(
-        self, event: ResourceListScreen.ResourceSelected
-    ) -> None:
+    def handle_resource_selected(self, event: ResourceListScreen.ResourceSelected) -> None:
         """Handle resource selection from list.
 
         Currently shows a notification. The detail screen is
         implemented in a separate task (system-operations-manager-uy8).
         """
-        self.notify(
-            f"Selected: {event.resource_type.value} / {event.resource.name}"
-        )
+        self.notify(f"Selected: {event.resource_type.value} / {event.resource.name}")
