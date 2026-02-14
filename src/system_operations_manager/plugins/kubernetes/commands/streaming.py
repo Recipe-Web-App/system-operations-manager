@@ -216,6 +216,7 @@ def _bridge_connection(
                     break
                 pf_socket.sendall(data)
             except BlockingIOError:
+                # Non-blocking socket: no data available right now, try again on next loop
                 pass
 
             # Read from pod, write to local client
@@ -225,6 +226,7 @@ def _bridge_connection(
                     break
                 client_sock.sendall(data)
             except BlockingIOError:
+                # Non-blocking socket: no data available right now, try again on next loop
                 pass
 
             time.sleep(0.01)
