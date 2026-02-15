@@ -419,3 +419,34 @@ class TestSecretOperations:
 
         with pytest.raises(RuntimeError, match="Translated error"):
             config_manager.delete_secret("test-secret")
+
+    @pytest.mark.unit
+    @pytest.mark.kubernetes
+    def test_update_secret_success(
+        self, config_manager: ConfigurationManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should update secret successfully."""
+        mock_secret = MagicMock()
+        mock_k8s_client.core_v1.patch_namespaced_secret.return_value = mock_secret
+
+        with patch(
+            "system_operations_manager.services.kubernetes.configuration_manager.SecretSummary.from_k8s_object"
+        ) as mock_from_k8s:
+            mock_summary = MagicMock()
+            mock_from_k8s.return_value = mock_summary
+
+            result = config_manager.update_secret("test-secret", data={"key": "value"})
+
+            assert result == mock_summary
+
+    @pytest.mark.unit
+    @pytest.mark.kubernetes
+    def test_update_secret_error(
+        self, config_manager: ConfigurationManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should handle API error when updating secret."""
+        mock_k8s_client.core_v1.patch_namespaced_secret.side_effect = Exception("Update error")
+        mock_k8s_client.translate_api_exception.side_effect = RuntimeError("Translated error")
+
+        with pytest.raises(RuntimeError, match="Translated error"):
+            config_manager.update_secret("test-secret", data={})

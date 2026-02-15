@@ -169,6 +169,37 @@ class TestNamespaceOperations:
         with pytest.raises(RuntimeError, match="Translated error"):
             namespace_manager.delete_namespace("test-ns")
 
+    @pytest.mark.unit
+    @pytest.mark.kubernetes
+    def test_update_namespace_success(
+        self, namespace_manager: NamespaceClusterManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should update namespace successfully."""
+        mock_namespace = MagicMock()
+        mock_k8s_client.core_v1.patch_namespace.return_value = mock_namespace
+
+        with patch(
+            "system_operations_manager.services.kubernetes.namespace_manager.NamespaceSummary.from_k8s_object"
+        ) as mock_from_k8s:
+            mock_summary = MagicMock()
+            mock_from_k8s.return_value = mock_summary
+
+            result = namespace_manager.update_namespace("test-ns", labels={"env": "production"})
+
+            assert result == mock_summary
+
+    @pytest.mark.unit
+    @pytest.mark.kubernetes
+    def test_update_namespace_error(
+        self, namespace_manager: NamespaceClusterManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should handle API error when updating namespace."""
+        mock_k8s_client.core_v1.patch_namespace.side_effect = Exception("Update error")
+        mock_k8s_client.translate_api_exception.side_effect = RuntimeError("Translated error")
+
+        with pytest.raises(RuntimeError, match="Translated error"):
+            namespace_manager.update_namespace("test-ns")
+
 
 class TestNodeOperations:
     """Tests for Node operations."""
