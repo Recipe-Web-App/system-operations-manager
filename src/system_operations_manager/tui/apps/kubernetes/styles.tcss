@@ -263,3 +263,40 @@ DataTable > .datatable--cursor {
     margin: 0 1;
     min-width: 12;
 }
+
+/* ============================================ */
+/* Log Viewer Screen                            */
+/* ============================================ */
+
+#log-container {
+    padding: 1;
+}
+
+#log-header {
+    height: 3;
+    dock: top;
+    padding: 0 1;
+    text-style: bold;
+}
+
+#log-toolbar {
+    height: 3;
+    dock: top;
+    padding: 0 1;
+}
+
+#log-toolbar #log-container-label {
+    width: 1fr;
+}
+
+#log-toolbar #log-status {
+    width: auto;
+    margin-left: 2;
+}
+
+#log-output {
+    height: 1fr;
+    border: solid $primary;
+    padding: 1;
+    scrollbar-gutter: stable;
+}

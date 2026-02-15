@@ -399,6 +399,14 @@ class TestResourceListScreen:
         assert "r" in binding_keys
 
     @pytest.mark.unit
+    def test_screen_bindings_include_logs(self) -> None:
+        """Screen bindings include logs shortcut."""
+        binding_keys = [
+            b.key if isinstance(b, Binding) else b[0] for b in ResourceListScreen.BINDINGS
+        ]
+        assert "l" in binding_keys
+
+    @pytest.mark.unit
     def test_resource_selected_message(self) -> None:
         """ResourceSelected message stores resource and type."""
         pod = PodSummary(name="test", phase="Running", ready_count=1, total_count=1, restarts=0)
@@ -496,6 +504,22 @@ class TestResourceDetailScreen:
             b.key if isinstance(b, Binding) else b[0] for b in ResourceDetailScreen.BINDINGS
         ]
         assert "r" in binding_keys
+
+    @pytest.mark.unit
+    def test_screen_bindings_include_logs(self) -> None:
+        """Screen bindings include l for logs."""
+        binding_keys = [
+            b.key if isinstance(b, Binding) else b[0] for b in ResourceDetailScreen.BINDINGS
+        ]
+        assert "l" in binding_keys
+
+    @pytest.mark.unit
+    def test_screen_bindings_include_exec(self) -> None:
+        """Screen bindings include x for exec."""
+        binding_keys = [
+            b.key if isinstance(b, Binding) else b[0] for b in ResourceDetailScreen.BINDINGS
+        ]
+        assert "x" in binding_keys
 
     @pytest.mark.unit
     def test_status_color_map_has_common_statuses(self) -> None:

@@ -289,6 +289,7 @@ class ResourceListScreen(BaseScreen[None]):
         ("r", "refresh", "Refresh"),
         ("a", "create", "Create"),
         ("d", "delete", "Delete"),
+        ("l", "logs", "Logs"),
     ]
 
     class ResourceSelected(Message):
@@ -605,6 +606,22 @@ class ResourceListScreen(BaseScreen[None]):
             except Exception as e:
                 self.notify_user(f"Delete failed: {e}", severity="error")
         self._pending_delete = None
+
+    def action_logs(self) -> None:
+        """Open log viewer for the selected pod."""
+        if self._current_type != ResourceType.PODS:
+            self.notify_user("Logs only available for Pods", severity="warning")
+            return
+        table = self.query_one("#resource-table", DataTable)
+        if table.cursor_row is None or table.cursor_row >= len(self._resources):
+            return
+        resource = self._resources[table.cursor_row]
+
+        from system_operations_manager.tui.apps.kubernetes.log_viewer import (
+            LogViewerScreen,
+        )
+
+        self.app.push_screen(LogViewerScreen(resource=resource, client=self._client))
 
     # Namespace actions
     def action_cycle_namespace(self) -> None:
@@ -1052,6 +1069,8 @@ class ResourceDetailScreen(BaseScreen[None]):
         ("r", "refresh_events", "Refresh"),
         ("e", "edit", "Edit"),
         ("d", "delete", "Delete"),
+        ("l", "logs", "Logs"),
+        ("x", "exec", "Exec"),
     ]
 
     def __init__(
@@ -1520,3 +1539,121 @@ class ResourceDetailScreen(BaseScreen[None]):
                 self.go_back()
             except Exception as e:
                 self.notify_user(f"Delete failed: {e}", severity="error")
+
+    # =========================================================================
+    # Logs & Exec
+    # =========================================================================
+
+    def action_logs(self) -> None:
+        """Open log viewer for this pod."""
+        if self._resource_type != ResourceType.PODS:
+            self.notify_user(
+                f"Logs not available for {self._resource_type.value}",
+                severity="warning",
+            )
+            return
+
+        from system_operations_manager.tui.apps.kubernetes.log_viewer import (
+            LogViewerScreen,
+        )
+
+        self.app.push_screen(LogViewerScreen(resource=self._resource, client=self._client))
+
+    def action_exec(self) -> None:
+        """Open an interactive exec session in this pod."""
+        if self._resource_type != ResourceType.PODS:
+            self.notify_user(
+                f"Exec not available for {self._resource_type.value}",
+                severity="warning",
+            )
+            return
+
+        containers = getattr(self._resource, "containers", [])
+        container_names = [c.name for c in containers if c.name]
+
+        if len(container_names) > 1:
+            from system_operations_manager.tui.apps.kubernetes.widgets import (
+                SelectorPopup,
+            )
+
+            self.app.push_screen(
+                SelectorPopup(
+                    "Select Container for Exec",
+                    container_names,
+                    container_names[0],
+                ),
+                callback=self._handle_exec_container_selected,
+            )
+        else:
+            container = container_names[0] if container_names else None
+            self._run_exec(container)
+
+    def _handle_exec_container_selected(self, result: str | None) -> None:
+        """Handle container selection for exec.
+
+        Args:
+            result: Selected container name or None if dismissed.
+        """
+        if result:
+            self._run_exec(result)
+
+    def _run_exec(self, container: str | None) -> None:
+        """Suspend TUI and run an interactive exec session.
+
+        Args:
+            container: Container name to exec into (None for default).
+        """
+        from system_operations_manager.services.kubernetes.streaming_manager import (
+            StreamingManager,
+        )
+
+        try:
+            mgr = StreamingManager(self._client)
+            ws_client = mgr.exec_command(
+                self._resource.name,
+                self._resource.namespace,
+                container=container,
+                stdin=True,
+                tty=True,
+            )
+        except Exception as e:
+            self.notify_user(f"Exec failed: {e}", severity="error")
+            return
+
+        try:
+            import select
+            import termios
+            import tty as tty_module
+        except ImportError:
+            self.notify_user(
+                "Interactive exec requires a Unix terminal",
+                severity="error",
+            )
+            ws_client.close()
+            return
+
+        import sys
+
+        old_settings = termios.tcgetattr(sys.stdin)
+        try:
+            with self.app.suspend():
+                tty_module.setraw(sys.stdin.fileno())
+                while ws_client.is_open():
+                    ws_client.update(timeout=0.1)
+                    if ws_client.peek_stdout():
+                        sys.stdout.write(ws_client.read_stdout())
+                        sys.stdout.flush()
+                    if ws_client.peek_stderr():
+                        sys.stderr.write(ws_client.read_stderr())
+                        sys.stderr.flush()
+
+                    readable, _, _ = select.select([sys.stdin], [], [], 0)
+                    if readable:
+                        data = sys.stdin.read(1)
+                        if data:
+                            ws_client.write_stdin(data)
+        except KeyboardInterrupt:
+            pass
+        finally:
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+            ws_client.close()
