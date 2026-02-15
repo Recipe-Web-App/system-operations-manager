@@ -127,3 +127,87 @@ DataTable > .datatable--cursor {
     margin-bottom: 1;
     color: $text;
 }
+
+/* ============================================ */
+/* Resource Detail Screen Styles                */
+/* ============================================ */
+
+#detail-container {
+    padding: 1;
+}
+
+#detail-header {
+    height: 3;
+    dock: top;
+    padding: 0 1;
+    text-style: bold;
+}
+
+#detail-top-row {
+    height: auto;
+    max-height: 30%;
+    padding: 0;
+}
+
+#detail-mid-row {
+    height: auto;
+    max-height: 25%;
+    padding: 0;
+    margin-top: 1;
+}
+
+.detail-panel {
+    border: solid $primary;
+    padding: 1;
+    height: auto;
+}
+
+#metadata-panel {
+    width: 50%;
+    margin-right: 1;
+}
+
+#status-panel {
+    width: 50%;
+}
+
+#labels-panel {
+    width: 50%;
+    margin-right: 1;
+    max-height: 100%;
+    overflow-y: auto;
+}
+
+#annotations-panel {
+    width: 50%;
+    max-height: 100%;
+    overflow-y: auto;
+}
+
+#yaml-panel {
+    margin-top: 1;
+    border: solid $accent;
+    height: auto;
+    max-height: 35%;
+}
+
+#detail-yaml-scroll {
+    height: auto;
+    max-height: 100%;
+}
+
+#detail-yaml-content {
+    height: auto;
+}
+
+#detail-events-panel {
+    margin-top: 1;
+    border: solid $warning;
+    height: auto;
+    max-height: 25%;
+}
+
+#detail-events-panel #detail-events-table {
+    height: auto;
+    max-height: 100%;
+}

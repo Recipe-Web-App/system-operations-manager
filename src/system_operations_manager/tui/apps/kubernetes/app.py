@@ -15,6 +15,7 @@ from textual.widgets import Footer, Header
 
 from system_operations_manager.tui.apps.kubernetes.screens import (
     DashboardScreen,
+    ResourceDetailScreen,
     ResourceListScreen,
 )
 from system_operations_manager.tui.apps.kubernetes.types import (
@@ -32,6 +33,7 @@ __all__ = [
     "RESOURCE_TYPE_ORDER",
     "DashboardScreen",
     "KubernetesApp",
+    "ResourceDetailScreen",
     "ResourceType",
 ]
 
@@ -96,9 +98,11 @@ class KubernetesApp(App[None]):
 
     @on(ResourceListScreen.ResourceSelected)
     def handle_resource_selected(self, event: ResourceListScreen.ResourceSelected) -> None:
-        """Handle resource selection from list.
-
-        Currently shows a notification. The detail screen is
-        implemented in a separate task (system-operations-manager-uy8).
-        """
-        self.notify(f"Selected: {event.resource_type.value} / {event.resource.name}")
+        """Handle resource selection from list by pushing the detail screen."""
+        self.push_screen(
+            ResourceDetailScreen(
+                resource=event.resource,
+                resource_type=event.resource_type,
+                client=self._client,
+            )
+        )

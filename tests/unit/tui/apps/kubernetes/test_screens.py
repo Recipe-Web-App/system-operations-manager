@@ -1,6 +1,7 @@
 """Unit tests for Kubernetes TUI screens.
 
-Tests ResourceListScreen, column definitions, and row conversion.
+Tests ResourceListScreen, ResourceDetailScreen, column definitions,
+and row conversion.
 """
 
 from __future__ import annotations
@@ -33,6 +34,8 @@ from system_operations_manager.integrations.kubernetes.models.workloads import (
 from system_operations_manager.tui.apps.kubernetes.app import ResourceType
 from system_operations_manager.tui.apps.kubernetes.screens import (
     COLUMN_DEFS,
+    STATUS_COLOR_MAP,
+    ResourceDetailScreen,
     ResourceListScreen,
     _resource_to_row,
 )
@@ -402,3 +405,330 @@ class TestResourceListScreen:
         msg = ResourceListScreen.ResourceSelected(pod, ResourceType.PODS)
         assert msg.resource.name == "test"
         assert msg.resource_type == ResourceType.PODS
+
+
+# ============================================================================
+# ResourceDetailScreen Tests
+# ============================================================================
+
+
+@pytest.fixture()
+def sample_pod() -> PodSummary:
+    """Create a sample pod for detail screen tests."""
+    return PodSummary(
+        name="nginx-abc123",
+        namespace="default",
+        uid="12345-abcde",
+        phase="Running",
+        ready_count=1,
+        total_count=1,
+        restarts=2,
+        node_name="node-1",
+        pod_ip="10.0.0.5",
+        creation_timestamp="2026-01-01T00:00:00Z",
+        labels={"app": "nginx", "tier": "frontend"},
+        annotations={"kubectl.kubernetes.io/last-applied-configuration": "{}"},
+    )
+
+
+@pytest.fixture()
+def sample_deployment() -> DeploymentSummary:
+    """Create a sample deployment for detail screen tests."""
+    return DeploymentSummary(
+        name="web-app",
+        namespace="production",
+        uid="67890-fghij",
+        replicas=3,
+        ready_replicas=3,
+        updated_replicas=3,
+        available_replicas=3,
+        strategy="RollingUpdate",
+        creation_timestamp="2026-01-01T00:00:00Z",
+        labels={"app": "web-app"},
+    )
+
+
+@pytest.fixture()
+def sample_node() -> NodeSummary:
+    """Create a sample node for detail screen tests."""
+    return NodeSummary(
+        name="node-1",
+        uid="node-uid-123",
+        status="Ready",
+        roles=["control-plane", "worker"],
+        version="v1.29.0",
+        internal_ip="192.168.1.10",
+        os_image="Ubuntu 22.04",
+        container_runtime="containerd://1.7.0",
+        creation_timestamp="2026-01-01T00:00:00Z",
+        labels={"kubernetes.io/hostname": "node-1"},
+    )
+
+
+class TestResourceDetailScreen:
+    """Tests for ResourceDetailScreen text builders and bindings."""
+
+    @pytest.mark.unit
+    def test_screen_has_bindings(self) -> None:
+        """ResourceDetailScreen defines keyboard bindings."""
+        assert len(ResourceDetailScreen.BINDINGS) > 0
+
+    @pytest.mark.unit
+    def test_screen_bindings_include_back(self) -> None:
+        """Screen bindings include escape for back navigation."""
+        binding_keys = [
+            b.key if isinstance(b, Binding) else b[0] for b in ResourceDetailScreen.BINDINGS
+        ]
+        assert "escape" in binding_keys
+
+    @pytest.mark.unit
+    def test_screen_bindings_include_yaml_toggle(self) -> None:
+        """Screen bindings include y for YAML toggle."""
+        binding_keys = [
+            b.key if isinstance(b, Binding) else b[0] for b in ResourceDetailScreen.BINDINGS
+        ]
+        assert "y" in binding_keys
+
+    @pytest.mark.unit
+    def test_screen_bindings_include_refresh(self) -> None:
+        """Screen bindings include r for event refresh."""
+        binding_keys = [
+            b.key if isinstance(b, Binding) else b[0] for b in ResourceDetailScreen.BINDINGS
+        ]
+        assert "r" in binding_keys
+
+    @pytest.mark.unit
+    def test_status_color_map_has_common_statuses(self) -> None:
+        """STATUS_COLOR_MAP covers common Kubernetes statuses."""
+        assert "Running" in STATUS_COLOR_MAP
+        assert "Pending" in STATUS_COLOR_MAP
+        assert "Failed" in STATUS_COLOR_MAP
+        assert "Ready" in STATUS_COLOR_MAP
+        assert "NotReady" in STATUS_COLOR_MAP
+
+    @pytest.mark.unit
+    def test_header_text_pod(self, sample_pod: PodSummary) -> None:
+        """Header text includes resource type, name, namespace, and status."""
+        screen = ResourceDetailScreen.__new__(ResourceDetailScreen)
+        screen._resource = sample_pod
+        screen._resource_type = ResourceType.PODS
+        header = screen._build_header_text()
+        assert "Pods" in header
+        assert "nginx-abc123" in header
+        assert "default" in header
+        assert "Running" in header
+
+    @pytest.mark.unit
+    def test_header_text_node_no_namespace(self, sample_node: NodeSummary) -> None:
+        """Header for cluster-scoped resources omits namespace."""
+        screen = ResourceDetailScreen.__new__(ResourceDetailScreen)
+        screen._resource = sample_node
+        screen._resource_type = ResourceType.NODES
+        header = screen._build_header_text()
+        assert "node-1" in header
+        assert "ns:" not in header
+
+    @pytest.mark.unit
+    def test_metadata_text_pod(self, sample_pod: PodSummary) -> None:
+        """Metadata text includes UID, creation time, age, namespace."""
+        screen = ResourceDetailScreen.__new__(ResourceDetailScreen)
+        screen._resource = sample_pod
+        screen._resource_type = ResourceType.PODS
+        metadata = screen._build_metadata_text()
+        assert "12345-abcde" in metadata
+        assert "2026-01-01" in metadata
+        assert "Namespace" in metadata
+
+    @pytest.mark.unit
+    def test_status_text_pod(self, sample_pod: PodSummary) -> None:
+        """Status text for pods shows phase, ready, restarts, node, IP."""
+        screen = ResourceDetailScreen.__new__(ResourceDetailScreen)
+        screen._resource = sample_pod
+        screen._resource_type = ResourceType.PODS
+        status = screen._build_status_text()
+        assert "Running" in status
+        assert "1/1" in status
+        assert "2" in status
+        assert "node-1" in status
+        assert "10.0.0.5" in status
+
+    @pytest.mark.unit
+    def test_status_text_deployment(self, sample_deployment: DeploymentSummary) -> None:
+        """Status text for deployments shows replicas and strategy."""
+        screen = ResourceDetailScreen.__new__(ResourceDetailScreen)
+        screen._resource = sample_deployment
+        screen._resource_type = ResourceType.DEPLOYMENTS
+        status = screen._build_status_text()
+        assert "3/3" in status
+        assert "RollingUpdate" in status
+
+    @pytest.mark.unit
+    def test_status_text_node(self, sample_node: NodeSummary) -> None:
+        """Status text for nodes shows status, roles, version, IP."""
+        screen = ResourceDetailScreen.__new__(ResourceDetailScreen)
+        screen._resource = sample_node
+        screen._resource_type = ResourceType.NODES
+        status = screen._build_status_text()
+        assert "Ready" in status
+        assert "control-plane" in status
+        assert "v1.29.0" in status
+        assert "192.168.1.10" in status
+
+    @pytest.mark.unit
+    def test_labels_text_with_labels(self, sample_pod: PodSummary) -> None:
+        """Labels text shows key=value pairs."""
+        screen = ResourceDetailScreen.__new__(ResourceDetailScreen)
+        screen._resource = sample_pod
+        screen._resource_type = ResourceType.PODS
+        labels = screen._build_labels_text()
+        assert "app=nginx" in labels
+        assert "tier=frontend" in labels
+
+    @pytest.mark.unit
+    def test_labels_text_no_labels(self) -> None:
+        """Labels text shows placeholder when no labels."""
+        pod = PodSummary(
+            name="test",
+            phase="Running",
+            ready_count=1,
+            total_count=1,
+            restarts=0,
+            labels=None,
+        )
+        screen = ResourceDetailScreen.__new__(ResourceDetailScreen)
+        screen._resource = pod
+        screen._resource_type = ResourceType.PODS
+        labels = screen._build_labels_text()
+        assert "No labels" in labels
+
+    @pytest.mark.unit
+    def test_annotations_text_with_annotations(self, sample_pod: PodSummary) -> None:
+        """Annotations text shows key=value pairs."""
+        screen = ResourceDetailScreen.__new__(ResourceDetailScreen)
+        screen._resource = sample_pod
+        screen._resource_type = ResourceType.PODS
+        annotations = screen._build_annotations_text()
+        assert "kubectl.kubernetes.io/last-applied-configuration" in annotations
+
+    @pytest.mark.unit
+    def test_annotations_text_no_annotations(self) -> None:
+        """Annotations text shows placeholder when no annotations."""
+        pod = PodSummary(
+            name="test",
+            phase="Running",
+            ready_count=1,
+            total_count=1,
+            restarts=0,
+            annotations=None,
+        )
+        screen = ResourceDetailScreen.__new__(ResourceDetailScreen)
+        screen._resource = pod
+        screen._resource_type = ResourceType.PODS
+        annotations = screen._build_annotations_text()
+        assert "No annotations" in annotations
+
+    @pytest.mark.unit
+    def test_annotations_text_truncates_long_values(self) -> None:
+        """Long annotation values are truncated."""
+        pod = PodSummary(
+            name="test",
+            phase="Running",
+            ready_count=1,
+            total_count=1,
+            restarts=0,
+            annotations={"long-key": "x" * 100},
+        )
+        screen = ResourceDetailScreen.__new__(ResourceDetailScreen)
+        screen._resource = pod
+        screen._resource_type = ResourceType.PODS
+        annotations = screen._build_annotations_text()
+        assert "..." in annotations
+
+    @pytest.mark.unit
+    def test_yaml_text_contains_resource_name(self, sample_pod: PodSummary) -> None:
+        """YAML text includes the resource name."""
+        screen = ResourceDetailScreen.__new__(ResourceDetailScreen)
+        screen._resource = sample_pod
+        screen._resource_type = ResourceType.PODS
+        yaml_text = screen._build_yaml_text()
+        assert "nginx-abc123" in yaml_text
+        assert "name:" in yaml_text
+
+    @pytest.mark.unit
+    def test_yaml_text_excludes_none_fields(self) -> None:
+        """YAML text excludes None-valued fields."""
+        pod = PodSummary(
+            name="test",
+            phase="Running",
+            ready_count=1,
+            total_count=1,
+            restarts=0,
+            node_name=None,
+        )
+        screen = ResourceDetailScreen.__new__(ResourceDetailScreen)
+        screen._resource = pod
+        screen._resource_type = ResourceType.PODS
+        yaml_text = screen._build_yaml_text()
+        assert "node_name" not in yaml_text
+
+    @pytest.mark.unit
+    def test_yaml_text_is_valid_yaml(self, sample_pod: PodSummary) -> None:
+        """YAML text is parseable as valid YAML."""
+        import yaml
+
+        screen = ResourceDetailScreen.__new__(ResourceDetailScreen)
+        screen._resource = sample_pod
+        screen._resource_type = ResourceType.PODS
+        yaml_text = screen._build_yaml_text()
+        parsed = yaml.safe_load(yaml_text)
+        assert isinstance(parsed, dict)
+        assert parsed["name"] == "nginx-abc123"
+
+    @pytest.mark.unit
+    def test_get_primary_status_pod(self, sample_pod: PodSummary) -> None:
+        """Primary status for pod is its phase."""
+        screen = ResourceDetailScreen.__new__(ResourceDetailScreen)
+        screen._resource = sample_pod
+        screen._resource_type = ResourceType.PODS
+        assert screen._get_primary_status() == "Running"
+
+    @pytest.mark.unit
+    def test_get_primary_status_node(self, sample_node: NodeSummary) -> None:
+        """Primary status for node is its status field."""
+        screen = ResourceDetailScreen.__new__(ResourceDetailScreen)
+        screen._resource = sample_node
+        screen._resource_type = ResourceType.NODES
+        assert screen._get_primary_status() == "Ready"
+
+    @pytest.mark.unit
+    def test_status_text_service(self) -> None:
+        """Status text for services shows type, IP, ports."""
+        svc = ServiceSummary(
+            name="web-svc",
+            namespace="default",
+            type="ClusterIP",
+            cluster_ip="10.0.0.1",
+            ports=[ServicePort(name="http", port=80, protocol="TCP")],
+            creation_timestamp="2026-01-01T00:00:00Z",
+        )
+        screen = ResourceDetailScreen.__new__(ResourceDetailScreen)
+        screen._resource = svc
+        screen._resource_type = ResourceType.SERVICES
+        status = screen._build_status_text()
+        assert "ClusterIP" in status
+        assert "10.0.0.1" in status
+        assert "80/TCP" in status
+
+    @pytest.mark.unit
+    def test_status_text_namespace(self) -> None:
+        """Status text for namespaces shows status."""
+        ns = NamespaceSummary(
+            name="kube-system",
+            status="Active",
+            creation_timestamp="2026-01-01T00:00:00Z",
+        )
+        screen = ResourceDetailScreen.__new__(ResourceDetailScreen)
+        screen._resource = ns
+        screen._resource_type = ResourceType.NAMESPACES
+        status = screen._build_status_text()
+        assert "Active" in status
