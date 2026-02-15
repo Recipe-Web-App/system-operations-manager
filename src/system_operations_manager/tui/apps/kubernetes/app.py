@@ -94,7 +94,7 @@ class KubernetesApp(App[None]):
         self.notify(
             "j/k: navigate | Enter: select | n/N: namespace | "
             "c/C: cluster | f/F: resource type | r: refresh | "
-            "a: create | d: delete | e: edit | q: quit"
+            "a: create | d: delete | e: edit | l: logs | x: exec | q: quit"
         )
 
     @on(ResourceListScreen.ResourceSelected)
