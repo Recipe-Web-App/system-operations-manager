@@ -399,3 +399,37 @@ class ConfigurationManager(K8sBaseManager):
             self._log.info("deleted_secret", name=name, namespace=ns)
         except Exception as e:
             self._handle_api_error(e, "Secret", name, ns)
+
+    def update_secret(
+        self,
+        name: str,
+        namespace: str | None = None,
+        *,
+        data: dict[str, str] | None = None,
+    ) -> SecretSummary:
+        """Update a secret's data (patch).
+
+        Args:
+            name: Secret name.
+            namespace: Target namespace.
+            data: New key-value pairs (values will be base64-encoded).
+
+        Returns:
+            Updated secret summary.
+        """
+        ns = self._resolve_namespace(namespace)
+        self._log.info("updating_secret", name=name, namespace=ns)
+        try:
+            patch: dict[str, Any] = {}
+            if data is not None:
+                patch["data"] = {
+                    k: base64.b64encode(v.encode()).decode() for k, v in data.items()
+                }
+
+            result = self._client.core_v1.patch_namespaced_secret(
+                name=name, namespace=ns, body=patch
+            )
+            self._log.info("updated_secret", name=name, namespace=ns)
+            return SecretSummary.from_k8s_object(result)
+        except Exception as e:
+            self._handle_api_error(e, "Secret", name, ns)
