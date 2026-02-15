@@ -2,7 +2,8 @@
 
 This module provides the main resource list screen with DataTable display,
 namespace/cluster selectors, and resource type filtering. Also includes
-the cluster status dashboard screen with auto-refresh.
+the cluster status dashboard screen with auto-refresh, and the resource
+detail screen for inspecting individual resources.
 """
 
 from __future__ import annotations
@@ -11,11 +12,12 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
 
 import structlog
+import yaml
 from textual import on
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Container, Horizontal, ScrollableContainer, Vertical
 from textual.message import Message
-from textual.widgets import DataTable, Label
+from textual.widgets import DataTable, Label, Static
 
 from system_operations_manager.integrations.kubernetes.models.base import K8sEntityBase
 from system_operations_manager.tui.apps.kubernetes.types import (
@@ -938,3 +940,358 @@ class DashboardScreen(BaseScreen[None]):
     def handle_interval_changed(self, event: RefreshTimer.IntervalChanged) -> None:
         """Handle refresh interval change."""
         self.notify_user(f"Refresh interval: {event.interval}s")
+
+
+# ============================================================================
+# Resource Detail Screen Constants
+# ============================================================================
+
+STATUS_COLOR_MAP: dict[str, str] = {
+    "Running": "green",
+    "Succeeded": "green",
+    "Active": "green",
+    "Ready": "green",
+    "Pending": "yellow",
+    "Terminating": "yellow",
+    "Failed": "red",
+    "NotReady": "red",
+    "Unknown": "dim",
+}
+
+DETAIL_EVENTS_LIMIT = 15
+
+
+class ResourceDetailScreen(BaseScreen[None]):
+    """Screen showing detailed information about a single Kubernetes resource.
+
+    Displays metadata, status indicators, labels/annotations,
+    YAML representation, and related events.
+    """
+
+    BINDINGS = [
+        ("escape", "back", "Back"),
+        ("y", "toggle_yaml", "YAML"),
+        ("r", "refresh_events", "Refresh"),
+    ]
+
+    def __init__(
+        self,
+        resource: K8sEntityBase,
+        resource_type: ResourceType,
+        client: KubernetesClient,
+    ) -> None:
+        """Initialize the resource detail screen.
+
+        Args:
+            resource: The K8s resource model to display.
+            resource_type: The type of resource.
+            client: Kubernetes API client for fetching events.
+        """
+        super().__init__()
+        self._resource = resource
+        self._resource_type = resource_type
+        self._client = client
+        self._yaml_visible = True
+
+    # =========================================================================
+    # Layout
+    # =========================================================================
+
+    def compose(self) -> ComposeResult:
+        """Compose the detail screen layout."""
+        yield Container(
+            Label(self._build_header_text(), id="detail-header"),
+            Horizontal(
+                Container(
+                    Label("[bold]Metadata[/bold]", classes="panel-title"),
+                    Static(self._build_metadata_text(), id="detail-metadata"),
+                    id="metadata-panel",
+                    classes="detail-panel",
+                ),
+                Container(
+                    Label("[bold]Status[/bold]", classes="panel-title"),
+                    Static(self._build_status_text(), id="detail-status"),
+                    id="status-panel",
+                    classes="detail-panel",
+                ),
+                id="detail-top-row",
+            ),
+            Horizontal(
+                Container(
+                    Label("[bold]Labels[/bold]", classes="panel-title"),
+                    Static(self._build_labels_text(), id="detail-labels"),
+                    id="labels-panel",
+                    classes="detail-panel",
+                ),
+                Container(
+                    Label("[bold]Annotations[/bold]", classes="panel-title"),
+                    Static(self._build_annotations_text(), id="detail-annotations"),
+                    id="annotations-panel",
+                    classes="detail-panel",
+                ),
+                id="detail-mid-row",
+            ),
+            Container(
+                Label("[bold]YAML[/bold]  [dim](y to toggle)[/dim]", classes="panel-title"),
+                ScrollableContainer(
+                    Static(self._build_yaml_text(), id="detail-yaml-content"),
+                    id="detail-yaml-scroll",
+                ),
+                id="yaml-panel",
+                classes="detail-panel",
+            ),
+            Container(
+                Label("[bold]Events[/bold]  [dim](r to refresh)[/dim]", classes="panel-title"),
+                DataTable(id="detail-events-table"),
+                id="detail-events-panel",
+                classes="detail-panel",
+            ),
+            id="detail-container",
+        )
+
+    def on_mount(self) -> None:
+        """Configure the events table and load events."""
+        table = self.query_one("#detail-events-table", DataTable)
+        table.cursor_type = "row"
+        table.zebra_stripes = True
+        for col_label, width in COLUMN_DEFS[ResourceType.EVENTS]:
+            table.add_column(col_label, width=width)
+        self._load_events()
+
+    # =========================================================================
+    # Text Builders
+    # =========================================================================
+
+    def _build_header_text(self) -> str:
+        """Build the header line with resource kind, name, and status color.
+
+        Returns:
+            Rich-markup formatted header string.
+        """
+        kind = self._resource_type.value
+        name = self._resource.name
+        ns = self._resource.namespace
+
+        status_str = self._get_primary_status()
+        color = STATUS_COLOR_MAP.get(status_str, "dim")
+        status_badge = f"[{color}]{status_str}[/{color}]"
+
+        parts = [f"[bold]{kind}[/bold] / [bold cyan]{name}[/bold cyan]"]
+        if ns:
+            parts.append(f"  [dim]ns:[/dim] {ns}")
+        parts.append(f"  {status_badge}")
+        return "".join(parts)
+
+    def _get_primary_status(self) -> str:
+        """Extract the primary status string from the resource.
+
+        Returns:
+            Status string for color mapping.
+        """
+        r: Any = self._resource
+        if hasattr(r, "phase"):
+            return str(r.phase)
+        if hasattr(r, "status"):
+            return str(r.status)
+        return "Unknown"
+
+    def _build_metadata_text(self) -> str:
+        """Build metadata display text.
+
+        Returns:
+            Formatted metadata string with UID, creation time, and age.
+        """
+        r = self._resource
+        lines = [
+            f"[bold]UID:[/bold]      {r.uid or 'N/A'}",
+            f"[bold]Created:[/bold]  {r.creation_timestamp or 'N/A'}",
+            f"[bold]Age:[/bold]      {r.age}",
+        ]
+        if r.namespace:
+            lines.insert(0, f"[bold]Namespace:[/bold] {r.namespace}")
+        return "\n".join(lines)
+
+    def _build_status_text(self) -> str:
+        """Build resource-type-specific status display.
+
+        Returns:
+            Formatted status string with type-specific fields.
+        """
+        r: Any = self._resource
+        rt = self._resource_type
+        lines: list[str] = []
+
+        if rt == ResourceType.PODS:
+            color = STATUS_COLOR_MAP.get(r.phase, "dim")
+            lines.append(f"[bold]Phase:[/bold]      [{color}]{r.phase}[/{color}]")
+            lines.append(f"[bold]Ready:[/bold]      {r.ready_count}/{r.total_count}")
+            lines.append(f"[bold]Restarts:[/bold]   {r.restarts}")
+            lines.append(f"[bold]Node:[/bold]       {r.node_name or 'N/A'}")
+            lines.append(f"[bold]Pod IP:[/bold]     {r.pod_ip or 'N/A'}")
+        elif rt == ResourceType.DEPLOYMENTS:
+            lines.append(f"[bold]Ready:[/bold]       {r.ready_replicas}/{r.replicas}")
+            lines.append(f"[bold]Up-to-date:[/bold]  {r.updated_replicas}")
+            lines.append(f"[bold]Available:[/bold]   {r.available_replicas}")
+            lines.append(f"[bold]Strategy:[/bold]    {r.strategy or 'N/A'}")
+        elif rt == ResourceType.STATEFULSETS:
+            lines.append(f"[bold]Ready:[/bold]    {r.ready_replicas}/{r.replicas}")
+            lines.append(f"[bold]Service:[/bold]  {r.service_name or 'N/A'}")
+        elif rt == ResourceType.DAEMONSETS:
+            lines.append(f"[bold]Desired:[/bold]  {r.desired_number_scheduled}")
+            lines.append(f"[bold]Current:[/bold]  {r.current_number_scheduled}")
+            lines.append(f"[bold]Ready:[/bold]    {r.number_ready}")
+        elif rt == ResourceType.REPLICASETS:
+            lines.append(f"[bold]Desired:[/bold]  {r.replicas}")
+            lines.append(f"[bold]Ready:[/bold]    {r.ready_replicas}")
+        elif rt == ResourceType.SERVICES:
+            lines.append(f"[bold]Type:[/bold]        {r.type}")
+            lines.append(f"[bold]Cluster IP:[/bold]  {r.cluster_ip or 'N/A'}")
+            ports = ", ".join(f"{p.port}/{p.protocol}" for p in r.ports)
+            lines.append(f"[bold]Ports:[/bold]       {ports or 'N/A'}")
+        elif rt == ResourceType.INGRESSES:
+            lines.append(f"[bold]Class:[/bold]      {r.class_name or 'N/A'}")
+            lines.append(f"[bold]Hosts:[/bold]      {', '.join(r.hosts) or 'N/A'}")
+            lines.append(f"[bold]Addresses:[/bold]  {', '.join(r.addresses) or 'N/A'}")
+        elif rt == ResourceType.NETWORK_POLICIES:
+            lines.append(f"[bold]Policy Types:[/bold]  {', '.join(r.policy_types)}")
+            lines.append(f"[bold]Ingress Rules:[/bold] {r.ingress_rules_count}")
+            lines.append(f"[bold]Egress Rules:[/bold]  {r.egress_rules_count}")
+        elif rt == ResourceType.CONFIGMAPS:
+            keys = ", ".join(r.data_keys[:10])
+            if len(r.data_keys) > 10:
+                keys += f" (+{len(r.data_keys) - 10})"
+            lines.append(f"[bold]Data Keys:[/bold] {keys or 'N/A'}")
+        elif rt == ResourceType.SECRETS:
+            lines.append(f"[bold]Type:[/bold]      {r.type}")
+            keys = ", ".join(r.data_keys[:10])
+            if len(r.data_keys) > 10:
+                keys += f" (+{len(r.data_keys) - 10})"
+            lines.append(f"[bold]Data Keys:[/bold] {keys or 'N/A'}")
+        elif rt == ResourceType.NAMESPACES:
+            color = STATUS_COLOR_MAP.get(r.status, "dim")
+            lines.append(f"[bold]Status:[/bold] [{color}]{r.status}[/{color}]")
+        elif rt == ResourceType.NODES:
+            color = STATUS_COLOR_MAP.get(r.status, "dim")
+            lines.append(f"[bold]Status:[/bold]    [{color}]{r.status}[/{color}]")
+            lines.append(f"[bold]Roles:[/bold]     {', '.join(r.roles)}")
+            lines.append(f"[bold]Version:[/bold]   {r.version or 'N/A'}")
+            lines.append(f"[bold]IP:[/bold]        {r.internal_ip or 'N/A'}")
+            lines.append(f"[bold]OS:[/bold]        {r.os_image or 'N/A'}")
+            lines.append(f"[bold]Runtime:[/bold]   {r.container_runtime or 'N/A'}")
+        elif rt == ResourceType.EVENTS:
+            type_color = {"Normal": "green", "Warning": "yellow"}.get(r.type, "dim")
+            lines.append(f"[bold]Type:[/bold]    [{type_color}]{r.type}[/{type_color}]")
+            lines.append(f"[bold]Reason:[/bold]  {r.reason or 'N/A'}")
+            lines.append(f"[bold]Count:[/bold]   {r.count}")
+            lines.append(f"[bold]Message:[/bold] {r.message or 'N/A'}")
+
+        if not lines:
+            lines.append("[dim]No status information available[/dim]")
+        return "\n".join(lines)
+
+    def _build_labels_text(self) -> str:
+        """Build labels display text.
+
+        Returns:
+            Formatted labels as key=value lines, or placeholder.
+        """
+        labels = self._resource.labels
+        if not labels:
+            return "[dim]No labels[/dim]"
+        lines = [f"  {key}={value}" for key, value in sorted(labels.items())]
+        return "\n".join(lines)
+
+    def _build_annotations_text(self) -> str:
+        """Build annotations display text.
+
+        Returns:
+            Formatted annotations as key=value lines, or placeholder.
+        """
+        annotations = self._resource.annotations
+        if not annotations:
+            return "[dim]No annotations[/dim]"
+        lines = []
+        for key, value in sorted(annotations.items()):
+            display_value = value if len(value) <= 60 else value[:57] + "..."
+            lines.append(f"  {key}={display_value}")
+        return "\n".join(lines)
+
+    def _build_yaml_text(self) -> str:
+        """Serialize the resource model to YAML string.
+
+        Returns:
+            YAML-formatted string of the resource data.
+        """
+        data = self._resource.model_dump(exclude_none=True)
+        return yaml.dump(data, default_flow_style=False, sort_keys=False)
+
+    # =========================================================================
+    # Events
+    # =========================================================================
+
+    def _load_events(self) -> None:
+        """Load events related to this specific resource."""
+        try:
+            from system_operations_manager.services.kubernetes.namespace_manager import (
+                NamespaceClusterManager,
+            )
+
+            mgr = NamespaceClusterManager(self._client)
+            resource_name = self._resource.name
+            ns = self._resource.namespace
+
+            field_selector = f"involvedObject.name={resource_name}"
+
+            if ns:
+                events = mgr.list_events(namespace=ns, field_selector=field_selector)
+            else:
+                events = mgr.list_events(all_namespaces=True, field_selector=field_selector)
+
+            events.sort(
+                key=lambda e: e.last_timestamp or e.creation_timestamp or "",
+                reverse=True,
+            )
+            events = events[:DETAIL_EVENTS_LIMIT]
+
+            table = self.query_one("#detail-events-table", DataTable)
+            table.clear()
+
+            for evt in events:
+                type_colors = {"Normal": "green", "Warning": "yellow"}
+                color = type_colors.get(evt.type, "dim")
+                type_markup = f"[{color}]{evt.type}[/{color}]"
+                obj = f"{evt.involved_object_kind or ''}/{evt.involved_object_name or ''}"
+                msg = (evt.message or "")[:60]
+                table.add_row(
+                    type_markup,
+                    evt.reason or "",
+                    obj,
+                    msg,
+                    str(evt.count),
+                    evt.age,
+                )
+
+            count = len(events)
+            logger.debug("detail_events_loaded", count=count, resource=resource_name)
+        except Exception as e:
+            logger.warning("detail_events_failed", error=str(e))
+            self.notify_user(f"Failed to load events: {e}", severity="error")
+
+    # =========================================================================
+    # Keyboard Actions
+    # =========================================================================
+
+    def action_back(self) -> None:
+        """Navigate back to the resource list."""
+        self.go_back()
+
+    def action_toggle_yaml(self) -> None:
+        """Toggle YAML panel visibility."""
+        yaml_panel = self.query_one("#yaml-panel")
+        self._yaml_visible = not self._yaml_visible
+        yaml_panel.display = self._yaml_visible
+
+    def action_refresh_events(self) -> None:
+        """Refresh the events panel."""
+        self._load_events()
+        self.notify_user("Events refreshed")
