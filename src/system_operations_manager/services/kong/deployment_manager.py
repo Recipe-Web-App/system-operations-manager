@@ -89,7 +89,7 @@ class KubernetesClient:
         except ImportError as e:
             raise DeploymentError(
                 "Kubernetes client not installed",
-                details="Install with: poetry install --extras kubernetes",
+                details="Install with: uv sync --extra kubernetes",
             ) from e
         except Exception as e:
             raise DeploymentError(

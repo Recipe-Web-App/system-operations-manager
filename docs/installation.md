@@ -40,9 +40,9 @@ pipx install ".[all]" --python python3.14
 pipx install -e . --python python3.14
 ```
 
-### Method 2: Poetry (For Development)
+### Method 2: uv (For Development)
 
-Use Poetry for contributing to the project or running tests:
+Use uv for contributing to the project or running tests:
 
 ```bash
 # Clone the repository
@@ -50,14 +50,14 @@ git clone https://github.com/Recipe-Web-App/system-control.git
 cd system-control
 
 # Install dependencies
-poetry install
+uv sync
 
 # Install with all optional dependencies
-poetry install --all-extras
+uv sync --all-extras
 
-# Run commands via Poetry
-poetry run ops --version
-poetry run ops status
+# Run commands via uv
+uv run ops --version
+uv run ops status
 ```
 
 ### Method 3: Docker Installation

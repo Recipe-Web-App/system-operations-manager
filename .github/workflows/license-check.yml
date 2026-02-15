@@ -5,7 +5,7 @@ on:
     branches: [main, develop]
     paths:
       - "pyproject.toml"
-      - "poetry.lock"
+      - "uv.lock"
   schedule:
     - cron: "0 6 * * 1" # Monday at 6 AM UTC
   workflow_dispatch:
@@ -26,30 +26,33 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-
       - name: Install dependencies
-        run: poetry install
+        run: uv sync
 
       - name: Install pip-licenses
-        run: poetry run pip install pip-licenses
+        run: uv pip install pip-licenses
 
       - name: Generate license report
         run: |
-          poetry run pip-licenses --format=markdown --output-file=licenses.md
-          poetry run pip-licenses --format=json --output-file=licenses.json
+          uv run pip-licenses --format=markdown --output-file=licenses.md
+          uv run pip-licenses --format=json --output-file=licenses.json
 
       - name: Check for problematic licenses
         id: check
         continue-on-error: true
         run: |
-          poetry run pip-licenses --fail-on="GPL-3.0;AGPL-3.0;LGPL-3.0" || echo "problematic_licenses=true" >> $GITHUB_OUTPUT
+          uv run pip-licenses --fail-on="GPL-3.0;AGPL-3.0;LGPL-3.0" || echo "problematic_licenses=true" >> $GITHUB_OUTPUT
 
       - name: Upload license report
         uses: actions/upload-artifact@v6

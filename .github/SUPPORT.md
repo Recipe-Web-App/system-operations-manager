@@ -85,7 +85,7 @@ Use [GitHub Issues](https://github.com/Recipe-Web-App/system-control/issues/new/
 A: See the Quick Start section in [README.md](../README.md#quick-start)
 
 **Q: How do I install the CLI?**
-A: Install with pipx: `pipx install . --python python3.14` (for development, use `poetry install`)
+A: Install with pipx: `pipx install . --python python3.14` (for development, use `uv sync`)
 
 **Q: Where does the CLI look for configuration?**
 A: Configuration is loaded in order: `~/.config/ops/config.yml` -> project `ops.yml` -> environment variables -> CLI arguments
@@ -96,13 +96,13 @@ A: After installing via pipx, run `ops --install-completion` to set up completio
 ### CLI Usage
 
 **Q: What commands are available?**
-A: Run `poetry run ops --help` for a complete list of commands
+A: Run `uv run ops --help` for a complete list of commands
 
 **Q: How do I check the CLI version?**
-A: Run `poetry run ops --version`
+A: Run `uv run ops --version`
 
 **Q: How do I get help for a specific command?**
-A: Run `poetry run ops <command> --help`
+A: Run `uv run ops <command> --help`
 
 ### Plugin Development
 
@@ -110,7 +110,7 @@ A: Run `poetry run ops <command> --help`
 A: Plugins inherit from the `Plugin` base class. See [CLAUDE.md](../CLAUDE.md) for the plugin architecture
 
 **Q: How do I register a plugin?**
-A: Define entry points in `pyproject.toml` under `[tool.poetry.plugins."system_operations_manager.plugins"]`
+A: Define entry points in `pyproject.toml` under `[project.entry-points."system_operations_manager.plugins"]`
 
 **Q: What hooks are available for plugins?**
 A: Plugins can implement `initialize()`, `register_commands()`, and `cleanup()` methods
@@ -120,8 +120,8 @@ A: Plugins can implement `initialize()`, `register_commands()`, and `cleanup()` 
 **Q: CLI fails to start?**
 
 - Check Python version: `python --version` (requires 3.14+)
-- Verify installation: `poetry install`
-- Check configuration: `poetry run ops config validate`
+- Verify installation: `uv sync`
+- Check configuration: `uv run ops config validate`
 - Review logs in `~/.config/ops/logs/`
 
 **Q: Command not found?**
@@ -142,7 +142,7 @@ A: Plugins can implement `initialize()`, `register_commands()`, and `cleanup()` 
 A: See [CONTRIBUTING.md](CONTRIBUTING.md) for complete guidelines
 
 **Q: How do I run tests?**
-A: Run `poetry run pytest` or see [CLAUDE.md](../CLAUDE.md) for test commands
+A: Run `uv run pytest` or see [CLAUDE.md](../CLAUDE.md) for test commands
 
 **Q: What's the code structure?**
 A: See Architecture section in [CLAUDE.md](../CLAUDE.md)
@@ -177,7 +177,7 @@ When reporting bugs, include:
 - Python version
 - CLI version (`ops --version`)
 - Operating system
-- Installation method (pipx/Poetry)
+- Installation method (pipx/uv)
 - Exact error messages
 - Steps to reproduce
 - Expected vs actual behavior
@@ -191,7 +191,7 @@ Use the Bug Report Template - it helps ensure you provide all needed information
 ### Python Resources
 
 - [Python Documentation](https://docs.python.org/3/)
-- [Poetry Documentation](https://python-poetry.org/docs/)
+- [uv Documentation](https://docs.astral.sh/uv/)
 - [Typer Documentation](https://typer.tiangolo.com/)
 
 ### Related Projects

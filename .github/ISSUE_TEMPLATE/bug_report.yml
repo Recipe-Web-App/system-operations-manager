@@ -99,10 +99,10 @@ body:
       description: Information about your environment
       value: |
         - Python version:
-        - Poetry version:
+        - uv version:
         - OS:
         - Shell:
-        - Installation method: (poetry install / pip)
+        - Installation method: (uv sync / pip)
     validations:
       required: true
 

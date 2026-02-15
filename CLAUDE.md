@@ -15,9 +15,9 @@ pipx install -e . --python python3.14       # Editable/dev install
 pipx install ".[all]" --python python3.14   # With all extras
 pipx uninstall system-operations-cli        # Uninstall
 
-# Install with Poetry (for development)
-poetry install                      # Core dependencies
-poetry install --all-extras         # All optional dependencies
+# Install with uv (for development)
+uv sync                             # Core dependencies
+uv sync --all-extras                # All optional dependencies
 
 # Install pre-commit hooks
 pre-commit install
@@ -36,9 +36,9 @@ mypy src                            # Type check
 pre-commit run --all-files          # All checks
 
 # CLI commands
-poetry run ops --version            # Show version
-poetry run ops status               # Show system status
-poetry run ops init                 # Initialize project config
+uv run ops --version                # Show version
+uv run ops status                   # Show system status
+uv run ops init                     # Initialize project config
 ```
 
 ## Architecture
@@ -59,7 +59,7 @@ Integration Layer (External APIs, File System, SSH)
 
 ### Key Patterns
 
-- **Plugin System**: Hot-loadable plugins using `pluggy`. Plugins inherit from `Plugin` base class with `initialize()`, `register_commands()`, and `cleanup()` methods. Entry points defined in `pyproject.toml` under `[tool.poetry.plugins."system_operations_manager.plugins"]`.
+- **Plugin System**: Hot-loadable plugins using `pluggy`. Plugins inherit from `Plugin` base class with `initialize()`, `register_commands()`, and `cleanup()` methods. Entry points defined in `pyproject.toml` under `[project.entry-points."system_operations_manager.plugins"]`.
 
 - **Configuration Hierarchy** (lowest to highest precedence):
   1. Default → 2. System → 3. User → 4. Project → 5. Environment vars → 6. CLI args

@@ -40,8 +40,8 @@ jobs:
 
             Please ensure:
             - Your changes follow our code style guidelines
-            - All tests pass (`poetry run pytest`)
-            - Type checking passes (`poetry run mypy src`)
-            - Linting passes (`poetry run ruff check src tests`)
+            - All tests pass (`uv run pytest`)
+            - Type checking passes (`uv run mypy src`)
+            - Linting passes (`uv run ruff check src tests`)
 
             A maintainer will review your PR soon. Thanks for contributing!

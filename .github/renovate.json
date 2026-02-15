@@ -21,7 +21,7 @@
   "packageRules": [
     {
       "description": "Python patch updates - auto-merge",
-      "matchManagers": ["poetry", "pip_requirements"],
+      "matchManagers": ["pep621", "uv", "pip_requirements"],
       "matchUpdateTypes": ["patch"],
       "groupName": "python-patch-updates",
       "labels": ["dependencies", "python"],
@@ -31,7 +31,7 @@
     },
     {
       "description": "Python minor updates - group together, no auto-merge",
-      "matchManagers": ["poetry", "pip_requirements"],
+      "matchManagers": ["pep621", "uv", "pip_requirements"],
       "matchUpdateTypes": ["minor"],
       "groupName": "python-minor-updates",
       "labels": ["dependencies", "python"],
@@ -39,7 +39,7 @@
     },
     {
       "description": "Python major updates - manual review",
-      "matchManagers": ["poetry", "pip_requirements"],
+      "matchManagers": ["pep621", "uv", "pip_requirements"],
       "matchUpdateTypes": ["major"],
       "labels": ["dependencies", "python", "major-update"],
       "automerge": false,
@@ -49,14 +49,14 @@
     },
     {
       "description": "Production dependencies commit prefix",
-      "matchManagers": ["poetry", "pip_requirements"],
+      "matchManagers": ["pep621", "uv", "pip_requirements"],
       "matchDepTypes": ["dependencies"],
       "semanticCommitType": "deps",
       "semanticCommitScope": "deps"
     },
     {
       "description": "Dev dependencies commit prefix",
-      "matchManagers": ["poetry", "pip_requirements"],
+      "matchManagers": ["pep621", "uv", "pip_requirements"],
       "matchDepTypes": ["devDependencies", "dev"],
       "semanticCommitType": "deps-dev",
       "semanticCommitScope": "deps-dev"
