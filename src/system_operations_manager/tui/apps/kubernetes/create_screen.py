@@ -7,7 +7,7 @@ resource type requires.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import structlog
@@ -150,11 +150,7 @@ RESOURCE_FIELD_SPECS: dict[ResourceType, list[FieldSpec]] = {
             "tls",
             "TLS (YAML)",
             field_type="textarea",
-            placeholder=(
-                "- hosts:\n"
-                "    - example.com\n"
-                "  secret_name: tls-secret"
-            ),
+            placeholder=("- hosts:\n    - example.com\n  secret_name: tls-secret"),
             help_text="TLS config in YAML list format",
         ),
         FieldSpec(
@@ -440,9 +436,7 @@ class ResourceCreateScreen(BaseScreen[None]):
                 try:
                     values[spec.name] = int(raw)
                 except ValueError:
-                    self.notify_user(
-                        f"{spec.label} must be a number", severity="error"
-                    )
+                    self.notify_user(f"{spec.label} must be a number", severity="error")
                     return None
             else:
                 values[spec.name] = raw
@@ -558,16 +552,12 @@ class ResourceCreateScreen(BaseScreen[None]):
 
             mgr = NetworkingManager(self._client)
             kwargs = {}
-            pod_selector = _parse_key_value_lines(
-                values.get("pod_selector", "")
-            )
+            pod_selector = _parse_key_value_lines(values.get("pod_selector", ""))
             if pod_selector:
                 kwargs["pod_selector"] = pod_selector
             if values.get("policy_types"):
                 kwargs["policy_types"] = [
-                    t.strip()
-                    for t in values["policy_types"].split(",")
-                    if t.strip()
+                    t.strip() for t in values["policy_types"].split(",") if t.strip()
                 ]
             if labels:
                 kwargs["labels"] = labels
@@ -590,9 +580,7 @@ class ResourceCreateScreen(BaseScreen[None]):
             mgr = ConfigurationManager(self._client)
             data = _parse_key_value_lines(values.get("data", "")) or None
             secret_type = values.get("secret_type", "Opaque")
-            mgr.create_secret(
-                name, namespace, data=data, secret_type=secret_type, labels=labels
-            )
+            mgr.create_secret(name, namespace, data=data, secret_type=secret_type, labels=labels)
 
         elif rt == ResourceType.NAMESPACES:
             from system_operations_manager.services.kubernetes.namespace_manager import (

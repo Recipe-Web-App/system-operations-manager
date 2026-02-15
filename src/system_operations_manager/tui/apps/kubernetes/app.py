@@ -93,7 +93,8 @@ class KubernetesApp(App[None]):
         """Show keyboard shortcut help."""
         self.notify(
             "j/k: navigate | Enter: select | n/N: namespace | "
-            "c/C: cluster | f/F: resource type | r: refresh | d: dashboard | q: quit"
+            "c/C: cluster | f/F: resource type | r: refresh | "
+            "a: create | d: delete | e: edit | q: quit"
         )
 
     @on(ResourceListScreen.ResourceSelected)
