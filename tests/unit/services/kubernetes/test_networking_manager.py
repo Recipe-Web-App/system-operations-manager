@@ -497,3 +497,38 @@ class TestNetworkPolicyOperations:
 
         with pytest.raises(RuntimeError, match="Translated error"):
             networking_manager.delete_network_policy("test-netpol")
+
+    @pytest.mark.unit
+    @pytest.mark.kubernetes
+    def test_update_network_policy_success(
+        self, networking_manager: NetworkingManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should update network policy successfully."""
+        mock_netpol = MagicMock()
+        mock_k8s_client.networking_v1.patch_namespaced_network_policy.return_value = mock_netpol
+
+        with patch(
+            "system_operations_manager.services.kubernetes.networking_manager.NetworkPolicySummary.from_k8s_object"
+        ) as mock_from_k8s:
+            mock_summary = MagicMock()
+            mock_from_k8s.return_value = mock_summary
+
+            result = networking_manager.update_network_policy(
+                "test-netpol", pod_selector={"app": "web"}, policy_types=["Ingress"]
+            )
+
+            assert result == mock_summary
+
+    @pytest.mark.unit
+    @pytest.mark.kubernetes
+    def test_update_network_policy_error(
+        self, networking_manager: NetworkingManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should handle API error when updating network policy."""
+        mock_k8s_client.networking_v1.patch_namespaced_network_policy.side_effect = Exception(
+            "Update error"
+        )
+        mock_k8s_client.translate_api_exception.side_effect = RuntimeError("Translated error")
+
+        with pytest.raises(RuntimeError, match="Translated error"):
+            networking_manager.update_network_policy("test-netpol")

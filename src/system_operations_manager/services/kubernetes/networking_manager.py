@@ -557,3 +557,47 @@ class NetworkingManager(K8sBaseManager):
             self._log.info("deleted_network_policy", name=name, namespace=ns)
         except Exception as e:
             self._handle_api_error(e, "NetworkPolicy", name, ns)
+
+    def update_network_policy(
+        self,
+        name: str,
+        namespace: str | None = None,
+        *,
+        pod_selector: dict[str, str] | None = None,
+        policy_types: list[str] | None = None,
+        ingress_rules: list[dict[str, Any]] | None = None,
+        egress_rules: list[dict[str, Any]] | None = None,
+    ) -> NetworkPolicySummary:
+        """Update a network policy (patch).
+
+        Args:
+            name: NetworkPolicy name.
+            namespace: Target namespace.
+            pod_selector: Pod selector match labels.
+            policy_types: Policy types (Ingress, Egress).
+            ingress_rules: Ingress rule definitions.
+            egress_rules: Egress rule definitions.
+
+        Returns:
+            Updated network policy summary.
+        """
+        ns = self._resolve_namespace(namespace)
+        self._log.info("updating_network_policy", name=name, namespace=ns)
+        try:
+            patch: dict[str, Any] = {"spec": {}}
+            if pod_selector is not None:
+                patch["spec"]["podSelector"] = {"matchLabels": pod_selector}
+            if policy_types is not None:
+                patch["spec"]["policyTypes"] = policy_types
+            if ingress_rules is not None:
+                patch["spec"]["ingress"] = ingress_rules
+            if egress_rules is not None:
+                patch["spec"]["egress"] = egress_rules
+
+            result = self._client.networking_v1.patch_namespaced_network_policy(
+                name=name, namespace=ns, body=patch
+            )
+            self._log.info("updated_network_policy", name=name, namespace=ns)
+            return NetworkPolicySummary.from_k8s_object(result)
+        except Exception as e:
+            self._handle_api_error(e, "NetworkPolicy", name, ns)

@@ -112,6 +112,37 @@ class NamespaceClusterManager(K8sBaseManager):
         except Exception as e:
             self._handle_api_error(e, "Namespace", name, None)
 
+    def update_namespace(
+        self,
+        name: str,
+        *,
+        labels: dict[str, str] | None = None,
+        annotations: dict[str, str] | None = None,
+    ) -> NamespaceSummary:
+        """Update a namespace's metadata (patch).
+
+        Args:
+            name: Namespace name.
+            labels: New labels for the namespace.
+            annotations: New annotations for the namespace.
+
+        Returns:
+            Updated namespace summary.
+        """
+        self._log.info("updating_namespace", name=name)
+        try:
+            patch: dict[str, Any] = {"metadata": {}}
+            if labels is not None:
+                patch["metadata"]["labels"] = labels
+            if annotations is not None:
+                patch["metadata"]["annotations"] = annotations
+
+            result = self._client.core_v1.patch_namespace(name=name, body=patch)
+            self._log.info("updated_namespace", name=name)
+            return NamespaceSummary.from_k8s_object(result)
+        except Exception as e:
+            self._handle_api_error(e, "Namespace", name, None)
+
     # =========================================================================
     # Node Operations
     # =========================================================================

@@ -21,6 +21,9 @@ from textual.widgets import DataTable, Label, Static
 
 from system_operations_manager.integrations.kubernetes.models.base import K8sEntityBase
 from system_operations_manager.tui.apps.kubernetes.types import (
+    CREATABLE_TYPES,
+    DELETABLE_TYPES,
+    EDITABLE_TYPES,
     RESOURCE_TYPE_ORDER,
     ResourceType,
 )
@@ -284,6 +287,8 @@ class ResourceListScreen(BaseScreen[None]):
         ("f", "cycle_filter", "Next Type"),
         ("F", "select_filter", "Pick Type"),
         ("r", "refresh", "Refresh"),
+        ("a", "create", "Create"),
+        ("d", "delete", "Delete"),
     ]
 
     class ResourceSelected(Message):
@@ -313,6 +318,7 @@ class ResourceListScreen(BaseScreen[None]):
         self._current_namespace: str | None = client.default_namespace
         self._namespaces: list[str] = []
         self._contexts: list[str] = []
+        self._pending_delete: K8sEntityBase | None = None
 
     def compose(self) -> ComposeResult:
         """Compose the screen layout."""
@@ -527,6 +533,78 @@ class ResourceListScreen(BaseScreen[None]):
         """Reload the current resource list."""
         self._load_resources()
         self.notify_user("Refreshed")
+
+    def action_create(self) -> None:
+        """Open the create screen for the current resource type."""
+        if self._current_type not in CREATABLE_TYPES:
+            self.notify_user(f"Cannot create {self._current_type.value}", severity="warning")
+            return
+        from system_operations_manager.tui.apps.kubernetes.create_screen import (
+            ResourceCreateScreen,
+        )
+
+        self.app.push_screen(
+            ResourceCreateScreen(
+                resource_type=self._current_type,
+                client=self._client,
+                namespace=self._current_namespace,
+            ),
+            callback=self._handle_create_dismissed,
+        )
+
+    def _handle_create_dismissed(self, _result: None) -> None:
+        """Refresh list after create screen is dismissed."""
+        self._load_resources()
+
+    def action_delete(self) -> None:
+        """Delete the selected resource after confirmation."""
+        if self._current_type not in DELETABLE_TYPES:
+            self.notify_user(f"Cannot delete {self._current_type.value}", severity="warning")
+            return
+        table = self.query_one("#resource-table", DataTable)
+        if table.cursor_row is None or table.cursor_row >= len(self._resources):
+            return
+        resource = self._resources[table.cursor_row]
+        self._pending_delete = resource
+
+        from system_operations_manager.tui.components.modal import Modal
+
+        type_label = self._current_type.value
+        if type_label.endswith("s"):
+            type_label = type_label[:-1]
+        ns_text = f" in {resource.namespace}" if resource.namespace else ""
+        self.app.push_screen(
+            Modal(
+                title="Confirm Delete",
+                body=f"Delete {type_label} '{resource.name}'{ns_text}?",
+                buttons=[
+                    ("Delete", "delete", "error"),
+                    ("Cancel", "cancel", "default"),
+                ],
+                show_cancel=False,
+            ),
+            callback=self._handle_delete_result,
+        )
+
+    def _handle_delete_result(self, result: str | None) -> None:
+        """Process delete confirmation result."""
+        if result == "delete" and self._pending_delete is not None:
+            try:
+                from system_operations_manager.tui.apps.kubernetes.delete_helpers import (
+                    delete_resource,
+                )
+
+                delete_resource(
+                    self._client,
+                    self._current_type,
+                    self._pending_delete.name,
+                    self._pending_delete.namespace,
+                )
+                self.notify_user(f"Deleted {self._pending_delete.name}")
+                self._load_resources()
+            except Exception as e:
+                self.notify_user(f"Delete failed: {e}", severity="error")
+        self._pending_delete = None
 
     # Namespace actions
     def action_cycle_namespace(self) -> None:
@@ -972,6 +1050,8 @@ class ResourceDetailScreen(BaseScreen[None]):
         ("escape", "back", "Back"),
         ("y", "toggle_yaml", "YAML"),
         ("r", "refresh_events", "Refresh"),
+        ("e", "edit", "Edit"),
+        ("d", "delete", "Delete"),
     ]
 
     def __init__(
@@ -1295,3 +1375,148 @@ class ResourceDetailScreen(BaseScreen[None]):
         """Refresh the events panel."""
         self._load_events()
         self.notify_user("Events refreshed")
+
+    def action_edit(self) -> None:
+        """Open YAML editor for this resource."""
+        if self._resource_type not in EDITABLE_TYPES:
+            self.notify_user(f"Cannot edit {self._resource_type.value}", severity="warning")
+            return
+        self._open_yaml_editor()
+
+    def _open_yaml_editor(self) -> None:
+        """Suspend TUI, open $EDITOR with resource YAML, apply patch."""
+        import shlex
+        import subprocess
+        import tempfile
+        from pathlib import Path
+
+        from system_operations_manager.tui.apps.kubernetes.edit_helpers import (
+            apply_patch,
+            fetch_raw_resource,
+        )
+        from system_operations_manager.utils.editor import get_editor
+
+        try:
+            obj_dict = fetch_raw_resource(
+                self._client,
+                self._resource_type,
+                self._resource.name,
+                self._resource.namespace,
+            )
+        except Exception as e:
+            self.notify_user(f"Failed to fetch resource: {e}", severity="error")
+            return
+
+        yaml_content = yaml.dump(obj_dict, default_flow_style=False, sort_keys=False)
+
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            suffix=".yaml",
+            prefix=f"k8s-{self._resource.name}-",
+            delete=False,
+        ) as f:
+            f.write(yaml_content)
+            temp_path = f.name
+
+        try:
+            editor = get_editor()
+            with self.app.suspend():
+                subprocess.run([*shlex.split(editor), temp_path], check=False)
+
+            with Path(temp_path).open() as f:
+                edited_content = f.read()
+
+            edited_dict = yaml.safe_load(edited_content)
+            if not isinstance(edited_dict, dict):
+                self.notify_user("Invalid YAML: expected a mapping", severity="error")
+                return
+
+            if edited_dict == obj_dict:
+                self.notify_user("No changes detected")
+                return
+
+            apply_patch(
+                self._client,
+                self._resource_type,
+                self._resource.name,
+                self._resource.namespace,
+                edited_dict,
+            )
+            self.notify_user(f"Updated {self._resource.name}")
+            self._refresh_detail()
+
+        except yaml.YAMLError as e:
+            self.notify_user(f"YAML parse error: {e}", severity="error")
+        except Exception as e:
+            self.notify_user(f"Update failed: {e}", severity="error")
+        finally:
+            Path(temp_path).unlink(missing_ok=True)
+
+    def _refresh_detail(self) -> None:
+        """Re-fetch the resource and update display panels."""
+        from system_operations_manager.tui.apps.kubernetes.edit_helpers import (
+            fetch_raw_resource,
+        )
+
+        try:
+            obj_dict = fetch_raw_resource(
+                self._client,
+                self._resource_type,
+                self._resource.name,
+                self._resource.namespace,
+            )
+            # Update YAML panel
+            yaml_panel = self.query_one("#yaml-content", Static)
+            yaml_content = yaml.dump(obj_dict, default_flow_style=False, sort_keys=False)
+            yaml_panel.update(yaml_content)
+            # Refresh events
+            self._load_events()
+        except Exception as e:
+            self.notify_user(f"Refresh failed: {e}", severity="error")
+
+    def action_delete(self) -> None:
+        """Delete this resource after confirmation."""
+        if self._resource_type not in DELETABLE_TYPES:
+            self.notify_user(f"Cannot delete {self._resource_type.value}", severity="warning")
+            return
+
+        from system_operations_manager.tui.components.modal import Modal
+
+        type_label = self._resource_type.value
+        if type_label.endswith("s"):
+            type_label = type_label[:-1]
+        ns_text = f" in {self._resource.namespace}" if self._resource.namespace else ""
+        self.app.push_screen(
+            Modal(
+                title="Confirm Delete",
+                body=(
+                    f"Delete {type_label} '{self._resource.name}'{ns_text}?\n\n"
+                    "This action cannot be undone."
+                ),
+                buttons=[
+                    ("Delete", "delete", "error"),
+                    ("Cancel", "cancel", "default"),
+                ],
+                show_cancel=False,
+            ),
+            callback=self._handle_delete_result,
+        )
+
+    def _handle_delete_result(self, result: str | None) -> None:
+        """Process delete confirmation result."""
+        if result == "delete":
+            try:
+                from system_operations_manager.tui.apps.kubernetes.delete_helpers import (
+                    delete_resource,
+                )
+
+                delete_resource(
+                    self._client,
+                    self._resource_type,
+                    self._resource.name,
+                    self._resource.namespace,
+                )
+                self.notify_user(f"Deleted {self._resource.name}")
+                self.go_back()
+            except Exception as e:
+                self.notify_user(f"Delete failed: {e}", severity="error")

@@ -211,3 +211,55 @@ DataTable > .datatable--cursor {
     height: auto;
     max-height: 100%;
 }
+
+/* ============================================ */
+/* Resource Create Screen Styles                */
+/* ============================================ */
+
+#create-header {
+    height: 3;
+    dock: top;
+    padding: 0 1;
+    text-style: bold;
+}
+
+#create-form {
+    padding: 1 2;
+    height: auto;
+}
+
+.form-field {
+    height: auto;
+    margin-bottom: 1;
+}
+
+.form-label {
+    margin-bottom: 0;
+}
+
+.form-help {
+    color: $text-muted;
+    margin-top: 0;
+}
+
+.form-field Input,
+.form-field Select {
+    width: 100%;
+}
+
+.form-field TextArea {
+    width: 100%;
+    height: 5;
+}
+
+#create-buttons {
+    dock: bottom;
+    height: 3;
+    align: center middle;
+    padding: 0 1;
+}
+
+#create-buttons Button {
+    margin: 0 1;
+    min-width: 12;
+}
