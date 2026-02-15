@@ -8,6 +8,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
+from textual.binding import Binding
 
 from system_operations_manager.tui.apps.kubernetes.app import (
     CLUSTER_SCOPED_TYPES,
@@ -141,6 +142,12 @@ class TestKubernetesAppInit:
         """App defines keyboard bindings."""
         app = KubernetesApp(client=mock_client)
         assert len(app.BINDINGS) > 0
+
+    @pytest.mark.unit
+    def test_app_bindings_include_ecosystem(self) -> None:
+        """App bindings include 'e' for ecosystem view."""
+        binding_keys = [b.key if isinstance(b, Binding) else b[0] for b in KubernetesApp.BINDINGS]
+        assert "e" in binding_keys
 
 
 # ============================================================================

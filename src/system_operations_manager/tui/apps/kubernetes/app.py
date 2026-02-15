@@ -13,6 +13,9 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.widgets import Footer, Header
 
+from system_operations_manager.tui.apps.kubernetes.ecosystem_screen import (
+    EcosystemScreen,
+)
 from system_operations_manager.tui.apps.kubernetes.screens import (
     DashboardScreen,
     ResourceDetailScreen,
@@ -32,6 +35,7 @@ __all__ = [
     "CLUSTER_SCOPED_TYPES",
     "RESOURCE_TYPE_ORDER",
     "DashboardScreen",
+    "EcosystemScreen",
     "KubernetesApp",
     "ResourceDetailScreen",
     "ResourceType",
@@ -55,6 +59,7 @@ class KubernetesApp(App[None]):
         Binding("q", "quit", "Quit", show=True),
         Binding("escape", "back", "Back", show=True),
         Binding("d", "dashboard", "Dashboard", show=True),
+        Binding("e", "ecosystem", "Ecosystem", show=True),
         Binding("question_mark", "help", "Help", show=True),
     ]
 
@@ -89,12 +94,16 @@ class KubernetesApp(App[None]):
         """Open the cluster status dashboard."""
         self.push_screen(DashboardScreen(client=self._client))
 
+    def action_ecosystem(self) -> None:
+        """Open the ecosystem tools overview."""
+        self.push_screen(EcosystemScreen(client=self._client))
+
     def action_help(self) -> None:
         """Show keyboard shortcut help."""
         self.notify(
             "j/k: navigate | Enter: select | n/N: namespace | "
             "c/C: cluster | f/F: resource type | r: refresh | "
-            "a: create | d: delete | e: edit | l: logs | x: exec | q: quit"
+            "a: create | d: delete | e: ecosystem | l: logs | x: exec | q: quit"
         )
 
     @on(ResourceListScreen.ResourceSelected)
