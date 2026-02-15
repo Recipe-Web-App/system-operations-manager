@@ -300,3 +300,38 @@ DataTable > .datatable--cursor {
     padding: 1;
     scrollbar-gutter: stable;
 }
+
+/* ============================================ */
+/* Ecosystem Screen Styles                      */
+/* ============================================ */
+
+#ecosystem-container {
+    padding: 1;
+}
+
+#ecosystem-header {
+    height: 3;
+    dock: top;
+    padding: 0 1;
+    text-style: bold;
+}
+
+#ecosystem-top-row,
+#ecosystem-bottom-row {
+    height: 1fr;
+    padding: 0;
+}
+
+.ecosystem-panel {
+    width: 50%;
+    border: solid $primary;
+    padding: 1;
+    margin: 0 1 1 0;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.ecosystem-panel DataTable {
+    height: auto;
+    max-height: 100%;
+}
