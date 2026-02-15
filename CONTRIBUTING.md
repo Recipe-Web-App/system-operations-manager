@@ -9,7 +9,7 @@ information for contributors.
 
 - Python 3.14 or higher
 - Git
-- Poetry (`pip install poetry`)
+- uv ([install uv](https://docs.astral.sh/uv/getting-started/installation/))
 
 ### Development Setup
 
@@ -20,10 +20,10 @@ information for contributors.
    cd system-control
    ```
 
-2. **Install dependencies with Poetry**
+2. **Install dependencies with uv**
 
    ```bash
-   poetry install --all-extras
+   uv sync --all-extras
    ```
 
 3. **Install pre-commit hooks**
@@ -35,7 +35,7 @@ information for contributors.
 4. **Verify installation**
 
    ```bash
-   poetry run ops --version
+   uv run ops --version
    pytest
    ```
 

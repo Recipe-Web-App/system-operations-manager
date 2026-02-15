@@ -27,30 +27,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Load cached venv
-        id: cached-poetry-dependencies
-        uses: actions/cache@v5
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
-
       - name: Install dependencies
-        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-        run: poetry install --all-extras
+        run: uv sync --all-extras
 
       - name: Run tests
-        run: poetry run pytest -v --cov=system_operations_manager --cov-report=xml
+        run: uv run pytest -v --cov=system_operations_manager --cov-report=xml
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
@@ -69,30 +61,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-
-      - name: Load cached venv
-        id: cached-poetry-dependencies
-        uses: actions/cache@v5
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
-
       - name: Install dependencies
-        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-        run: poetry install
+        run: uv sync
 
       - name: Run ruff linter
-        run: poetry run ruff check src tests
+        run: uv run ruff check src tests
 
       - name: Run ruff formatter check
-        run: poetry run ruff format --check src tests
+        run: uv run ruff format --check src tests
 
   type-check:
     name: Type Check
@@ -104,27 +91,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-
-      - name: Load cached venv
-        id: cached-poetry-dependencies
-        uses: actions/cache@v5
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
-
       - name: Install dependencies
-        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-        run: poetry install
+        run: uv sync
 
       - name: Run mypy
-        run: poetry run mypy src
+        run: uv run mypy src
 
   build:
     name: Build
@@ -137,16 +119,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-
       - name: Build package
-        run: poetry build
+        run: uv build
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v6

@@ -41,7 +41,7 @@ unacceptable behavior through the project's issue tracker.
 ### Prerequisites
 
 - Python 3.14 or higher
-- Poetry (for dependency management)
+- uv (for dependency management)
 - pre-commit (for git hooks)
 
 ### Initial Setup
@@ -49,8 +49,8 @@ unacceptable behavior through the project's issue tracker.
 1. **Install dependencies**:
 
    ```bash
-   poetry install                  # Core dependencies
-   poetry install --all-extras     # All optional dependencies
+   uv sync                         # Core dependencies
+   uv sync --all-extras            # All optional dependencies
    ```
 
 2. **Install pre-commit hooks**:
@@ -62,7 +62,7 @@ unacceptable behavior through the project's issue tracker.
 3. **Verify installation**:
 
    ```bash
-   poetry run ops --version
+   uv run ops --version
    ```
 
 ## Development Workflow
@@ -78,7 +78,7 @@ unacceptable behavior through the project's issue tracker.
 3. **Run tests frequently**:
 
    ```bash
-   poetry run pytest
+   uv run pytest
    ```
 
 4. **Commit your changes** following commit guidelines
@@ -102,19 +102,19 @@ unacceptable behavior through the project's issue tracker.
 
 ```bash
 # All tests
-poetry run pytest
+uv run pytest
 
 # Unit tests only
-poetry run pytest -m unit
+uv run pytest -m unit
 
 # Integration tests only
-poetry run pytest -m integration
+uv run pytest -m integration
 
 # With coverage
-poetry run pytest --cov=system_operations_manager
+uv run pytest --cov=system_operations_manager
 
 # Verbose output
-poetry run pytest -v
+uv run pytest -v
 ```
 
 ### Writing Tests
@@ -137,13 +137,13 @@ poetry run pytest -v
 
 ```bash
 # Format code
-poetry run ruff format src tests
+uv run ruff format src tests
 
 # Run linter
-poetry run ruff check src tests
+uv run ruff check src tests
 
 # Run type checker
-poetry run mypy src
+uv run mypy src
 
 # Run all checks via pre-commit
 pre-commit run --all-files
@@ -228,7 +228,7 @@ Fixes #456
 
    ```bash
    pre-commit run --all-files
-   poetry run pytest
+   uv run pytest
    ```
 
 2. **Update documentation** if needed:

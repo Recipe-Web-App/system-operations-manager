@@ -58,7 +58,7 @@ Affected: src/system_operations_manager/core/executor.py line 145
 
 Suggested Fix: Use subprocess with shell=False and proper argument handling
 
-Environment: v0.1.0, Poetry installation
+Environment: v0.1.0, uv installation
 ```
 
 ## Response Timeline
