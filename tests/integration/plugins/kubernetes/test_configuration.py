@@ -31,9 +31,9 @@ class TestConfigMapCRUD:
 
         assert result.name == cm_name
         assert result.namespace == test_namespace
-        assert len(result.keys) == 2
-        assert "key1" in result.keys
-        assert "key2" in result.keys
+        assert len(result.data_keys) == 2
+        assert "key1" in result.data_keys
+        assert "key2" in result.data_keys
 
     def test_list_config_maps(
         self,
@@ -72,7 +72,7 @@ class TestConfigMapCRUD:
 
         assert result.name == cm_name
         assert result.namespace == test_namespace
-        assert "foo" in result.keys
+        assert "foo" in result.data_keys
 
     def test_get_config_map_data(
         self,
@@ -117,8 +117,8 @@ class TestConfigMapCRUD:
         )
 
         assert result.name == cm_name
-        assert "updated" in result.keys
-        assert "new_key" in result.keys
+        assert "updated" in result.data_keys
+        assert "new_key" in result.data_keys
 
         # Verify data was updated
         data = config_manager.get_config_map_data(cm_name, test_namespace)
@@ -180,9 +180,9 @@ class TestSecretCRUD:
         assert result.name == secret_name
         assert result.namespace == test_namespace
         assert result.type == "Opaque"
-        assert len(result.keys) == 2
-        assert "username" in result.keys
-        assert "password" in result.keys
+        assert len(result.data_keys) == 2
+        assert "username" in result.data_keys
+        assert "password" in result.data_keys
 
     def test_list_secrets(
         self,
@@ -221,7 +221,7 @@ class TestSecretCRUD:
 
         assert result.name == secret_name
         assert result.namespace == test_namespace
-        assert "api_key" in result.keys
+        assert "api_key" in result.data_keys
         # Values should not be exposed in summary
 
     def test_delete_secret(
@@ -281,8 +281,8 @@ class TestSecretTypes:
         assert result.name == secret_name
         assert result.namespace == test_namespace
         assert result.type == "kubernetes.io/tls"
-        assert "tls.crt" in result.keys
-        assert "tls.key" in result.keys
+        assert "tls.crt" in result.data_keys
+        assert "tls.key" in result.data_keys
 
     def test_create_docker_registry_secret(
         self,
@@ -305,7 +305,7 @@ class TestSecretTypes:
         assert result.name == secret_name
         assert result.namespace == test_namespace
         assert result.type == "kubernetes.io/dockerconfigjson"
-        assert ".dockerconfigjson" in result.keys
+        assert ".dockerconfigjson" in result.data_keys
 
     def test_create_tls_secret_with_labels(
         self,

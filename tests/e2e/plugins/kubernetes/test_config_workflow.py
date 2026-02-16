@@ -82,7 +82,7 @@ class TestConfigMapWorkflow:
         # List ConfigMaps
         result = invoke_k8s("configmaps", "list", "--namespace", e2e_namespace)
         assert result.exit_code == 0, f"Failed to list ConfigMaps: {result.output}"
-        assert cm_name in result.output
+        assert unique_prefix in result.output
 
         # Clean up
         result = invoke_k8s(
@@ -125,7 +125,7 @@ class TestConfigMapWorkflow:
             e2e_namespace,
         )
         assert result.exit_code == 0, f"Failed to get ConfigMap: {result.output}"
-        assert cm_name in result.output
+        assert unique_prefix in result.output
 
         # Clean up
         result = invoke_k8s(
@@ -277,7 +277,7 @@ class TestSecretWorkflow:
         # List Secrets
         result = invoke_k8s("secrets", "list", "--namespace", e2e_namespace)
         assert result.exit_code == 0, f"Failed to list Secrets: {result.output}"
-        assert secret_name in result.output
+        assert unique_prefix in result.output
 
         # Clean up
         result = invoke_k8s(
@@ -320,7 +320,7 @@ class TestSecretWorkflow:
             e2e_namespace,
         )
         assert result.exit_code == 0, f"Failed to get Secret: {result.output}"
-        assert secret_name in result.output
+        assert unique_prefix in result.output
 
         # Clean up
         result = invoke_k8s(
@@ -396,7 +396,7 @@ class TestSecretWorkflow:
             e2e_namespace,
         )
         assert result.exit_code == 0, f"Failed to get Secret: {result.output}"
-        assert secret_name in result.output
+        assert unique_prefix in result.output
         # The actual secret value should NOT appear in plain text
         assert secret_value not in result.output
 

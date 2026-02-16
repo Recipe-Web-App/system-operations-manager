@@ -123,7 +123,7 @@ def k3s_kubeconfig_path(
 ) -> Path:
     """Write K3S kubeconfig to a temp file."""
     kubeconfig_yaml = k3s_container.get_kubeconfig()
-    kubeconfig_path = tmp_path_factory.mktemp("k3s-e2e") / "kubeconfig.yaml"
+    kubeconfig_path: Path = tmp_path_factory.mktemp("k3s-e2e") / "kubeconfig.yaml"
     kubeconfig_path.write_text(kubeconfig_yaml)
     return kubeconfig_path
 
@@ -175,7 +175,7 @@ def create_k8s_app(kubeconfig_path: str) -> typer.Typer:
     # Create client pointing to K3S
     plugin_config = KubernetesPluginConfig(
         clusters={
-            "test": ClusterConfig(kubeconfig=kubeconfig_path),
+            "test": ClusterConfig(kubeconfig=kubeconfig_path, context="default"),
         },
         active_cluster="test",
     )

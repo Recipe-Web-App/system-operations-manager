@@ -36,7 +36,7 @@ class TestDeploymentCRUD:
 
         assert result.name == deploy_name
         assert result.namespace == test_namespace
-        assert result.desired_replicas == 1
+        assert result.replicas == 1
 
         # Wait for pod to be ready
         wait_for_pod_ready(
@@ -106,7 +106,7 @@ class TestDeploymentCRUD:
         )
 
         assert result.name == deploy_name
-        assert result.desired_replicas == 3
+        assert result.replicas == 3
 
     def test_delete_deployment(
         self,
@@ -283,7 +283,7 @@ class TestDeploymentScaling:
         )
 
         assert result.name == deploy_name
-        assert result.desired_replicas == 3
+        assert result.replicas == 3
 
     def test_restart_deployment(
         self,

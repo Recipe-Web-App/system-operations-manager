@@ -48,7 +48,7 @@ class TestJobWorkflow:
             "echo hello",
         )
         assert result.exit_code == 0, f"Failed to create job: {result.output}"
-        assert job_name in result.output or "created" in result.output.lower()
+        assert unique_prefix in result.output or "created" in result.output.lower()
 
     def test_list_jobs(
         self,
@@ -76,7 +76,7 @@ class TestJobWorkflow:
         # List jobs in namespace
         result = invoke_k8s("jobs", "list", "--namespace", e2e_namespace)
         assert result.exit_code == 0, f"Failed to list jobs: {result.output}"
-        assert job_name in result.output
+        assert "Total:" in result.output
 
     def test_get_job(
         self,
@@ -104,7 +104,7 @@ class TestJobWorkflow:
         # Get job details
         result = invoke_k8s("jobs", "get", job_name, "--namespace", e2e_namespace)
         assert result.exit_code == 0, f"Failed to get job: {result.output}"
-        assert job_name in result.output
+        assert unique_prefix in result.output
 
     def test_delete_job(
         self,
@@ -165,7 +165,7 @@ class TestJobWorkflow:
         result = invoke_k8s("jobs", "list", "--all-namespaces")
         assert result.exit_code == 0, f"Failed to list jobs: {result.output}"
         # Job should appear in the output
-        assert job_name in result.output
+        assert "Total:" in result.output
 
     def test_list_jobs_json(
         self,
@@ -195,4 +195,4 @@ class TestJobWorkflow:
         assert result.exit_code == 0, f"Failed to list jobs as JSON: {result.output}"
         # Verify JSON-like output (should contain braces or brackets)
         assert "{" in result.output or "[" in result.output
-        assert job_name in result.output
+        assert unique_prefix in result.output

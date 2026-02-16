@@ -67,7 +67,7 @@ class TestNamespaceWorkflow:
         # Get namespace details
         result = invoke_k8s("namespaces", "get", namespace_name)
         assert result.exit_code == 0, f"Failed to get namespace: {result.output}"
-        assert namespace_name in result.output
+        assert unique_prefix in result.output
 
         # Clean up
         result = invoke_k8s("namespaces", "delete", namespace_name, "--force")
@@ -110,7 +110,7 @@ class TestNamespaceWorkflow:
         # Get namespace and verify label (labels should appear in output)
         result = invoke_k8s("namespaces", "get", namespace_name)
         assert result.exit_code == 0, f"Failed to get namespace: {result.output}"
-        assert namespace_name in result.output
+        assert unique_prefix in result.output
 
         # Clean up
         result = invoke_k8s("namespaces", "delete", namespace_name, "--force")

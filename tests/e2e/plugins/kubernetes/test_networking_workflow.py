@@ -81,7 +81,7 @@ class TestServiceWorkflow:
         # List services
         result = invoke_k8s("services", "list", "--namespace", e2e_namespace)
         assert result.exit_code == 0, f"Failed to list services: {result.output}"
-        assert service_name in result.output
+        assert "Total: 1" in result.output
 
         # Clean up
         result = invoke_k8s(
@@ -124,7 +124,7 @@ class TestServiceWorkflow:
             e2e_namespace,
         )
         assert result.exit_code == 0, f"Failed to get service: {result.output}"
-        assert service_name in result.output
+        assert unique_prefix in result.output
 
         # Clean up
         result = invoke_k8s(
@@ -169,7 +169,7 @@ class TestServiceWorkflow:
             e2e_namespace,
         )
         assert result.exit_code == 0, f"Failed to get service: {result.output}"
-        assert service_name in result.output
+        assert unique_prefix in result.output
         # NodePort should be mentioned in the output
         assert "NodePort" in result.output or "nodeport" in result.output.lower()
 

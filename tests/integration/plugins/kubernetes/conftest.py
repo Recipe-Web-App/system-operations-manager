@@ -156,7 +156,7 @@ def k3s_kubeconfig_path(
 ) -> Path:
     """Write K3S kubeconfig to a temp file for KubernetesClient."""
     kubeconfig_yaml = k3s_container.get_kubeconfig()
-    kubeconfig_path = tmp_path_factory.mktemp("k3s") / "kubeconfig.yaml"
+    kubeconfig_path: Path = tmp_path_factory.mktemp("k3s") / "kubeconfig.yaml"
     kubeconfig_path.write_text(kubeconfig_yaml)
     return kubeconfig_path
 
@@ -168,6 +168,7 @@ def k8s_plugin_config(k3s_kubeconfig_path: Path) -> KubernetesPluginConfig:
         clusters={
             "test": ClusterConfig(
                 kubeconfig=str(k3s_kubeconfig_path),
+                context="default",
             ),
         },
         active_cluster="test",

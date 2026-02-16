@@ -1,6 +1,12 @@
 """Integration tests for Kubernetes StorageManager against real K3S cluster."""
 
+from __future__ import annotations
+
+import time
+
 import pytest
+
+from system_operations_manager.services.kubernetes import StorageManager
 
 
 @pytest.mark.integration
@@ -8,7 +14,7 @@ import pytest
 class TestStorageClasses:
     """Test operations for Kubernetes storage classes."""
 
-    def test_list_storage_classes(self, storage_manager):
+    def test_list_storage_classes(self, storage_manager: StorageManager) -> None:
         """Test listing storage classes (K3S has local-path)."""
         storage_classes = storage_manager.list_storage_classes()
 
@@ -17,7 +23,7 @@ class TestStorageClasses:
         # K3S comes with local-path storage class by default
         assert "local-path" in sc_names
 
-    def test_get_storage_class(self, storage_manager):
+    def test_get_storage_class(self, storage_manager: StorageManager) -> None:
         """Test getting a specific storage class."""
         # K3S has local-path storage class by default
         sc = storage_manager.get_storage_class(name="local-path")
@@ -30,7 +36,12 @@ class TestStorageClasses:
 class TestPVCOperations:
     """Test CRUD operations for persistent volume claims."""
 
-    def test_create_pvc(self, storage_manager, test_namespace, unique_name):
+    def test_create_pvc(
+        self,
+        storage_manager: StorageManager,
+        test_namespace: str,
+        unique_name: str,
+    ) -> None:
         """Test creating a persistent volume claim."""
         pvc_name = f"pvc-{unique_name}"
 
@@ -47,7 +58,12 @@ class TestPVCOperations:
         assert pvc.namespace == test_namespace
         assert pvc.status in ["Pending", "Bound"]
 
-    def test_list_pvcs(self, storage_manager, test_namespace, unique_name):
+    def test_list_pvcs(
+        self,
+        storage_manager: StorageManager,
+        test_namespace: str,
+        unique_name: str,
+    ) -> None:
         """Test listing persistent volume claims."""
         pvc_name = f"pvc-{unique_name}"
 
@@ -67,7 +83,12 @@ class TestPVCOperations:
         pvc_names = [pvc.name for pvc in pvcs]
         assert pvc_name in pvc_names
 
-    def test_delete_pvc(self, storage_manager, test_namespace, unique_name):
+    def test_delete_pvc(
+        self,
+        storage_manager: StorageManager,
+        test_namespace: str,
+        unique_name: str,
+    ) -> None:
         """Test deleting a persistent volume claim."""
         pvc_name = f"pvc-{unique_name}"
 
@@ -82,6 +103,9 @@ class TestPVCOperations:
 
         # Delete the PVC
         storage_manager.delete_persistent_volume_claim(name=pvc_name, namespace=test_namespace)
+
+        # Wait for deletion to propagate (K8s PVC deletion is async)
+        time.sleep(2)
 
         # Verify it's deleted by checking list
         pvcs = storage_manager.list_persistent_volume_claims(namespace=test_namespace)
