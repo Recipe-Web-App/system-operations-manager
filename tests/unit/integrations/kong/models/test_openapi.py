@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from system_operations_manager.integrations.kong.models.openapi import (
     SyncChange,
@@ -39,10 +40,10 @@ class TestSyncChange:
     @pytest.mark.unit
     def test_required_fields(self) -> None:
         """operation, route_name, and path are required."""
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             SyncChange()  # type: ignore[call-arg]
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             SyncChange(operation="create")  # type: ignore[call-arg]
 
     @pytest.mark.unit

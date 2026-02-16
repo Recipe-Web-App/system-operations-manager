@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 import yaml
@@ -18,7 +18,7 @@ from rich.console import Console
 from system_operations_manager.cli.output import Table
 
 
-class OutputFormat(str, Enum):
+class OutputFormat(StrEnum):
     """Supported output formats for CLI commands."""
 
     TABLE = "table"

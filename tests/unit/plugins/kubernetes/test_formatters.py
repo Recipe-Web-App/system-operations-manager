@@ -73,7 +73,7 @@ class TestGetFormatter:
         """get_formatter should default to TableFormatter for unknown format."""
         console = Console()
         # Cast to OutputFormat to test fallback behavior
-        formatter = get_formatter("unknown", console)
+        formatter = get_formatter("unknown", console)  # type: ignore[arg-type]
         assert isinstance(formatter, TableFormatter)
 
 

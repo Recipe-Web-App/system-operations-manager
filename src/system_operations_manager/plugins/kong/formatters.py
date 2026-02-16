@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any, TypeVar
 
 import yaml
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 
-class OutputFormat(str, Enum):
+class OutputFormat(StrEnum):
     """Supported output formats for CLI commands."""
 
     TABLE = "table"

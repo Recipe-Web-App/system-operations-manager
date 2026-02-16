@@ -68,7 +68,7 @@ class TestClusterConfig:
     def test_extra_fields_forbidden(self) -> None:
         """Test that extra fields are rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            ClusterConfig(unknown_field="value")
+            ClusterConfig(unknown_field="value")  # type: ignore[call-arg]
         assert "extra" in str(exc_info.value).lower()
 
 
@@ -118,13 +118,13 @@ class TestKubernetesAuthConfig:
     def test_invalid_auth_type(self) -> None:
         """Test that invalid auth type raises ValidationError."""
         with pytest.raises(ValidationError) as exc_info:
-            KubernetesAuthConfig(type="invalid")
+            KubernetesAuthConfig(type="invalid")  # type: ignore[arg-type]
         assert "Input should be" in str(exc_info.value) or "literal_error" in str(exc_info.value)
 
     def test_extra_fields_forbidden(self) -> None:
         """Test that extra fields are rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            KubernetesAuthConfig(unknown="value")
+            KubernetesAuthConfig(unknown="value")  # type: ignore[call-arg]
         assert "extra" in str(exc_info.value).lower()
 
 
@@ -197,7 +197,7 @@ class TestKubernetesDefaultsConfig:
     def test_extra_fields_forbidden(self) -> None:
         """Test that extra fields are rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            KubernetesDefaultsConfig(extra_field="value")
+            KubernetesDefaultsConfig(extra_field="value")  # type: ignore[call-arg]
         assert "extra" in str(exc_info.value).lower()
 
 
@@ -245,13 +245,13 @@ class TestKubernetesPluginConfig:
     def test_invalid_output_format(self) -> None:
         """Test that invalid output format raises ValidationError."""
         with pytest.raises(ValidationError) as exc_info:
-            KubernetesPluginConfig(output_format="xml")
+            KubernetesPluginConfig(output_format="xml")  # type: ignore[arg-type]
         assert "Input should be" in str(exc_info.value) or "literal_error" in str(exc_info.value)
 
     def test_extra_fields_forbidden(self) -> None:
         """Test that extra fields are rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            KubernetesPluginConfig(unknown="value")
+            KubernetesPluginConfig(unknown="value")  # type: ignore[call-arg]
         assert "extra" in str(exc_info.value).lower()
 
     def test_get_active_context_no_clusters(self) -> None:

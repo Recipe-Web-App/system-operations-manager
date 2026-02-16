@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +15,7 @@ from system_operations_manager.integrations.konnect.exceptions import (
 )
 
 
-class KonnectRegion(str, Enum):
+class KonnectRegion(StrEnum):
     """Konnect API regions."""
 
     US = "us"

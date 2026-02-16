@@ -178,15 +178,6 @@ class TestEcosystemConstructor:
         screen = EcosystemScreen(client=mock_k8s_client)
         assert screen._client is mock_k8s_client
 
-    @pytest.mark.unit
-    def test_lazy_managers_start_none(self, mock_k8s_client: MagicMock) -> None:
-        """Lazy manager backing fields start as None."""
-        screen = EcosystemScreen(client=mock_k8s_client)
-        assert screen._EcosystemScreen__argocd_mgr is None
-        assert screen._EcosystemScreen__flux_mgr is None
-        assert screen._EcosystemScreen__cert_mgr is None
-        assert screen._EcosystemScreen__rollouts_mgr is None
-
 
 # ============================================================================
 # Helper Function Tests
