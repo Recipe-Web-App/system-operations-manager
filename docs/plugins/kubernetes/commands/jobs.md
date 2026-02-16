@@ -84,14 +84,14 @@ ops k8s jobs list -l app=batch-processor
 
 ```text
 Jobs
-┌────────────────────┬──────────────┬─────────────┬──────────┬────────┬────────┬──────┐
-│ Name               │ Namespace    │ Completions │ Succeeded│ Failed │ Active │ Age  │
-├────────────────────┼──────────────┼─────────────┼──────────┼────────┼────────┼──────┤
-│ backup-job         │ default      │ 1/1         │ 1        │ 0      │ 0      │ 2d   │
-│ data-migration     │ default      │ 10/10       │ 10       │ 0      │ 0      │ 1d   │
-│ cleanup-task       │ production   │ 1/1         │ 1        │ 0      │ 0      │ 1h   │
-│ failed-import      │ production   │ 3/3         │ 2        │ 1      │ 0      │ 30m  │
-└────────────────────┴──────────────┴─────────────┴──────────┴────────┴────────┴──────┘
+┌────────────────┬────────────┬─────────────┬───────────┬────────┬────────┬─────┐
+│ Name           │ Namespace  │ Completions │ Succeeded │ Failed │ Active │ Age │
+├────────────────┼────────────┼─────────────┼───────────┼────────┼────────┼─────┤
+│ backup-job     │ default    │ 1/1         │ 1         │ 0      │ 0      │ 2d  │
+│ data-migration │ default    │ 10/10       │ 10        │ 0      │ 0      │ 1d  │
+│ cleanup-task   │ production │ 1/1         │ 1         │ 0      │ 0      │ 1h  │
+│ failed-import  │ production │ 3/3         │ 2         │ 1      │ 0      │ 30m │
+└────────────────┴────────────┴─────────────┴───────────┴────────┴────────┴─────┘
 ```
 
 **Notes:**
@@ -126,24 +126,24 @@ ops k8s jobs get my-job -o yaml
 
 ```text
 Job: my-job
-┌──────────────────────────┬──────────────────────────────┐
-│ Field                    │ Value                        │
-├──────────────────────────┼──────────────────────────────┤
-│ Name                     │ my-job                       │
-│ Namespace                │ default                      │
-│ Status                   │ Complete                     │
-│ Completions              │ 1/1                          │
-│ Succeeded                │ 1                            │
-│ Failed                   │ 0                            │
-│ Active                   │ 0                            │
-│ Start Time               │ 2024-02-14T10:00:00Z         │
-│ Completion Time          │ 2024-02-14T10:05:30Z         │
-│ Duration                 │ 5 minutes 30 seconds         │
-│ Image                    │ busybox:latest               │
-│ Parallelism              │ 1                            │
-│ Age                      │ 2 days                       │
-│ Labels                   │ app=batch, type=backup       │
-└──────────────────────────┴──────────────────────────────┘
+┌─────────────────┬────────────────────────┐
+│ Field           │ Value                  │
+├─────────────────┼────────────────────────┤
+│ Name            │ my-job                 │
+│ Namespace       │ default                │
+│ Status          │ Complete               │
+│ Completions     │ 1/1                    │
+│ Succeeded       │ 1                      │
+│ Failed          │ 0                      │
+│ Active          │ 0                      │
+│ Start Time      │ 2024-02-14T10:00:00Z   │
+│ Completion Time │ 2024-02-14T10:05:30Z   │
+│ Duration        │ 5 minutes 30 seconds   │
+│ Image           │ busybox:latest         │
+│ Parallelism     │ 1                      │
+│ Age             │ 2 days                 │
+│ Labels          │ app=batch, type=backup │
+└─────────────────┴────────────────────────┘
 ```
 
 **Notes:**
@@ -237,18 +237,18 @@ ops k8s jobs create data-migration \
 
 ```text
 Created Job: my-job
-┌────────────┬────────────────────────────┐
-│ Field      │ Value                      │
-├────────────┼────────────────────────────┤
-│ Name       │ my-job                     │
-│ Namespace  │ default                    │
-│ Status     │ Running                    │
-│ Image      │ busybox:latest             │
-│ Completions│ 0/1                        │
-│ Active     │ 1                          │
-│ Created    │ 2024-02-16T10:30:00Z       │
-│ Labels     │ app=batch, type=backup     │
-└────────────┴────────────────────────────┘
+┌─────────────┬────────────────────────┐
+│ Field       │ Value                  │
+├─────────────┼────────────────────────┤
+│ Name        │ my-job                 │
+│ Namespace   │ default                │
+│ Status      │ Running                │
+│ Image       │ busybox:latest         │
+│ Completions │ 0/1                    │
+│ Active      │ 1                      │
+│ Created     │ 2024-02-16T10:30:00Z   │
+│ Labels      │ app=batch, type=backup │
+└─────────────┴────────────────────────┘
 ```
 
 **Notes:**
@@ -354,14 +354,14 @@ ops k8s cronjobs list -l app=maintenance
 
 ```text
 CronJobs
-┌──────────────────┬──────────────┬──────────────┬─────────┬────────┬────────────────┬──────┐
-│ Name             │ Namespace    │ Schedule     │ Suspend │ Active │ Last Schedule  │ Age  │
-├──────────────────┼──────────────┼──────────────┼─────────┼────────┼────────────────┼──────┤
-│ daily-backup     │ default      │ 0 2 * * *    │ False   │ 0      │ 5 hours ago    │ 30d  │
-│ weekly-report    │ default      │ 0 9 * * 1    │ False   │ 0      │ 2 days ago     │ 20d  │
-│ maintenance      │ production   │ 0 0 * * *    │ False   │ 0      │ 2 hours ago    │ 15d  │
-│ snapshot         │ production   │ */6 * * * *  │ True    │ 0      │ 1 day ago      │ 10d  │
-└──────────────────┴──────────────┴──────────────┴─────────┴────────┴────────────────┴──────┘
+┌───────────────┬────────────┬─────────────┬─────────┬────────┬───────────────┬─────┐
+│ Name          │ Namespace  │ Schedule    │ Suspend │ Active │ Last Schedule │ Age │
+├───────────────┼────────────┼─────────────┼─────────┼────────┼───────────────┼─────┤
+│ daily-backup  │ default    │ 0 2 * * *   │ False   │ 0      │ 5 hours ago   │ 30d │
+│ weekly-report │ default    │ 0 9 * * 1   │ False   │ 0      │ 2 days ago    │ 20d │
+│ maintenance   │ production │ 0 0 * * *   │ False   │ 0      │ 2 hours ago   │ 15d │
+│ snapshot      │ production │ */6 * * * * │ True    │ 0      │ 1 day ago     │ 10d │
+└───────────────┴────────────┴─────────────┴─────────┴────────┴───────────────┴─────┘
 ```
 
 **Notes:**
@@ -395,24 +395,24 @@ ops k8s cronjobs get daily-backup -o yaml
 
 ```text
 CronJob: daily-backup
-┌──────────────────────────┬──────────────────────────────┐
-│ Field                    │ Value                        │
-├──────────────────────────┼──────────────────────────────┤
-│ Name                     │ daily-backup                 │
-│ Namespace                │ default                      │
-│ Schedule                 │ 0 2 * * * (02:00 daily)      │
-│ Suspend                  │ False                        │
-│ Concurrency Policy       │ Allow                        │
-│ Image                    │ backup-service:latest        │
-│ Active Count             │ 0                            │
-│ Last Successful Schedule │ 2024-02-16T02:00:05Z         │
-│ Last Failed Schedule     │ Never                        │
-│ Last Schedule Time       │ 2024-02-16T02:00:00Z         │
-│ Next Schedule Time       │ 2024-02-17T02:00:00Z         │
-│ Age                      │ 30 days                      │
-│ Created                  │ 2024-01-17T08:00:00Z         │
-│ Labels                   │ app=backup, type=scheduled   │
-└──────────────────────────┴──────────────────────────────┘
+┌──────────────────────────┬────────────────────────────┐
+│ Field                    │ Value                      │
+├──────────────────────────┼────────────────────────────┤
+│ Name                     │ daily-backup               │
+│ Namespace                │ default                    │
+│ Schedule                 │ 0 2 * * * (02:00 daily)    │
+│ Suspend                  │ False                      │
+│ Concurrency Policy       │ Allow                      │
+│ Image                    │ backup-service:latest      │
+│ Active Count             │ 0                          │
+│ Last Successful Schedule │ 2024-02-16T02:00:05Z       │
+│ Last Failed Schedule     │ Never                      │
+│ Last Schedule Time       │ 2024-02-16T02:00:00Z       │
+│ Next Schedule Time       │ 2024-02-17T02:00:00Z       │
+│ Age                      │ 30 days                    │
+│ Created                  │ 2024-01-17T08:00:00Z       │
+│ Labels                   │ app=backup, type=scheduled │
+└──────────────────────────┴────────────────────────────┘
 ```
 
 **Notes:**
@@ -528,17 +528,17 @@ ops k8s cronjobs create sync-external \
 
 ```text
 Created CronJob: my-cron
-┌────────────┬────────────────────────────┐
-│ Field      │ Value                      │
-├────────────┼────────────────────────────┤
-│ Name       │ my-cron                    │
-│ Namespace  │ default                    │
-│ Status     │ Created                    │
-│ Schedule   │ */5 * * * * (every 5 min) │
-│ Image      │ busybox:latest             │
-│ Created    │ 2024-02-16T11:00:00Z       │
-│ Labels     │ app=batch, type=scheduled  │
-└────────────┴────────────────────────────┘
+┌───────────┬───────────────────────────┐
+│ Field     │ Value                     │
+├───────────┼───────────────────────────┤
+│ Name      │ my-cron                   │
+│ Namespace │ default                   │
+│ Status    │ Created                   │
+│ Schedule  │ */5 * * * * (every 5 min) │
+│ Image     │ busybox:latest            │
+│ Created   │ 2024-02-16T11:00:00Z      │
+│ Labels    │ app=batch, type=scheduled │
+└───────────┴───────────────────────────┘
 ```
 
 **Notes:**
@@ -602,15 +602,15 @@ ops k8s cronjobs update weekly-report \
 
 ```text
 Updated CronJob: my-cron
-┌────────────┬────────────────────────────┐
-│ Field      │ Value                      │
-├────────────┼────────────────────────────┤
-│ Name       │ my-cron                    │
-│ Namespace  │ default                    │
-│ Status     │ Updated                    │
-│ Schedule   │ 0 * * * * (hourly)         │
-│ Modified   │ 2024-02-16T11:30:00Z       │
-└────────────┴────────────────────────────┘
+┌───────────┬──────────────────────┐
+│ Field     │ Value                │
+├───────────┼──────────────────────┤
+│ Name      │ my-cron              │
+│ Namespace │ default              │
+│ Status    │ Updated              │
+│ Schedule  │ 0 * * * * (hourly)   │
+│ Modified  │ 2024-02-16T11:30:00Z │
+└───────────┴──────────────────────┘
 ```
 
 **Notes:**

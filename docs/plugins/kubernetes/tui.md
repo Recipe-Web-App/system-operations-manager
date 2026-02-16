@@ -111,15 +111,15 @@ When the TUI launches, you'll see the Resource List screen:
 ┌────────────────────────────────────────────────────────────────────────────┐
 │ Kubernetes Resource Browser                                                │
 ├────────────────────────────────────────────────────────────────────────────┤
-│ NS: All Namespaces  │ Ctx: minikube  │ Type: Pods                         │
+│ NS: All Namespaces  │ Ctx: minikube  │ Type: Pods                          │
 ├────────────────────────────────────────────────────────────────────────────┤
-│ Name               │ Namespace     │ Status        │ Ready  │ Restarts    │
+│ Name               │ Namespace     │ Status        │ Ready  │ Restarts     │
 ├────────────────────────────────────────────────────────────────────────────┤
-│ coredns-558bd4d89c │ kube-system   │ Running       │ 1/1    │ 0           │
-│ etcd-minikube      │ kube-system   │ Running       │ 1/1    │ 0           │
-│ kube-apiserver     │ kube-system   │ Running       │ 1/1    │ 0           │
-│ my-app-abc123      │ default       │ Running       │ 1/1    │ 2           │
-│                                                                             │
+│ coredns-558bd4d89c │ kube-system   │ Running       │ 1/1    │ 0            │
+│ etcd-minikube      │ kube-system   │ Running       │ 1/1    │ 0            │
+│ kube-apiserver     │ kube-system   │ Running       │ 1/1    │ 0            │
+│ my-app-abc123      │ default       │ Running       │ 1/1    │ 2            │
+│                                                                            │
 │ ...more items...                                                           │
 ├────────────────────────────────────────────────────────────────────────────┤
 │ 12 Pods in kube-system                                                     │
@@ -255,38 +255,38 @@ The Dashboard provides a high-level overview of your cluster health and resource
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────────┐
-│ Cluster: prod-eks  │ K8s: v1.28.2  │ Nodes: 5  │ Namespaces: 12           │
+│ Cluster: prod-eks  │ K8s: v1.28.2  │ Nodes: 5  │ Namespaces: 12            │
 ├────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
+│                                                                            │
 │ Node Health                     │  Pod Status                              │
-│ Name          │ Status │ Roles │ │  Total: 247                            │
-│ ──────────────┼────────┼───────│ │    Running: 240 (green)                │
-│ node-1        │ Ready  │ master│ │    Pending: 5 (yellow)                 │
-│ node-2        │ Ready  │       │ │    Failed: 2 (red)                     │
-│ node-3        │ Ready  │       │ │                                        │
-│ node-4        │ NotReady│      │ │  Pods by Namespace                     │
-│ node-5        │ Ready  │       │ │    kube-system: 48                     │
-│               │        │       │ │    default: 67                         │
-│               │        │       │ │    production: 102                     │
-│               │        │       │ │    staging: 30                         │
+│ Name          │ Status │ Roles │ │  Total: 247                             │
+│ ──────────────┼────────┼───────│ │    Running: 240 (green)                 │
+│ node-1        │ Ready  │ master│ │    Pending: 5 (yellow)                  │
+│ node-2        │ Ready  │       │ │    Failed: 2 (red)                      │
+│ node-3        │ Ready  │       │ │                                         │
+│ node-4        │ NotReady│      │ │  Pods by Namespace                      │
+│ node-5        │ Ready  │       │ │    kube-system: 48                      │
+│               │        │       │ │    default: 67                          │
+│               │        │       │ │    production: 102                      │
+│               │        │       │ │    staging: 30                          │
 ├────────────────────────────────────────────────────────────────────────────┤
-│ Resource Capacity                                                           │
-│   node-1                                                                    │
-│     CPU   [████████░░░░░░░░] 4/8 cores                                    │
-│     Mem   [██████░░░░░░░░░░] 6/16 Gi                                      │
-│     Pods  [██████████░░░░░░] 42/110                                       │
-│                                                                             │
-│   node-2                                                                    │
-│     CPU   [██████░░░░░░░░░░] 3/8 cores                                    │
-│     Mem   [████████░░░░░░░░] 8/16 Gi                                      │
-│     Pods  [████████░░░░░░░░] 38/110                                       │
+│ Resource Capacity                                                          │
+│   node-1                                                                   │
+│     CPU   [████████░░░░░░░░] 4/8 cores                                     │
+│     Mem   [██████░░░░░░░░░░] 6/16 Gi                                       │
+│     Pods  [██████████░░░░░░] 42/110                                        │
+│                                                                            │
+│   node-2                                                                   │
+│     CPU   [██████░░░░░░░░░░] 3/8 cores                                     │
+│     Mem   [████████░░░░░░░░] 8/16 Gi                                       │
+│     Pods  [████████░░░░░░░░] 38/110                                        │
 ├────────────────────────────────────────────────────────────────────────────┤
-│ Recent Warnings                                                             │
-│ Type    │ Reason               │ Object            │ Message      │ Count │
-│ Warning │ FailedScheduling     │ pod/pending-123   │ Insufficient │ 3     │
-│ Warning │ CrashLoopBackOff     │ pod/app-crash     │ Error        │ 12    │
+│ Recent Warnings                                                            │
+│ Type    │ Reason               │ Object            │ Message      │ Count  │
+│ Warning │ FailedScheduling     │ pod/pending-123   │ Insufficient │ 3      │
+│ Warning │ CrashLoopBackOff     │ pod/app-crash     │ Error        │ 12     │
 ├────────────────────────────────────────────────────────────────────────────┤
-│ Refresh: 15s  │  r: Refresh  │  +/-: Interval  │  d: Dashboard            │
+│ Refresh: 15s  │  r: Refresh  │  +/-: Interval  │  d: Dashboard             │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -319,20 +319,20 @@ capabilities.
 ┌────────────────────────────────────────────────────────────────────────────┐
 │ Kubernetes Resource Browser                                                │
 ├────────────────────────────────────────────────────────────────────────────┤
-│ NS: default  │ Ctx: minikube  │ Type: Pods                               │
+│ NS: default  │ Ctx: minikube  │ Type: Pods                                 │
 ├────────────────────────────────────────────────────────────────────────────┤
-│ Name                       │ Namespace     │ Status     │ Ready │ Restarts│
+│ Name                       │ Namespace     │ Status     │ Ready │ Restarts │
 ├────────────────────────────────────────────────────────────────────────────┤
-│ my-app-abc123              │ default       │ Running    │ 1/1   │ 0       │
-│ my-app-def456              │ default       │ Running    │ 1/1   │ 1       │
-│ redis-cache-xyz789         │ default       │ Running    │ 1/1   │ 0       │
-│ postgres-0                 │ default       │ Pending    │ 0/1   │ 0       │
-│ test-runner-batch-1        │ default       │ Failed     │ 0/1   │ 5       │
-│ debug-utility              │ default       │ Running    │ 1/1   │ 0       │
-│                                                                             │
+│ my-app-abc123              │ default       │ Running    │ 1/1   │ 0        │
+│ my-app-def456              │ default       │ Running    │ 1/1   │ 1        │
+│ redis-cache-xyz789         │ default       │ Running    │ 1/1   │ 0        │
+│ postgres-0                 │ default       │ Pending    │ 0/1   │ 0        │
+│ test-runner-batch-1        │ default       │ Failed     │ 0/1   │ 5        │
+│ debug-utility              │ default       │ Running    │ 1/1   │ 0        │
+│                                                                            │
 │ ...more items...                                                           │
 ├────────────────────────────────────────────────────────────────────────────┤
-│ 6 Pods in default                                                           │
+│ 6 Pods in default                                                          │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -368,23 +368,23 @@ Displays comprehensive information about a selected resource.
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────────┐
-│ Pod / my-app-abc123  ns: default  [green]Running[/green]                 │
+│ Pod / my-app-abc123  ns: default  [green]Running[/green]                   │
 ├────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│ Metadata                          │ Status                                │
-│ ────────────────────────────────  │ ──────────────────────────────────   │
-│ Namespace: default                │ Phase:        Running                │
-│ UID: f47ac10b-58cc-4372           │ Ready:        1/1                    │
-│ Created: 2024-02-10T15:30:00Z     │ Restarts:     0                      │
-│ Age: 3d5h                         │ Node:         minikube              │
-│                                   │ Pod IP:       10.244.0.42           │
-│                                                                             │
-│ Labels                            │ Annotations                          │
-│ ────────────────────────────────  │ ──────────────────────────────────   │
-│   app=my-app                      │ prometheus.io/scrape=true           │
-│   version=v1.0                    │ prometheus.io/port=8080             │
-│   tier=backend                    │ description=Production backend pod   │
-│                                                                             │
+│                                                                            │
+│ Metadata                          │ Status                                 │
+│ ────────────────────────────────  │ ──────────────────────────────────     │
+│ Namespace: default                │ Phase:        Running                  │
+│ UID: f47ac10b-58cc-4372           │ Ready:        1/1                      │
+│ Created: 2024-02-10T15:30:00Z     │ Restarts:     0                        │
+│ Age: 3d5h                         │ Node:         minikube                 │
+│                                   │ Pod IP:       10.244.0.42              │
+│                                                                            │
+│ Labels                            │ Annotations                            │
+│ ────────────────────────────────  │ ──────────────────────────────────     │
+│   app=my-app                      │ prometheus.io/scrape=true              │
+│   version=v1.0                    │ prometheus.io/port=8080                │
+│   tier=backend                    │ description=Production backend pod     │
+│                                                                            │
 ├────────────────────────────────────────────────────────────────────────────┤
 │ YAML  (y to toggle)                                                        │
 │ ────────────────────────────────────────────────────────────────────────── │
@@ -394,9 +394,9 @@ Displays comprehensive information about a selected resource.
 │   name: my-app-abc123                                                      │
 │   namespace: default                                                       │
 │   uid: f47ac10b-58cc-4372                                                  │
-│   creationTimestamp: '2024-02-10T15:30:00Z'                               │
+│   creationTimestamp: '2024-02-10T15:30:00Z'                                │
 │ ...                                                                        │
-│                                                                             │
+│                                                                            │
 ├────────────────────────────────────────────────────────────────────────────┤
 │ Events  (r to refresh)                                                     │
 │ Type   │ Reason       │ Object              │ Message          │ Count │   │
@@ -406,7 +406,7 @@ Displays comprehensive information about a selected resource.
 │ Normal │ Created      │ pod/my-app-abc123   │ Created container│ 1     │   │
 │ Normal │ Started      │ pod/my-app-abc123   │ Started container│ 1     │   │
 ├────────────────────────────────────────────────────────────────────────────┤
-│ Back: Esc  │  YAML: y  │  Refresh: r  │  Edit: e  │  Delete: d          │
+│ Back: Esc  │  YAML: y  │  Refresh: r  │  Edit: e  │  Delete: d             │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -441,23 +441,23 @@ Displays the status of installed ecosystem tools including ArgoCD, Flux, Cert-Ma
 ┌────────────────────────────────────────────────────────────────────────────┐
 │ Ecosystem Tools Overview                                                   │
 ├────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│ ArgoCD Applications             │ Flux Resources                          │
-│ Name      │ NS      │ Sync      │ │ Name         │ NS       │ Ready │    │
-│ ──────────┼─────────┼──────────  │ │ ────────────┼──────────┼───────    │
-│ app-prod  │ argocd  │ Synced ✓  │ │ repos-main   │ flux-sys │ Yes   │   │
-│ app-staging│argocd  │ OutOfSync │ │ kustomize-dev│ flux-sys │ No    │   │
-│ app-dev   │ argocd  │ Synced ✓  │ │ helm-release │ default  │ Yes   │   │
+│                                                                            │
+│ ArgoCD Applications             │ Flux Resources                           │
+│ Name      │ NS      │ Sync      │ │ Name         │ NS       │ Ready │      │
+│ ──────────┼─────────┼──────────  │ │ ────────────┼──────────┼───────       │
+│ app-prod  │ argocd  │ Synced ✓  │ │ repos-main   │ flux-sys │ Yes   │      │
+│ app-staging│argocd  │ OutOfSync │ │ kustomize-dev│ flux-sys │ No    │      │
+│ app-dev   │ argocd  │ Synced ✓  │ │ helm-release │ default  │ Yes   │      │
 │                                   │                                        │
-│ Cert-Manager Certificates        │ Argo Rollouts                         │
+│ Cert-Manager Certificates        │ Argo Rollouts                           │
 │ Name            │ NS        │ Ready│ │ Name         │ Phase      │ Ready │ │
-│ ─────────────────┼──────────┼─────  │ │ ────────────┼──────────┼──────  │
-│ api.example.com  │ default  │ Yes  │ │ app-canary   │ Progressing│ 3/5  │
-│ web.example.com  │ default  │ No   │ │ api-bg       │ Healthy   │ 5/5  │
-│ cdn.example.com  │ platform │ Yes  │ │                                  │
-│                                                                             │
+│ ─────────────────┼──────────┼─────  │ │ ────────────┼──────────┼──────     │
+│ api.example.com  │ default  │ Yes  │ │ app-canary   │ Progressing│ 3/5     │
+│ web.example.com  │ default  │ No   │ │ api-bg       │ Healthy   │ 5/5      │
+│ cdn.example.com  │ platform │ Yes  │ │                                     │
+│                                                                            │
 ├────────────────────────────────────────────────────────────────────────────┤
-│ Refresh: 25s  │  1: ArgoCD  │  2: Flux  │  3: Certs  │  4: Rollouts    │
+│ Refresh: 25s  │  1: ArgoCD  │  2: Flux  │  3: Certs  │  4: Rollouts        │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -496,40 +496,40 @@ Interactive form for creating new Kubernetes resources.
 ┌────────────────────────────────────────────────────────────────────────────┐
 │ Create Deployment                                                          │
 ├────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│ Namespace                                                                   │
+│                                                                            │
+│ Namespace                                                                  │
 │ ┌──────────────────────────────────────────────────────────────────────────┐
 │ │ default                                                                  │
 │ └──────────────────────────────────────────────────────────────────────────┘
-│                                                                             │
+│                                                                            │
 │ Name *                                                                     │
 │ ┌──────────────────────────────────────────────────────────────────────────┐
 │ │ my-app                                                                   │
 │ └──────────────────────────────────────────────────────────────────────────┘
-│                                                                             │
+│                                                                            │
 │ Image *                                                                    │
 │ ┌──────────────────────────────────────────────────────────────────────────┐
 │ │ nginx:latest                                                             │
 │ └──────────────────────────────────────────────────────────────────────────┘
-│                                                                             │
+│                                                                            │
 │ Replicas                                                                   │
 │ ┌──────────────────────────────────────────────────────────────────────────┐
 │ │ 3                                                                        │
 │ └──────────────────────────────────────────────────────────────────────────┘
-│                                                                             │
+│                                                                            │
 │ Container Port                                                             │
 │ ┌──────────────────────────────────────────────────────────────────────────┐
 │ │ 8080                                                                     │
 │ └──────────────────────────────────────────────────────────────────────────┘
-│                                                                             │
-│ Labels                                                                      │
+│                                                                            │
+│ Labels                                                                     │
 │ ┌──────────────────────────────────────────────────────────────────────────┐
 │ │ app=my-app                                                               │
 │ │ version=v1.0                                                             │
 │ │ tier=backend                                                             │
 │ └──────────────────────────────────────────────────────────────────────────┘
 │ Labels as key=value pairs, one per line                                    │
-│                                                                             │
+│                                                                            │
 ├────────────────────────────────────────────────────────────────────────────┤
 │                             [Create]  [Cancel]                             │
 │ Cancel: Esc  │  Create: Ctrl+S                                             │
@@ -579,26 +579,26 @@ Real-time log streaming from pod containers with pause/follow controls.
 
 ```text
 ┌────────────────────────────────────────────────────────────────────────────┐
-│ Pod Logs / my-app-abc123  ns: default                                     │
+│ Pod Logs / my-app-abc123  ns: default                                      │
 ├────────────────────────────────────────────────────────────────────────────┤
 │ Container: my-app  │                        │ [bold green]FOLLOWING[/green]│
 ├────────────────────────────────────────────────────────────────────────────┤
-│ 2024-02-10T15:42:38Z INFO Starting application server...                 │
-│ 2024-02-10T15:42:39Z INFO Loading configuration from /etc/app/config.yaml│
-│ 2024-02-10T15:42:40Z INFO Database connection established                │
-│ 2024-02-10T15:42:41Z INFO Starting HTTP server on port 8080              │
-│ 2024-02-10T15:42:42Z INFO Server ready to accept connections            │
-│ 2024-02-10T15:43:01Z DEBUG Processing request GET /api/health           │
-│ 2024-02-10T15:43:01Z DEBUG Request completed with status 200            │
-│ 2024-02-10T15:43:15Z DEBUG Processing request POST /api/data            │
-│ 2024-02-10T15:43:16Z WARNING Request processing took 1200ms             │
-│ 2024-02-10T15:43:17Z DEBUG Request completed with status 201            │
-│                                                                             │
-│ [streaming in real-time...]                                               │
-│                                                                             │
+│ 2024-02-10T15:42:38Z INFO Starting application server...                   │
+│ 2024-02-10T15:42:39Z INFO Loading configuration from /etc/app/config.yaml  │
+│ 2024-02-10T15:42:40Z INFO Database connection established                  │
+│ 2024-02-10T15:42:41Z INFO Starting HTTP server on port 8080                │
+│ 2024-02-10T15:42:42Z INFO Server ready to accept connections               │
+│ 2024-02-10T15:43:01Z DEBUG Processing request GET /api/health              │
+│ 2024-02-10T15:43:01Z DEBUG Request completed with status 200               │
+│ 2024-02-10T15:43:15Z DEBUG Processing request POST /api/data               │
+│ 2024-02-10T15:43:16Z WARNING Request processing took 1200ms                │
+│ 2024-02-10T15:43:17Z DEBUG Request completed with status 201               │
+│                                                                            │
+│ [streaming in real-time...]                                                │
+│                                                                            │
 ├────────────────────────────────────────────────────────────────────────────┤
-│ c: Container  │  f: Follow  │  t: Timestamps  │  Ctrl+L: Clear           │
-│ g: Top  │  G: Bottom  │  Back: Esc                                        │
+│ c: Container  │  f: Follow  │  t: Timestamps  │  Ctrl+L: Clear             │
+│ g: Top  │  G: Bottom  │  Back: Esc                                         │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 

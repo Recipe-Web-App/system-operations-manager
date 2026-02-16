@@ -107,14 +107,14 @@ ops k8s pods list --output json
 **Example Output (Table):**
 
 ```text
-┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━┳━━━━━━┳━━━━━━━━┳━━━━━━━┳━━━━━━━┓
-┃ Name           ┃ Namespace ┃ Status ┃ Ready ┃ Restarts ┃ Node  ┃ IP      ┃
-┡━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━╇━━━━━━╇━━━━━━━━╇━━━━━━━╇━━━━━━━┩
-│ nginx-1a2b3c   │ default  │ Running │ 1/1 │ 0        │ worker-1 │ 10.1.1.10 │
-│ nginx-4d5e6f   │ default  │ Running │ 1/1 │ 0        │ worker-2 │ 10.1.1.20 │
-│ db-backup      │ default  │ Completed │ 1/1 │ 0        │ worker-3 │ 10.1.1.30 │
-│ app-crash      │ default  │ CrashLoopBackOff │ 0/1 │ 5 │ worker-1 │ 10.1.1.11 │
-└────────────────┴───────────┴────────┴──────┴──────────┴──────┴─────────┘
+┏━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━┓
+┃ Name         ┃ Namespace ┃ Status           ┃ Ready ┃ Restarts ┃ Node     ┃ IP        ┃
+┡━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━┩
+│ nginx-1a2b3c │ default   │ Running          │ 1/1   │ 0        │ worker-1 │ 10.1.1.10 │
+│ nginx-4d5e6f │ default   │ Running          │ 1/1   │ 0        │ worker-2 │ 10.1.1.20 │
+│ db-backup    │ default   │ Completed        │ 1/1   │ 0        │ worker-3 │ 10.1.1.30 │
+│ app-crash    │ default   │ CrashLoopBackOff │ 0/1   │ 5        │ worker-1 │ 10.1.1.11 │
+└──────────────┴───────────┴──────────────────┴───────┴──────────┴──────────┴───────────┘
 ```
 
 **Pod Status Reference:**
@@ -186,23 +186,23 @@ ops k8s pods get my-pod -o yaml
 **Example Output (Table):**
 
 ```text
-┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property       ┃ Value            ┃
-┡━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name           │ nginx-1a2b3c     │
-│ Namespace      │ default          │
-│ Status         │ Running          │
-│ IP             │ 10.1.1.10        │
-│ Node           │ worker-1         │
-│ Containers     │ 1                │
-│ Ready Count    │ 1                │
-│ Restarts       │ 0                │
-│ Age            │ 5d               │
-│ CPU Request    │ 100m             │
-│ Memory Request │ 128Mi            │
-│ CPU Limit      │ 500m             │
-│ Memory Limit   │ 512Mi            │
-└────────────────┴──────────────────┘
+┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┓
+┃ Property       ┃ Value        ┃
+┡━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━┩
+│ Name           │ nginx-1a2b3c │
+│ Namespace      │ default      │
+│ Status         │ Running      │
+│ IP             │ 10.1.1.10    │
+│ Node           │ worker-1     │
+│ Containers     │ 1            │
+│ Ready Count    │ 1            │
+│ Restarts       │ 0            │
+│ Age            │ 5d           │
+│ CPU Request    │ 100m         │
+│ Memory Request │ 128Mi        │
+│ CPU Limit      │ 500m         │
+│ Memory Limit   │ 512Mi        │
+└────────────────┴──────────────┘
 ```
 
 **Example Output (YAML):**
@@ -392,13 +392,13 @@ ops k8s deployments list --output json
 **Example Output (Table):**
 
 ```text
-┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━┳━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━┳━━━━━┓
-┃ Name          ┃ Namespace ┃ Ready ┃ Desired ┃ Up-to-date ┃ Available ┃ Age ┃
-┡━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━╇━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━╇━━━━━┩
-│ nginx         │ default  │ 3   │ 3     │ 3       │ 3        │ 30d │
-│ app-api       │ default  │ 2   │ 3     │ 2       │ 2        │ 7d  │
-│ worker-job    │ default  │ 1   │ 1     │ 1       │ 1        │ 2d  │
-└───────────────┴───────────┴─────┴───────┴─────────┴──────────┴─────┘
+┏━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━┓
+┃ Name       ┃ Namespace ┃ Ready ┃ Desired ┃ Up-to-date ┃ Available ┃ Age ┃
+┡━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━┩
+│ nginx      │ default   │ 3     │ 3       │ 3          │ 3         │ 30d │
+│ app-api    │ default   │ 2     │ 3       │ 2          │ 2         │ 7d  │
+│ worker-job │ default   │ 1     │ 1       │ 1          │ 1         │ 2d  │
+└────────────┴───────────┴───────┴─────────┴────────────┴───────────┴─────┘
 ```
 
 **Status Interpretation:**
@@ -449,19 +449,19 @@ ops k8s deployments get worker -o yaml
 **Example Output (Table):**
 
 ```text
-┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property         ┃ Value            ┃
-┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name             │ nginx            │
-│ Namespace        │ default          │
-│ Desired Replicas │ 3                │
-│ Ready Replicas   │ 3                │
-│ Available        │ 3                │
-│ Image            │ nginx:1.21       │
-│ Update Strategy  │ RollingUpdate    │
-│ Age              │ 30d              │
+┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Property         ┃ Value                ┃
+┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━┩
+│ Name             │ nginx                │
+│ Namespace        │ default              │
+│ Desired Replicas │ 3                    │
+│ Ready Replicas   │ 3                    │
+│ Available        │ 3                    │
+│ Image            │ nginx:1.21           │
+│ Update Strategy  │ RollingUpdate        │
+│ Age              │ 30d                  │
 │ Status           │ Successfully Updated │
-└──────────────────┴──────────────────┘
+└──────────────────┴──────────────────────┘
 ```
 
 **Example Output (YAML):**
@@ -530,16 +530,16 @@ ops k8s deployments create api --image api:latest -n production --replicas 5
 ```text
 Deployment 'nginx' created successfully
 
-┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property         ┃ Value            ┃
-┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name             │ nginx            │
-│ Namespace        │ default          │
-│ Desired Replicas │ 3                │
-│ Ready Replicas   │ 0                │
-│ Image            │ nginx:1.21       │
-│ Age              │ 0s               │
-└──────────────────┴──────────────────┘
+┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓
+┃ Property         ┃ Value      ┃
+┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩
+│ Name             │ nginx      │
+│ Namespace        │ default    │
+│ Desired Replicas │ 3          │
+│ Ready Replicas   │ 0          │
+│ Image            │ nginx:1.21 │
+│ Age              │ 0s         │
+└──────────────────┴────────────┘
 ```
 
 **Creation Examples:**
@@ -615,16 +615,16 @@ ops k8s deployments update worker --image worker:v3 --replicas 2
 ```text
 Deployment 'nginx' updated successfully
 
-┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property         ┃ Value            ┃
-┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name             │ nginx            │
-│ Namespace        │ default          │
-│ Desired Replicas │ 3                │
-│ Ready Replicas   │ 2                │
-│ Image            │ nginx:1.22       │
-│ Status           │ RollingUpdate    │
-└──────────────────┴──────────────────┘
+┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃ Property         ┃ Value         ┃
+┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ Name             │ nginx         │
+│ Namespace        │ default       │
+│ Desired Replicas │ 3             │
+│ Ready Replicas   │ 2             │
+│ Image            │ nginx:1.22    │
+│ Status           │ RollingUpdate │
+└──────────────────┴───────────────┘
 ```
 
 **Update Examples:**
@@ -735,14 +735,14 @@ ops k8s deployments scale worker --replicas 0
 ```text
 Deployment 'api' scaled to 5 replicas
 
-┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property         ┃ Value            ┃
-┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name             │ api              │
-│ Desired Replicas │ 5                │
-│ Ready Replicas   │ 3                │
-│ Image            │ myapi:2.0        │
-└──────────────────┴──────────────────┘
+┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┓
+┃ Property         ┃ Value     ┃
+┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━┩
+│ Name             │ api       │
+│ Desired Replicas │ 5         │
+│ Ready Replicas   │ 3         │
+│ Image            │ myapi:2.0 │
+└──────────────────┴───────────┘
 ```
 
 **Scaling Examples:**
@@ -803,14 +803,14 @@ ops k8s deployments restart api
 ```text
 Deployment 'web' restarted
 
-┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property         ┃ Value            ┃
-┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name             │ web              │
-│ Desired Replicas │ 3                │
-│ Ready Replicas   │ 1                │
-│ Status           │ RollingRestart   │
-└──────────────────┴──────────────────┘
+┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
+┃ Property         ┃ Value          ┃
+┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━┩
+│ Name             │ web            │
+│ Desired Replicas │ 3              │
+│ Ready Replicas   │ 1              │
+│ Status           │ RollingRestart │
+└──────────────────┴────────────────┘
 ```
 
 **Use Cases:**
@@ -867,16 +867,16 @@ ops k8s deployments rollout-status api --output json
 ```text
 Rollout Status: api
 
-┏━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓
-┃ Property          ┃ Value      ┃
-┡━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩
+┏━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┓
+┃ Property          ┃ Value       ┃
+┡━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━┩
 │ Status            │ In Progress │
-│ Desired Replicas  │ 3          │
-│ Ready Replicas    │ 2          │
-│ Updated Replicas  │ 3          │
-│ Available         │ 2          │
-│ Progress Deadline │ 10m        │
-└───────────────────┴────────────┘
+│ Desired Replicas  │ 3           │
+│ Ready Replicas    │ 2           │
+│ Updated Replicas  │ 3           │
+│ Available         │ 2           │
+│ Progress Deadline │ 10m         │
+└───────────────────┴─────────────┘
 ```
 
 **Example Output (Complete):**
@@ -884,15 +884,15 @@ Rollout Status: api
 ```text
 Rollout Status: api
 
-┏━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓
-┃ Property          ┃ Value      ┃
-┡━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩
-│ Status            │ Successful │
-│ Desired Replicas  │ 3          │
-│ Ready Replicas    │ 3          │
-│ Updated Replicas  │ 3          │
-│ Available         │ 3          │
-└───────────────────┴────────────┘
+┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓
+┃ Property         ┃ Value      ┃
+┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩
+│ Status           │ Successful │
+│ Desired Replicas │ 3          │
+│ Ready Replicas   │ 3          │
+│ Updated Replicas │ 3          │
+│ Available        │ 3          │
+└──────────────────┴────────────┘
 ```
 
 **Notes:**
@@ -989,12 +989,12 @@ ops k8s statefulsets list -l app=database
 **Example Output (Table):**
 
 ```text
-┏━━━━━━━━━┳━━━━━━━━━━┳━━━━━┳━━━━━━━┳━━━━━━┳━━━━┓
-┃ Name    ┃ Namespace ┃ Ready ┃ Desired ┃ Service ┃ Age ┃
-┡━━━━━━━━━╇━━━━━━━━━━╇━━━━━╇━━━━━━━╇━━━━━━╇━━━━┩
-│ postgres │ data     │ 3   │ 3     │ postgres │ 60d │
-│ redis    │ data     │ 2   │ 2     │ redis    │ 30d │
-└─────────┴──────────┴─────┴───────┴─────────┴─────┘
+┏━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━┳━━━━━┓
+┃ Name     ┃ Namespace ┃ Ready ┃ Desired ┃ Service  ┃ Age ┃
+┡━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━╇━━━━━┩
+│ postgres │ data      │ 3     │ 3       │ postgres │ 60d │
+│ redis    │ data      │ 2     │ 2       │ redis    │ 30d │
+└──────────┴───────────┴───────┴─────────┴──────────┴─────┘
 ```
 
 **Notes:**
@@ -1035,17 +1035,17 @@ ops k8s statefulsets get postgres --output json
 **Example Output (Table):**
 
 ```text
-┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property        ┃ Value            ┃
-┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name            │ postgres         │
-│ Namespace       │ data             │
-│ Service Name    │ postgres         │
-│ Desired Replicas │ 3               │
-│ Ready Replicas  │ 3                │
-│ Image           │ postgres:13      │
-│ Age             │ 60d              │
-└─────────────────┴──────────────────┘
+┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┓
+┃ Property         ┃ Value       ┃
+┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━┩
+│ Name             │ postgres    │
+│ Namespace        │ data        │
+│ Service Name     │ postgres    │
+│ Desired Replicas │ 3           │
+│ Ready Replicas   │ 3           │
+│ Image            │ postgres:13 │
+│ Age              │ 60d         │
+└──────────────────┴─────────────┘
 ```
 
 **Notes:**
@@ -1092,15 +1092,15 @@ ops k8s statefulsets create my-db --image mysql:8 --service-name db --port 3306 
 ```text
 StatefulSet 'postgres' created successfully
 
-┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property        ┃ Value            ┃
-┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name            │ postgres         │
-│ Service Name    │ postgres         │
-│ Desired Replicas │ 3               │
-│ Ready Replicas  │ 0                │
-│ Image           │ postgres:13      │
-└─────────────────┴──────────────────┘
+┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┓
+┃ Property         ┃ Value       ┃
+┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━┩
+│ Name             │ postgres    │
+│ Service Name     │ postgres    │
+│ Desired Replicas │ 3           │
+│ Ready Replicas   │ 0           │
+│ Image            │ postgres:13 │
+└──────────────────┴─────────────┘
 ```
 
 **Creation Examples:**
@@ -1159,14 +1159,14 @@ ops k8s statefulsets update my-db --image mysql:8.1 -n data
 ```text
 StatefulSet 'postgres' updated successfully
 
-┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property        ┃ Value            ┃
-┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name            │ postgres         │
-│ Desired Replicas │ 3               │
-│ Ready Replicas  │ 2                │
-│ Image           │ postgres:14      │
-└─────────────────┴──────────────────┘
+┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┓
+┃ Property         ┃ Value       ┃
+┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━┩
+│ Name             │ postgres    │
+│ Desired Replicas │ 3           │
+│ Ready Replicas   │ 2           │
+│ Image            │ postgres:14 │
+└──────────────────┴─────────────┘
 ```
 
 **Notes:**
@@ -1249,14 +1249,14 @@ ops k8s statefulsets scale my-cluster --replicas 7 -n data
 ```text
 StatefulSet 'postgres' scaled to 5 replicas
 
-┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property        ┃ Value            ┃
-┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name            │ postgres         │
-│ Desired Replicas │ 5               │
-│ Ready Replicas  │ 3                │
-│ Image           │ postgres:13      │
-└─────────────────┴──────────────────┘
+┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┓
+┃ Property         ┃ Value       ┃
+┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━┩
+│ Name             │ postgres    │
+│ Desired Replicas │ 5           │
+│ Ready Replicas   │ 3           │
+│ Image            │ postgres:13 │
+└──────────────────┴─────────────┘
 ```
 
 **Notes:**
@@ -1299,14 +1299,14 @@ ops k8s statefulsets restart my-db
 ```text
 StatefulSet 'postgres' restarted
 
-┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property        ┃ Value            ┃
-┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name            │ postgres         │
-│ Desired Replicas │ 3               │
-│ Ready Replicas  │ 1                │
-│ Status          │ RollingRestart   │
-└─────────────────┴──────────────────┘
+┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
+┃ Property         ┃ Value          ┃
+┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━┩
+│ Name             │ postgres       │
+│ Desired Replicas │ 3              │
+│ Ready Replicas   │ 1              │
+│ Status           │ RollingRestart │
+└──────────────────┴────────────────┘
 ```
 
 **Notes:**
@@ -1347,13 +1347,13 @@ ops k8s daemonsets list --all-namespaces
 **Example Output (Table):**
 
 ```text
-┏━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━┳━━━━━━┳━━━━━┳━━━━━┓
-┃ Name       ┃ Namespace ┃ Desired ┃ Current ┃ Ready ┃ Age ┃
-┡━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━╇━━━━━━╇━━━━━╇━━━━━┩
-│ fluentd    │ logging  │ 3     │ 3     │ 3   │ 90d │
-│ filebeat   │ logging  │ 3     │ 3     │ 3   │ 60d │
-│ node-exporter │ monitoring │ 3 │ 3 │ 3 │ 45d │
-└────────────┴──────────┴───────┴───────┴─────┴─────┘
+┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┳━━━━━━━┳━━━━━┓
+┃ Name          ┃ Namespace  ┃ Desired ┃ Current ┃ Ready ┃ Age ┃
+┡━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━╇━━━━━━━╇━━━━━┩
+│ fluentd       │ logging    │ 3       │ 3       │ 3     │ 90d │
+│ filebeat      │ logging    │ 3       │ 3       │ 3     │ 60d │
+│ node-exporter │ monitoring │ 3       │ 3       │ 3     │ 45d │
+└───────────────┴────────────┴─────────┴─────────┴───────┴─────┘
 ```
 
 **Notes:**
@@ -1394,17 +1394,17 @@ ops k8s daemonsets get fluentd --output json
 **Example Output (Table):**
 
 ```text
-┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property        ┃ Value            ┃
-┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name            │ fluentd          │
-│ Namespace       │ logging          │
-│ Desired         │ 3                │
-│ Current         │ 3                │
-│ Ready           │ 3                │
-│ Image           │ fluent/fluentd:v1.16 │
-│ Age             │ 90d              │
-└─────────────────┴──────────────────┘
+┏━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Property  ┃ Value                ┃
+┡━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━┩
+│ Name      │ fluentd              │
+│ Namespace │ logging              │
+│ Desired   │ 3                    │
+│ Current   │ 3                    │
+│ Ready     │ 3                    │
+│ Image     │ fluent/fluentd:v1.16 │
+│ Age       │ 90d                  │
+└───────────┴──────────────────────┘
 ```
 
 **Notes:**
@@ -1449,14 +1449,14 @@ ops k8s daemonsets create logger --image logging:latest -l component=logging
 ```text
 DaemonSet 'fluentd' created successfully
 
-┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property        ┃ Value            ┃
-┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name            │ fluentd          │
-│ Desired         │ 3                │
-│ Current         │ 0                │
-│ Image           │ fluent/fluentd:v1.16 │
-└─────────────────┴──────────────────┘
+┏━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Property ┃ Value                ┃
+┡━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━┩
+│ Name     │ fluentd              │
+│ Desired  │ 3                    │
+│ Current  │ 0                    │
+│ Image    │ fluent/fluentd:v1.16 │
+└──────────┴──────────────────────┘
 ```
 
 **Use Cases:**
@@ -1512,14 +1512,14 @@ ops k8s daemonsets update node-exporter --image prom/node-exporter:v1.7
 ```text
 DaemonSet 'fluentd' updated successfully
 
-┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property        ┃ Value            ┃
-┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name            │ fluentd          │
-│ Current         │ 3                │
-│ Ready           │ 2                │
-│ Image           │ fluent/fluentd:v1.17 │
-└─────────────────┴──────────────────┘
+┏━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Property ┃ Value                ┃
+┡━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━┩
+│ Name     │ fluentd              │
+│ Current  │ 3                    │
+│ Ready    │ 2                    │
+│ Image    │ fluent/fluentd:v1.17 │
+└──────────┴──────────────────────┘
 ```
 
 **Notes:**
@@ -1595,14 +1595,14 @@ ops k8s daemonsets restart node-exporter
 ```text
 DaemonSet 'fluentd' restarted
 
-┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property        ┃ Value            ┃
-┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name            │ fluentd          │
-│ Current         │ 1                │
-│ Ready           │ 1                │
-│ Status          │ RollingRestart   │
-└─────────────────┴──────────────────┘
+┏━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
+┃ Property ┃ Value          ┃
+┡━━━━━━━━━━╇━━━━━━━━━━━━━━━━┩
+│ Name     │ fluentd        │
+│ Current  │ 1              │
+│ Ready    │ 1              │
+│ Status   │ RollingRestart │
+└──────────┴────────────────┘
 ```
 
 **Notes:**
@@ -1643,12 +1643,12 @@ ops k8s replicasets list --all-namespaces
 **Example Output (Table):**
 
 ```text
-┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━┳━━━━━━━┳━━━━┓
+┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━┳━━━━━┓
 ┃ Name           ┃ Namespace ┃ Ready ┃ Desired ┃ Age ┃
-┡━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━╇━━━━━━━╇━━━━┩
-│ nginx-abcd1234 │ default  │ 3   │ 3     │ 5d  │
-│ app-1234abcd   │ default  │ 2   │ 2     │ 2d  │
-└────────────────┴──────────┴─────┴───────┴─────┘
+┡━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━╇━━━━━┩
+│ nginx-abcd1234 │ default   │ 3     │ 3       │ 5d  │
+│ app-1234abcd   │ default   │ 2     │ 2       │ 2d  │
+└────────────────┴───────────┴───────┴─────────┴─────┘
 ```
 
 **Notes:**
@@ -1689,16 +1689,16 @@ ops k8s replicasets get nginx-abcd1234 --output json
 **Example Output (Table):**
 
 ```text
-┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property        ┃ Value            ┃
-┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name            │ nginx-abcd1234   │
-│ Namespace       │ default          │
-│ Desired         │ 3                │
-│ Current         │ 3                │
-│ Ready           │ 3                │
-│ Image           │ nginx:1.21       │
-└─────────────────┴──────────────────┘
+┏━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
+┃ Property  ┃ Value          ┃
+┡━━━━━━━━━━━╇━━━━━━━━━━━━━━━━┩
+│ Name      │ nginx-abcd1234 │
+│ Namespace │ default        │
+│ Desired   │ 3              │
+│ Current   │ 3              │
+│ Ready     │ 3              │
+│ Image     │ nginx:1.21     │
+└───────────┴────────────────┘
 ```
 
 **Notes:**

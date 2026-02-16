@@ -81,46 +81,15 @@ Minikube, Kind, on-premises, and more.
 
 The Kubernetes plugin follows a layered architecture for clean separation of concerns:
 
-```text
-┌─────────────────────────────────────────────────────┐
-│              User Interface (CLI)                    │
-│         ops k8s <resource> <action>                 │
-└────────────────┬────────────────────────────────────┘
-                 │
-┌────────────────▼────────────────────────────────────┐
-│      Command Processing Layer                        │
-│  • Typer CLI routing and argument parsing            │
-│  • Validation and error handling                     │
-│  • Output formatting (table, JSON, YAML)            │
-└────────────────┬────────────────────────────────────┘
-                 │
-┌────────────────▼────────────────────────────────────┐
-│      Service Layer (Business Logic)                  │
-│  • WorkloadManager (pods, deployments, etc.)        │
-│  • NetworkingManager (services, ingresses, etc.)    │
-│  • ConfigurationManager (configmaps, secrets, etc.) │
-│  • StorageManager (PVs, PVCs, storage classes)      │
-│  • RBACManager (roles, bindings, accounts)          │
-│  • JobManager (jobs, cronjobs)                      │
-│  • ManifestManager (apply, diff, validate)          │
-│  • StreamingManager (logs, exec, port-forward)      │
-│  • OptimizationManager (analysis, recommendations)  │
-│  • Ecosystem Managers (Helm, ArgoCD, Flux, etc.)    │
-└────────────────┬────────────────────────────────────┘
-                 │
-┌────────────────▼────────────────────────────────────┐
-│      Integration Layer                               │
-│  • Kubernetes Python Client (official SDK)          │
-│  • Subprocess calls for CLI tools (helm, kustomize) │
-│  • External API clients (ArgoCD, Flux, etc.)        │
-│  • File system operations (manifests, configs)      │
-└────────────────┬────────────────────────────────────┘
-                 │
-┌────────────────▼────────────────────────────────────┐
-│      Kubernetes Cluster (API Server)                 │
-│  • etcd (data store)                                │
-│  • Resource definitions and state                   │
-└─────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    A["<b>User Interface - CLI</b><br/>ops k8s &lt;resource&gt; &lt;action&gt;"]
+    B["<b>Command Processing Layer</b><br/>Typer CLI routing · Validation · Output formatting"]
+    C["<b>Service Layer</b><br/>WorkloadManager · NetworkingManager · ConfigurationManager<br/>StorageManager · RBACManager · JobManager · ManifestManager<br/>StreamingManager · OptimizationManager · Ecosystem Managers"]
+    D["<b>Integration Layer</b><br/>Kubernetes Python Client · Subprocess CLI tools<br/>External API clients · File system operations"]
+    E["<b>Kubernetes Cluster</b><br/>API Server · etcd · Resource state"]
+
+    A --> B --> C --> D --> E
 ```
 
 ---
@@ -134,15 +103,16 @@ Before using the Kubernetes plugin, understanding core concepts helps you use it
 A **Pod** is the smallest deployable unit in Kubernetes. It contains one or more containers
 (usually one) that share storage, network, and specifications for how containers should run.
 
-```text
-Pod: my-app-abc123
-  ├── Container: app
-  │   ├── Image: my-app:1.0
-  │   ├── Ports: 8080
-  │   └── Resources: 256Mi RAM, 100m CPU
-  ├── Volume: config
-  │   └── ConfigMap: app-config
-  └── Status: Running
+```mermaid
+graph TD
+    Pod["<b>Pod:</b> my-app-abc123"]
+    Pod --> C["Container: app"]
+    Pod --> V["Volume: config"]
+    Pod --> S["Status: Running"]
+    C --> I["Image: my-app:1.0"]
+    C --> P["Ports: 8080"]
+    C --> R["Resources: 256Mi RAM, 100m CPU"]
+    V --> CM["ConfigMap: app-config"]
 ```
 
 Use `ops k8s pods list`, `ops k8s pods get <pod>`, and `ops k8s pods describe <pod>`
@@ -153,17 +123,18 @@ to view pod information.
 A **Deployment** defines a desired state for managing replicated application pods.
 Deployments handle scaling, rolling updates, and rollbacks automatically.
 
-```text
-Deployment: my-app
-  ├── Replicas: 3 (desired) / 3 (current)
-  ├── Strategy: RollingUpdate
-  │   ├── MaxSurge: 25%
-  │   └── MaxUnavailable: 25%
-  ├── Template:
-  │   ├── Image: my-app:1.0
-  │   ├── Replicas: 3
-  │   └── Selector: app=my-app
-  └── Status: 3 pods running, 0 unavailable
+```mermaid
+graph TD
+    D["<b>Deployment:</b> my-app"]
+    D --> Rep["Replicas: 3 desired / 3 current"]
+    D --> Str["Strategy: RollingUpdate"]
+    D --> T["Template"]
+    D --> St["Status: 3 running, 0 unavailable"]
+    Str --> MS["MaxSurge: 25%"]
+    Str --> MU["MaxUnavailable: 25%"]
+    T --> Img["Image: my-app:1.0"]
+    T --> R["Replicas: 3"]
+    T --> Sel["Selector: app=my-app"]
 ```
 
 Use `ops k8s deployments list`, `ops k8s deployments get <deployment>`, `ops k8s deployments scale`,
@@ -174,14 +145,15 @@ and `ops k8s deployments rollout` to manage deployments.
 A **Service** exposes pods on a stable IP address and DNS name, providing load balancing
 and service discovery to applications.
 
-```text
-Service: my-app-service
-  ├── Type: ClusterIP
-  ├── Cluster IP: 10.0.0.100
-  ├── Port: 80
-  ├── Target Port: 8080
-  ├── Selector: app=my-app
-  └── Endpoints: 3 pods
+```mermaid
+graph TD
+    S["<b>Service:</b> my-app-service"]
+    S --> Ty["Type: ClusterIP"]
+    S --> IP["Cluster IP: 10.0.0.100"]
+    S --> P["Port: 80"]
+    S --> TP["Target Port: 8080"]
+    S --> Sel["Selector: app=my-app"]
+    S --> EP["Endpoints: 3 pods"]
 ```
 
 Service types:
@@ -199,16 +171,17 @@ to manage services.
 **ConfigMaps** store non-sensitive configuration data as key-value pairs.
 **Secrets** store sensitive data like passwords, tokens, and certificates.
 
-```text
-ConfigMap: app-config
-  ├── database_url: "postgres://db:5432"
-  ├── log_level: "info"
-  └── features: "feature_a=true,feature_b=false"
+```mermaid
+graph TD
+    CM["<b>ConfigMap:</b> app-config"]
+    CM --> DB["database_url: postgres://db:5432"]
+    CM --> LL["log_level: info"]
+    CM --> FT["features: feature_a=true, feature_b=false"]
 
-Secret: app-credentials
-  ├── username: "admin" (base64-encoded)
-  ├── password: "secret123" (base64-encoded)
-  └── api_key: "sk-..." (base64-encoded)
+    SC["<b>Secret:</b> app-credentials"]
+    SC --> U["username: admin (base64)"]
+    SC --> PW["password: secret123 (base64)"]
+    SC --> AK["api_key: sk-... (base64)"]
 ```
 
 Use `ops k8s configmaps` and `ops k8s secrets` commands for management.
@@ -218,12 +191,13 @@ Use `ops k8s configmaps` and `ops k8s secrets` commands for management.
 A **Namespace** is a logical cluster partition. Resources can be isolated by namespace
 for multi-tenancy, organization, or environment separation.
 
-```text
-Namespace: production
-  ├── Pods: 42
-  ├── Services: 8
-  ├── Deployments: 6
-  └── Resource Quotas: 32 CPU, 64Gi RAM
+```mermaid
+graph TD
+    NS["<b>Namespace:</b> production"]
+    NS --> P["Pods: 42"]
+    NS --> S["Services: 8"]
+    NS --> D["Deployments: 6"]
+    NS --> RQ["Resource Quotas: 32 CPU, 64Gi RAM"]
 ```
 
 Use `ops k8s namespaces` commands and the `--namespace` flag to manage namespace context.
@@ -233,17 +207,18 @@ Use `ops k8s namespaces` commands and the `--namespace` flag to manage namespace
 **Role-Based Access Control (RBAC)** defines permissions for users and service accounts.
 Resources include Roles (namespace-scoped) and ClusterRoles (cluster-scoped).
 
-```text
-Role: deployment-manager
-  ├── Rules:
-  │   ├── API Group: apps
-  │   ├── Resources: deployments, replicasets
-  │   └── Verbs: get, list, create, update, patch, delete
+```mermaid
+graph TD
+    R["<b>Role:</b> deployment-manager"]
+    R --> Rules["Rules"]
+    Rules --> AG["API Group: apps"]
+    Rules --> Res["Resources: deployments, replicasets"]
+    Rules --> V["Verbs: get, list, create, update, patch, delete"]
 
-RoleBinding: deployment-manager-binding
-  ├── Role: deployment-manager
-  ├── Subject: ServiceAccount/deployer
-  └── Namespace: production
+    RB["<b>RoleBinding:</b> deployment-manager-binding"]
+    RB --> RR["Role: deployment-manager"]
+    RB --> Sub["Subject: ServiceAccount/deployer"]
+    RB --> N["Namespace: production"]
 ```
 
 Use `ops k8s roles`, `ops k8s rolebindings`, `ops k8s service-accounts` for RBAC management.

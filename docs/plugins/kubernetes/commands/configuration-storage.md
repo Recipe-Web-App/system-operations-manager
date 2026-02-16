@@ -99,14 +99,14 @@ ops k8s configmaps list -l app=web-server
 
 ```text
 ConfigMaps
-┌──────────────────┬──────────────┬───────┬──────┐
-│ Name             │ Namespace    │ Keys  │ Age  │
-├──────────────────┼──────────────┼───────┼──────┤
-│ app-config       │ default      │ 3     │ 10d  │
-│ nginx-config     │ default      │ 2     │ 5d   │
-│ db-connection    │ production   │ 4     │ 2d   │
-│ logging-config   │ production   │ 1     │ 1h   │
-└──────────────────┴──────────────┴───────┴──────┘
+┌────────────────┬────────────┬──────┬─────┐
+│ Name           │ Namespace  │ Keys │ Age │
+├────────────────┼────────────┼──────┼─────┤
+│ app-config     │ default    │ 3    │ 10d │
+│ nginx-config   │ default    │ 2    │ 5d  │
+│ db-connection  │ production │ 4    │ 2d  │
+│ logging-config │ production │ 1    │ 1h  │
+└────────────────┴────────────┴──────┴─────┘
 ```
 
 **Notes:**
@@ -138,16 +138,16 @@ ops k8s configmaps get my-config -o yaml
 
 ```text
 ConfigMap: app-config
-┌─────────────────────┬──────────────────────────────────┐
-│ Field               │ Value                            │
-├─────────────────────┼──────────────────────────────────┤
-│ Name                │ app-config                       │
-│ Namespace           │ default                          │
-│ Data Keys           │ 3                                │
-│ Age                 │ 10 days                          │
-│ Created             │ 2024-02-06T15:30:00Z             │
-│ Labels              │ app=web, environment=prod        │
-└─────────────────────┴──────────────────────────────────┘
+┌───────────┬───────────────────────────┐
+│ Field     │ Value                     │
+├───────────┼───────────────────────────┤
+│ Name      │ app-config                │
+│ Namespace │ default                   │
+│ Data Keys │ 3                         │
+│ Age       │ 10 days                   │
+│ Created   │ 2024-02-06T15:30:00Z      │
+│ Labels    │ app=web, environment=prod │
+└───────────┴───────────────────────────┘
 ```
 
 **Notes:**
@@ -179,13 +179,13 @@ ops k8s configmaps get-data my-config -o json
 
 ```text
 ConfigMap Data: app-config
-┌──────────────────────┬────────────────────────────────┐
-│ Key                  │ Value                          │
-├──────────────────────┼────────────────────────────────┤
-│ database.host        │ db.example.com                 │
-│ database.port        │ 5432                           │
-│ app.log_level        │ INFO                           │
-└──────────────────────┴────────────────────────────────┘
+┌───────────────┬────────────────┐
+│ Key           │ Value          │
+├───────────────┼────────────────┤
+│ database.host │ db.example.com │
+│ database.port │ 5432           │
+│ app.log_level │ INFO           │
+└───────────────┴────────────────┘
 ```
 
 **Notes:**
@@ -250,15 +250,15 @@ ops k8s configmaps create db-config \
 
 ```text
 Created ConfigMap: my-config
-┌────────────┬────────────────────────────┐
-│ Field      │ Value                      │
-├────────────┼────────────────────────────┤
-│ Name       │ my-config                  │
-│ Namespace  │ default                    │
-│ Status     │ Created                    │
-│ Data Keys  │ 2                          │
-│ Labels     │ app=web, env=prod          │
-└────────────┴────────────────────────────┘
+┌───────────┬───────────────────┐
+│ Field     │ Value             │
+├───────────┼───────────────────┤
+│ Name      │ my-config         │
+│ Namespace │ default           │
+│ Status    │ Created           │
+│ Data Keys │ 2                 │
+│ Labels    │ app=web, env=prod │
+└───────────┴───────────────────┘
 ```
 
 **Notes:**
@@ -308,15 +308,15 @@ ops k8s configmaps update app-config \
 
 ```text
 Updated ConfigMap: my-config
-┌────────────┬────────────────────────────┐
-│ Field      │ Value                      │
-├────────────┼────────────────────────────┤
-│ Name       │ my-config                  │
-│ Namespace  │ default                    │
-│ Status     │ Updated                    │
-│ Data Keys  │ 3                          │
-│ Modified   │ 2024-02-16T10:45:00Z       │
-└────────────┴────────────────────────────┘
+┌───────────┬──────────────────────┐
+│ Field     │ Value                │
+├───────────┼──────────────────────┤
+│ Name      │ my-config            │
+│ Namespace │ default              │
+│ Status    │ Updated              │
+│ Data Keys │ 3                    │
+│ Modified  │ 2024-02-16T10:45:00Z │
+└───────────┴──────────────────────┘
 ```
 
 **Notes:**
@@ -388,15 +388,15 @@ ops k8s secrets list -l app=api-server
 
 ```text
 Secrets
-┌──────────────────┬──────────────┬──────────────────┬───────┬──────┐
-│ Name             │ Namespace    │ Type             │ Keys  │ Age  │
-├──────────────────┼──────────────┼──────────────────┼───────┼──────┤
-│ db-credentials   │ default      │ Opaque           │ 2     │ 7d   │
-│ api-key          │ default      │ Opaque           │ 1     │ 3d   │
-│ tls-cert         │ default      │ kubernetes.io/tls│ 2     │ 30d  │
-│ registry-auth    │ production   │ kubernetes.io/   │ 1     │ 5d   │
-│                  │              │ dockercfg        │       │      │
-└──────────────────┴──────────────┴──────────────────┴───────┴──────┘
+┌────────────────┬────────────┬───────────────────┬──────┬─────┐
+│ Name           │ Namespace  │ Type              │ Keys │ Age │
+├────────────────┼────────────┼───────────────────┼──────┼─────┤
+│ db-credentials │ default    │ Opaque            │ 2    │ 7d  │
+│ api-key        │ default    │ Opaque            │ 1    │ 3d  │
+│ tls-cert       │ default    │ kubernetes.io/tls │ 2    │ 30d │
+│ registry-auth  │ production │ kubernetes.io/    │ 1    │ 5d  │
+│                │            │ dockercfg         │      │     │
+└────────────────┴────────────┴───────────────────┴──────┴─────┘
 ```
 
 **Notes:**
@@ -428,18 +428,18 @@ ops k8s secrets get my-secret -o yaml
 
 ```text
 Secret: db-credentials
-┌─────────────────────┬──────────────────────────────────┐
-│ Field               │ Value                            │
-├─────────────────────┼──────────────────────────────────┤
-│ Name                │ db-credentials                   │
-│ Namespace           │ default                          │
-│ Type                │ Opaque                           │
-│ Data Keys           │ 2                                │
-│ Age                 │ 7 days                           │
-│ Created             │ 2024-02-09T10:30:00Z             │
-│ Labels              │ app=database, tier=backend       │
-│ Data (Redacted)     │ [REDACTED]                       │
-└─────────────────────┴──────────────────────────────────┘
+┌─────────────────┬────────────────────────────┐
+│ Field           │ Value                      │
+├─────────────────┼────────────────────────────┤
+│ Name            │ db-credentials             │
+│ Namespace       │ default                    │
+│ Type            │ Opaque                     │
+│ Data Keys       │ 2                          │
+│ Age             │ 7 days                     │
+│ Created         │ 2024-02-09T10:30:00Z       │
+│ Labels          │ app=database, tier=backend │
+│ Data (Redacted) │ [REDACTED]                 │
+└─────────────────┴────────────────────────────┘
 ```
 
 **Notes:**
@@ -505,16 +505,16 @@ ops k8s secrets create prod-secrets \
 
 ```text
 Created Secret: my-secret
-┌────────────┬────────────────────────────┐
-│ Field      │ Value                      │
-├────────────┼────────────────────────────┤
-│ Name       │ my-secret                  │
-│ Namespace  │ default                    │
-│ Type       │ Opaque                     │
-│ Status     │ Created                    │
-│ Data Keys  │ 2                          │
-│ Labels     │ app=web, env=prod          │
-└────────────┴────────────────────────────┘
+┌───────────┬───────────────────┐
+│ Field     │ Value             │
+├───────────┼───────────────────┤
+│ Name      │ my-secret         │
+│ Namespace │ default           │
+│ Type      │ Opaque            │
+│ Status    │ Created           │
+│ Data Keys │ 2                 │
+│ Labels    │ app=web, env=prod │
+└───────────┴───────────────────┘
 ```
 
 **Notes:**
@@ -579,16 +579,16 @@ ops k8s secrets create-tls api-tls \
 
 ```text
 Created TLS Secret: my-tls
-┌────────────┬────────────────────────────┐
-│ Field      │ Value                      │
-├────────────┼────────────────────────────┤
-│ Name       │ my-tls                     │
-│ Namespace  │ default                    │
-│ Type       │ kubernetes.io/tls          │
-│ Status     │ Created                    │
-│ Keys       │ 2 (tls.crt, tls.key)       │
-│ Created    │ 2024-02-16T10:45:00Z       │
-└────────────┴────────────────────────────┘
+┌───────────┬──────────────────────┐
+│ Field     │ Value                │
+├───────────┼──────────────────────┤
+│ Name      │ my-tls               │
+│ Namespace │ default              │
+│ Type      │ kubernetes.io/tls    │
+│ Status    │ Created              │
+│ Keys      │ 2 (tls.crt, tls.key) │
+│ Created   │ 2024-02-16T10:45:00Z │
+└───────────┴──────────────────────┘
 ```
 
 **Notes:**
@@ -669,16 +669,16 @@ ops k8s secrets create-docker-registry ecr-auth \
 
 ```text
 Created Docker Registry Secret: my-reg
-┌────────────┬────────────────────────────┐
-│ Field      │ Value                      │
-├────────────┼────────────────────────────┤
-│ Name       │ my-reg                     │
-│ Namespace  │ default                    │
-│ Type       │ kubernetes.io/dockercfg    │
-│ Status     │ Created                    │
-│ Keys       │ 1 (.dockercfg)             │
-│ Created    │ 2024-02-16T10:50:00Z       │
-└────────────┴────────────────────────────┘
+┌───────────┬─────────────────────────┐
+│ Field     │ Value                   │
+├───────────┼─────────────────────────┤
+│ Name      │ my-reg                  │
+│ Namespace │ default                 │
+│ Type      │ kubernetes.io/dockercfg │
+│ Status    │ Created                 │
+│ Keys      │ 1 (.dockercfg)          │
+│ Created   │ 2024-02-16T10:50:00Z    │
+└───────────┴─────────────────────────┘
 ```
 
 **Notes:**
@@ -748,13 +748,13 @@ ops k8s pvs list -o yaml
 
 ```text
 Persistent Volumes
-┌──────────────┬──────────┬─────────────┬────────────────┬──────────┬────────────────┬──────┐
-│ Name         │ Capacity │ Access Mode │ Reclaim Policy │ Status   │ StorageClass   │ Age  │
-├──────────────┼──────────┼─────────────┼────────────────┼──────────┼────────────────┼──────┤
-│ pv-data-01   │ 100Gi    │ RWO         │ Retain         │ Bound    │ fast-ssd       │ 20d  │
-│ pv-data-02   │ 50Gi     │ RWO         │ Delete         │ Bound    │ standard       │ 15d  │
-│ pv-archive   │ 500Gi    │ RWX         │ Retain         │ Available│ slow-hdd       │ 5d   │
-└──────────────┴──────────┴─────────────┴────────────────┴──────────┴────────────────┴──────┘
+┌────────────┬──────────┬─────────────┬────────────────┬───────────┬──────────────┬─────┐
+│ Name       │ Capacity │ Access Mode │ Reclaim Policy │ Status    │ StorageClass │ Age │
+├────────────┼──────────┼─────────────┼────────────────┼───────────┼──────────────┼─────┤
+│ pv-data-01 │ 100Gi    │ RWO         │ Retain         │ Bound     │ fast-ssd     │ 20d │
+│ pv-data-02 │ 50Gi     │ RWO         │ Delete         │ Bound     │ standard     │ 15d │
+│ pv-archive │ 500Gi    │ RWX         │ Retain         │ Available │ slow-hdd     │ 5d  │
+└────────────┴──────────┴─────────────┴────────────────┴───────────┴──────────────┴─────┘
 ```
 
 **Notes:**
@@ -785,20 +785,20 @@ ops k8s pvs get pv-data-01 -o json
 
 ```text
 PersistentVolume: pv-data-01
-┌──────────────────────────┬──────────────────────────────┐
-│ Field                    │ Value                        │
-├──────────────────────────┼──────────────────────────────┤
-│ Name                     │ pv-data-01                   │
-│ Capacity                 │ 100Gi                        │
-│ Access Modes             │ ReadWriteOnce                │
-│ Reclaim Policy           │ Retain                       │
-│ Status                   │ Bound                        │
-│ Claim                    │ default / data-pvc           │
-│ StorageClass             │ fast-ssd                     │
-│ Provisioner              │ ebs.csi.aws.com              │
-│ Age                      │ 20 days                      │
-│ Created                  │ 2024-01-27T14:20:00Z         │
-└──────────────────────────┴──────────────────────────────┘
+┌────────────────┬──────────────────────┐
+│ Field          │ Value                │
+├────────────────┼──────────────────────┤
+│ Name           │ pv-data-01           │
+│ Capacity       │ 100Gi                │
+│ Access Modes   │ ReadWriteOnce        │
+│ Reclaim Policy │ Retain               │
+│ Status         │ Bound                │
+│ Claim          │ default / data-pvc   │
+│ StorageClass   │ fast-ssd             │
+│ Provisioner    │ ebs.csi.aws.com      │
+│ Age            │ 20 days              │
+│ Created        │ 2024-01-27T14:20:00Z │
+└────────────────┴──────────────────────┘
 ```
 
 **Notes:**
@@ -868,13 +868,13 @@ ops k8s pvcs list -l app=database
 
 ```text
 Persistent Volume Claims
-┌─────────────┬──────────────┬──────────┬──────────┬──────────┬──────────────┬────────────────┬──────┐
-│ Name        │ Namespace    │ Status   │ Volume   │ Capacity │ Access Mode  │ StorageClass   │ Age  │
-├─────────────┼──────────────┼──────────┼──────────┼──────────┼──────────────┼────────────────┼──────┤
-│ data-pvc    │ default      │ Bound    │ pv-01    │ 50Gi     │ RWO          │ standard       │ 10d  │
-│ db-storage  │ default      │ Bound    │ pv-02    │ 100Gi    │ RWO          │ fast-ssd       │ 5d   │
-│ logs-pvc    │ production   │ Pending  │ -        │ 20Gi     │ RWX          │ shared         │ 1d   │
-└─────────────┴──────────────┴──────────┴──────────┴──────────┴──────────────┴────────────────┴──────┘
+┌────────────┬────────────┬─────────┬────────┬──────────┬─────────────┬──────────────┬─────┐
+│ Name       │ Namespace  │ Status  │ Volume │ Capacity │ Access Mode │ StorageClass │ Age │
+├────────────┼────────────┼─────────┼────────┼──────────┼─────────────┼──────────────┼─────┤
+│ data-pvc   │ default    │ Bound   │ pv-01  │ 50Gi     │ RWO         │ standard     │ 10d │
+│ db-storage │ default    │ Bound   │ pv-02  │ 100Gi    │ RWO         │ fast-ssd     │ 5d  │
+│ logs-pvc   │ production │ Pending │ -      │ 20Gi     │ RWX         │ shared       │ 1d  │
+└────────────┴────────────┴─────────┴────────┴──────────┴─────────────┴──────────────┴─────┘
 ```
 
 **Notes:**
@@ -906,20 +906,20 @@ ops k8s pvcs get data-pvc -o yaml
 
 ```text
 PVC: data-pvc
-┌──────────────────────────┬──────────────────────────────┐
-│ Field                    │ Value                        │
-├──────────────────────────┼──────────────────────────────┤
-│ Name                     │ data-pvc                     │
-│ Namespace                │ default                      │
-│ Status                   │ Bound                        │
-│ Volume                   │ pv-data-01                   │
-│ Requested Size           │ 50Gi                         │
-│ Access Modes             │ ReadWriteOnce                │
-│ StorageClass             │ standard                     │
-│ Mounted By               │ postgres-0, postgres-1       │
-│ Age                      │ 10 days                      │
-│ Created                  │ 2024-02-06T10:15:00Z         │
-└──────────────────────────┴──────────────────────────────┘
+┌────────────────┬────────────────────────┐
+│ Field          │ Value                  │
+├────────────────┼────────────────────────┤
+│ Name           │ data-pvc               │
+│ Namespace      │ default                │
+│ Status         │ Bound                  │
+│ Volume         │ pv-data-01             │
+│ Requested Size │ 50Gi                   │
+│ Access Modes   │ ReadWriteOnce          │
+│ StorageClass   │ standard               │
+│ Mounted By     │ postgres-0, postgres-1 │
+│ Age            │ 10 days                │
+│ Created        │ 2024-02-06T10:15:00Z   │
+└────────────────┴────────────────────────┘
 ```
 
 **Notes:**
@@ -994,17 +994,17 @@ ops k8s pvcs create logs-pvc \
 
 ```text
 Created PVC: data-pvc
-┌──────────────────┬──────────────────────────────┐
-│ Field            │ Value                        │
-├──────────────────┼──────────────────────────────┤
-│ Name             │ data-pvc                     │
-│ Namespace        │ default                      │
-│ Status           │ Pending                      │
-│ Requested        │ 10Gi                         │
-│ Access Modes     │ ReadWriteOnce                │
-│ StorageClass     │ standard                     │
-│ Created          │ 2024-02-16T11:00:00Z         │
-└──────────────────┴──────────────────────────────┘
+┌──────────────┬──────────────────────┐
+│ Field        │ Value                │
+├──────────────┼──────────────────────┤
+│ Name         │ data-pvc             │
+│ Namespace    │ default              │
+│ Status       │ Pending              │
+│ Requested    │ 10Gi                 │
+│ Access Modes │ ReadWriteOnce        │
+│ StorageClass │ standard             │
+│ Created      │ 2024-02-16T11:00:00Z │
+└──────────────┴──────────────────────┘
 ```
 
 **Notes:**
@@ -1072,13 +1072,13 @@ ops k8s storage-classes list -o json
 
 ```text
 Storage Classes
-┌────────────┬────────────────────┬────────────────┬──────────────┬──────────────┬──────┐
-│ Name       │ Provisioner        │ Reclaim Policy │ Binding Mode │ Allow Expand │ Age  │
-├────────────┼────────────────────┼────────────────┼──────────────┼──────────────┼──────┤
-│ standard   │ pd.csi.storage...  │ Delete         │ Immediate    │ True         │ 30d  │
-│ fast-ssd   │ pd.csi.storage...  │ Delete         │ Immediate    │ True         │ 20d  │
-│ slow-hdd   │ pd.csi.storage...  │ Delete         │ WaitForFirst │ False        │ 15d  │
-└────────────┴────────────────────┴────────────────┴──────────────┴──────────────┴──────┘
+┌──────────┬───────────────────┬────────────────┬──────────────┬──────────────┬─────┐
+│ Name     │ Provisioner       │ Reclaim Policy │ Binding Mode │ Allow Expand │ Age │
+├──────────┼───────────────────┼────────────────┼──────────────┼──────────────┼─────┤
+│ standard │ pd.csi.storage... │ Delete         │ Immediate    │ True         │ 30d │
+│ fast-ssd │ pd.csi.storage... │ Delete         │ Immediate    │ True         │ 20d │
+│ slow-hdd │ pd.csi.storage... │ Delete         │ WaitForFirst │ False        │ 15d │
+└──────────┴───────────────────┴────────────────┴──────────────┴──────────────┴─────┘
 ```
 
 **Notes:**
@@ -1109,18 +1109,18 @@ ops k8s storage-classes get fast-ssd -o yaml
 
 ```text
 StorageClass: standard
-┌──────────────────────────┬──────────────────────────────┐
-│ Field                    │ Value                        │
-├──────────────────────────┼──────────────────────────────┤
-│ Name                     │ standard                     │
-│ Provisioner              │ pd.csi.storage.gke.io        │
-│ Reclaim Policy           │ Delete                       │
-│ Binding Mode             │ Immediate                    │
-│ Allow Volume Expansion   │ True                         │
-│ Parameters               │ type: pd-standard            │
-│ Age                      │ 30 days                      │
-│ Created                  │ 2024-01-17T09:00:00Z         │
-└──────────────────────────┴──────────────────────────────┘
+┌────────────────────────┬───────────────────────┐
+│ Field                  │ Value                 │
+├────────────────────────┼───────────────────────┤
+│ Name                   │ standard              │
+│ Provisioner            │ pd.csi.storage.gke.io │
+│ Reclaim Policy         │ Delete                │
+│ Binding Mode           │ Immediate             │
+│ Allow Volume Expansion │ True                  │
+│ Parameters             │ type: pd-standard     │
+│ Age                    │ 30 days               │
+│ Created                │ 2024-01-17T09:00:00Z  │
+└────────────────────────┴───────────────────────┘
 ```
 
 **Notes:**

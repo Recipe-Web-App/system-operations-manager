@@ -98,14 +98,14 @@ ops k8s service-accounts list -l app=database
 
 ```text
 Service Accounts
-┌──────────────────────┬──────────────┬─────────┬──────┐
-│ Name                 │ Namespace    │ Secrets │ Age  │
-├──────────────────────┼──────────────┼─────────┼──────┤
-│ default              │ default      │ 1       │ 30d  │
-│ app-service-account  │ default      │ 1       │ 15d  │
-│ db-admin             │ production   │ 1       │ 10d  │
-│ ci-runner            │ production   │ 1       │ 5d   │
-└──────────────────────┴──────────────┴─────────┴──────┘
+┌─────────────────────┬────────────┬─────────┬─────┐
+│ Name                │ Namespace  │ Secrets │ Age │
+├─────────────────────┼────────────┼─────────┼─────┤
+│ default             │ default    │ 1       │ 30d │
+│ app-service-account │ default    │ 1       │ 15d │
+│ db-admin            │ production │ 1       │ 10d │
+│ ci-runner           │ production │ 1       │ 5d  │
+└─────────────────────┴────────────┴─────────┴─────┘
 ```
 
 **Notes:**
@@ -138,18 +138,18 @@ ops k8s service-accounts get app-service-account -o yaml
 
 ```text
 ServiceAccount: app-service-account
-┌──────────────────────────┬──────────────────────────────┐
-│ Field                    │ Value                        │
-├──────────────────────────┼──────────────────────────────┤
-│ Name                     │ app-service-account          │
-│ Namespace                │ default                      │
-│ Secrets                  │ 1                            │
-│ Secret Name              │ app-service-account-token... │
-│ Auto-Mount Token         │ True                         │
-│ Age                      │ 15 days                      │
-│ Created                  │ 2024-02-01T12:30:00Z         │
-│ Labels                   │ app=myapp, tier=backend      │
-└──────────────────────────┴──────────────────────────────┘
+┌──────────────────┬──────────────────────────────┐
+│ Field            │ Value                        │
+├──────────────────┼──────────────────────────────┤
+│ Name             │ app-service-account          │
+│ Namespace        │ default                      │
+│ Secrets          │ 1                            │
+│ Secret Name      │ app-service-account-token... │
+│ Auto-Mount Token │ True                         │
+│ Age              │ 15 days                      │
+│ Created          │ 2024-02-01T12:30:00Z         │
+│ Labels           │ app=myapp, tier=backend      │
+└──────────────────┴──────────────────────────────┘
 ```
 
 **Notes:**
@@ -208,16 +208,16 @@ ops k8s service-accounts create job-runner \
 
 ```text
 Created ServiceAccount: my-sa
-┌────────────┬────────────────────────────┐
-│ Field      │ Value                      │
-├────────────┼────────────────────────────┤
-│ Name       │ my-sa                      │
-│ Namespace  │ default                    │
-│ Status     │ Created                    │
-│ Secrets    │ 1                          │
-│ Labels     │ app=web, tier=frontend     │
-│ Created    │ 2024-02-16T12:00:00Z       │
-└────────────┴────────────────────────────┘
+┌───────────┬────────────────────────┐
+│ Field     │ Value                  │
+├───────────┼────────────────────────┤
+│ Name      │ my-sa                  │
+│ Namespace │ default                │
+│ Status    │ Created                │
+│ Secrets   │ 1                      │
+│ Labels    │ app=web, tier=frontend │
+│ Created   │ 2024-02-16T12:00:00Z   │
+└───────────┴────────────────────────┘
 ```
 
 **Notes:**
@@ -289,14 +289,14 @@ ops k8s roles list -l app=auth
 
 ```text
 Roles
-┌────────────────────┬──────────────┬───────┬──────┐
-│ Name               │ Namespace    │ Rules │ Age  │
-├────────────────────┼──────────────┼───────┼──────┤
-│ pod-reader         │ default      │ 1     │ 20d  │
-│ pod-writer         │ default      │ 2     │ 15d  │
-│ configmap-admin    │ production   │ 1     │ 10d  │
-│ secret-reader      │ production   │ 1     │ 5d   │
-└────────────────────┴──────────────┴───────┴──────┘
+┌─────────────────┬────────────┬───────┬─────┐
+│ Name            │ Namespace  │ Rules │ Age │
+├─────────────────┼────────────┼───────┼─────┤
+│ pod-reader      │ default    │ 1     │ 20d │
+│ pod-writer      │ default    │ 2     │ 15d │
+│ configmap-admin │ production │ 1     │ 10d │
+│ secret-reader   │ production │ 1     │ 5d  │
+└─────────────────┴────────────┴───────┴─────┘
 ```
 
 **Notes:**
@@ -329,20 +329,20 @@ ops k8s roles get pod-reader -o yaml
 
 ```text
 Role: pod-reader
-┌──────────────────────────┬──────────────────────────────┐
-│ Field                    │ Value                        │
-├──────────────────────────┼──────────────────────────────┤
-│ Name                     │ pod-reader                   │
-│ Namespace                │ default                      │
-│ Rules                    │ 1                            │
-│ Age                      │ 20 days                      │
-│ Created                  │ 2024-01-27T10:15:00Z         │
-│ Labels                   │ app=monitoring               │
-│ Rules Details:           │                              │
-│  - API Groups: [""]      │                              │
-│  - Resources: ["pods"]   │                              │
-│  - Verbs: ["get","list"] │                              │
-└──────────────────────────┴──────────────────────────────┘
+┌─────────────────────────┬──────────────────────┐
+│ Field                   │ Value                │
+├─────────────────────────┼──────────────────────┤
+│ Name                    │ pod-reader           │
+│ Namespace               │ default              │
+│ Rules                   │ 1                    │
+│ Age                     │ 20 days              │
+│ Created                 │ 2024-01-27T10:15:00Z │
+│ Labels                  │ app=monitoring       │
+│ Rules Details:          │                      │
+│ - API Groups: [""]      │                      │
+│ - Resources: ["pods"]   │                      │
+│ - Verbs: ["get","list"] │                      │
+└─────────────────────────┴──────────────────────┘
 ```
 
 **Notes:**
@@ -426,15 +426,15 @@ ops k8s roles create deployment-manager \
 
 ```text
 Created Role: pod-reader
-┌────────────┬────────────────────────────┐
-│ Field      │ Value                      │
-├────────────┼────────────────────────────┤
-│ Name       │ pod-reader                 │
-│ Namespace  │ default                    │
-│ Status     │ Created                    │
-│ Rules      │ 1                          │
-│ Created    │ 2024-02-16T12:30:00Z       │
-└────────────┴────────────────────────────┘
+┌───────────┬──────────────────────┐
+│ Field     │ Value                │
+├───────────┼──────────────────────┤
+│ Name      │ pod-reader           │
+│ Namespace │ default              │
+│ Status    │ Created              │
+│ Rules     │ 1                    │
+│ Created   │ 2024-02-16T12:30:00Z │
+└───────────┴──────────────────────┘
 ```
 
 **Notes:**
@@ -505,16 +505,16 @@ ops k8s cluster-roles list -o yaml
 
 ```text
 Cluster Roles
-┌────────────────────────┬───────┬──────┐
-│ Name                   │ Rules │ Age  │
-├────────────────────────┼───────┼──────┤
-│ cluster-admin          │ 1     │ 30d  │
-│ admin                  │ 1     │ 30d  │
-│ edit                   │ 1     │ 30d  │
-│ view                   │ 1     │ 30d  │
-│ node-reader            │ 2     │ 15d  │
-│ persistent-vol-admin   │ 1     │ 10d  │
-└────────────────────────┴───────┴──────┘
+┌──────────────────────┬───────┬─────┐
+│ Name                 │ Rules │ Age │
+├──────────────────────┼───────┼─────┤
+│ cluster-admin        │ 1     │ 30d │
+│ admin                │ 1     │ 30d │
+│ edit                 │ 1     │ 30d │
+│ view                 │ 1     │ 30d │
+│ node-reader          │ 2     │ 15d │
+│ persistent-vol-admin │ 1     │ 10d │
+└──────────────────────┴───────┴─────┘
 ```
 
 **Notes:**
@@ -546,19 +546,19 @@ ops k8s cluster-roles get node-reader -o json
 
 ```text
 ClusterRole: cluster-admin
-┌──────────────────────────┬──────────────────────────────┐
-│ Field                    │ Value                        │
-├──────────────────────────┼──────────────────────────────┤
-│ Name                     │ cluster-admin                │
-│ Rules                    │ 1                            │
-│ Age                      │ 30 days                      │
-│ Created                  │ 2024-01-17T08:00:00Z         │
-│ Labels                   │ kubernetes.io/bootstrapping  │
-│ Rules Details:           │                              │
-│  - API Groups: ["*"]     │                              │
-│  - Resources: ["*"]      │                              │
-│  - Verbs: ["*"]          │                              │
-└──────────────────────────┴──────────────────────────────┘
+┌─────────────────────┬─────────────────────────────┐
+│ Field               │ Value                       │
+├─────────────────────┼─────────────────────────────┤
+│ Name                │ cluster-admin               │
+│ Rules               │ 1                           │
+│ Age                 │ 30 days                     │
+│ Created             │ 2024-01-17T08:00:00Z        │
+│ Labels              │ kubernetes.io/bootstrapping │
+│ Rules Details:      │                             │
+│ - API Groups: ["*"] │                             │
+│ - Resources: ["*"]  │                             │
+│ - Verbs: ["*"]      │                             │
+└─────────────────────┴─────────────────────────────┘
 ```
 
 **Notes:**
@@ -629,14 +629,14 @@ ops k8s cluster-roles create storage-admin \
 
 ```text
 Created ClusterRole: node-reader
-┌────────────┬────────────────────────────┐
-│ Field      │ Value                      │
-├────────────┼────────────────────────────┤
-│ Name       │ node-reader                │
-│ Status     │ Created                    │
-│ Rules      │ 1                          │
-│ Created    │ 2024-02-16T13:00:00Z       │
-└────────────┴────────────────────────────┘
+┌─────────┬──────────────────────┐
+│ Field   │ Value                │
+├─────────┼──────────────────────┤
+│ Name    │ node-reader          │
+│ Status  │ Created              │
+│ Rules   │ 1                    │
+│ Created │ 2024-02-16T13:00:00Z │
+└─────────┴──────────────────────┘
 ```
 
 **Notes:**
@@ -706,14 +706,14 @@ ops k8s role-bindings list -l app=auth
 
 ```text
 Role Bindings
-┌──────────────────┬──────────────┬───────────┬──────────────┬──────────┬──────┐
-│ Name             │ Namespace    │ Role Kind │ Role Name    │ Subjects │ Age  │
-├──────────────────┼──────────────┼───────────┼──────────────┼──────────┼──────┤
-│ read-pods        │ default      │ Role      │ pod-reader   │ 1        │ 15d  │
-│ admin-binding    │ default      │ Role      │ admin        │ 2        │ 10d  │
-│ db-access        │ production   │ Role      │ db-admin     │ 1        │ 5d   │
-│ app-config       │ production   │ Role      │ configmap... │ 3        │ 2d   │
-└──────────────────┴──────────────┴───────────┴──────────────┴──────────┴──────┘
+┌───────────────┬────────────┬───────────┬──────────────┬──────────┬─────┐
+│ Name          │ Namespace  │ Role Kind │ Role Name    │ Subjects │ Age │
+├───────────────┼────────────┼───────────┼──────────────┼──────────┼─────┤
+│ read-pods     │ default    │ Role      │ pod-reader   │ 1        │ 15d │
+│ admin-binding │ default    │ Role      │ admin        │ 2        │ 10d │
+│ db-access     │ production │ Role      │ db-admin     │ 1        │ 5d  │
+│ app-config    │ production │ Role      │ configmap... │ 3        │ 2d  │
+└───────────────┴────────────┴───────────┴──────────────┴──────────┴─────┘
 ```
 
 **Notes:**
@@ -745,19 +745,19 @@ ops k8s role-bindings get read-pods -o yaml
 
 ```text
 RoleBinding: read-pods
-┌──────────────────────────┬──────────────────────────────┐
-│ Field                    │ Value                        │
-├──────────────────────────┼──────────────────────────────┤
-│ Name                     │ read-pods                    │
-│ Namespace                │ default                      │
-│ Role Reference           │ Role/pod-reader              │
-│ Subjects                 │ 1                            │
-│ Subject Type             │ ServiceAccount               │
-│ Subject Name             │ app-reader                   │
-│ Age                      │ 15 days                      │
-│ Created                  │ 2024-02-01T14:20:00Z         │
-│ Labels                   │ app=monitoring               │
-└──────────────────────────┴──────────────────────────────┘
+┌────────────────┬──────────────────────┐
+│ Field          │ Value                │
+├────────────────┼──────────────────────┤
+│ Name           │ read-pods            │
+│ Namespace      │ default              │
+│ Role Reference │ Role/pod-reader      │
+│ Subjects       │ 1                    │
+│ Subject Type   │ ServiceAccount       │
+│ Subject Name   │ app-reader           │
+│ Age            │ 15 days              │
+│ Created        │ 2024-02-01T14:20:00Z │
+│ Labels         │ app=monitoring       │
+└────────────────┴──────────────────────┘
 ```
 
 **Notes:**
@@ -854,16 +854,16 @@ ops k8s role-bindings create production-admin \
 
 ```text
 Created RoleBinding: read-pods
-┌────────────┬────────────────────────────┐
-│ Field      │ Value                      │
-├────────────┼────────────────────────────┤
-│ Name       │ read-pods                  │
-│ Namespace  │ default                    │
-│ Status     │ Created                    │
-│ Role       │ pod-reader                 │
-│ Subjects   │ 1                          │
-│ Created    │ 2024-02-16T13:30:00Z       │
-└────────────┴────────────────────────────┘
+┌───────────┬──────────────────────┐
+│ Field     │ Value                │
+├───────────┼──────────────────────┤
+│ Name      │ read-pods            │
+│ Namespace │ default              │
+│ Status    │ Created              │
+│ Role      │ pod-reader           │
+│ Subjects  │ 1                    │
+│ Created   │ 2024-02-16T13:30:00Z │
+└───────────┴──────────────────────┘
 ```
 
 **Notes:**
@@ -934,14 +934,14 @@ ops k8s cluster-role-bindings list -o yaml
 
 ```text
 Cluster Role Bindings
-┌──────────────────────────┬───────────┬────────────────┬──────────┬──────┐
-│ Name                     │ Role Kind │ Role Name      │ Subjects │ Age  │
-├──────────────────────────┼───────────┼────────────────┼──────────┼──────┤
-│ cluster-admin            │ ClusterRole│ cluster-admin │ 1        │ 30d  │
-│ system:kube-apiserver    │ ClusterRole│ system:master │ 1        │ 30d  │
-│ node-manager-binding     │ ClusterRole│ node-reader   │ 2        │ 15d  │
-│ persistent-vol-admin-... │ ClusterRole│ persistent... │ 1        │ 10d  │
-└──────────────────────────┴───────────┴────────────────┴──────────┴──────┘
+┌──────────────────────────┬─────────────┬───────────────┬──────────┬─────┐
+│ Name                     │ Role Kind   │ Role Name     │ Subjects │ Age │
+├──────────────────────────┼─────────────┼───────────────┼──────────┼─────┤
+│ cluster-admin            │ ClusterRole │ cluster-admin │ 1        │ 30d │
+│ system:kube-apiserver    │ ClusterRole │ system:master │ 1        │ 30d │
+│ node-manager-binding     │ ClusterRole │ node-reader   │ 2        │ 15d │
+│ persistent-vol-admin-... │ ClusterRole │ persistent... │ 1        │ 10d │
+└──────────────────────────┴─────────────┴───────────────┴──────────┴─────┘
 ```
 
 **Notes:**
@@ -972,18 +972,18 @@ ops k8s cluster-role-bindings get node-manager-binding -o json
 
 ```text
 ClusterRoleBinding: cluster-admin
-┌──────────────────────────┬──────────────────────────────┐
-│ Field                    │ Value                        │
-├──────────────────────────┼──────────────────────────────┤
-│ Name                     │ cluster-admin                │
-│ Cluster Role Reference   │ ClusterRole/cluster-admin    │
-│ Subjects                 │ 1                            │
-│ Subject Type             │ ServiceAccount               │
-│ Subject Name             │ admin                        │
-│ Subject Namespace        │ kube-system                  │
-│ Age                      │ 30 days                      │
-│ Created                  │ 2024-01-17T08:00:00Z         │
-└──────────────────────────┴──────────────────────────────┘
+┌────────────────────────┬───────────────────────────┐
+│ Field                  │ Value                     │
+├────────────────────────┼───────────────────────────┤
+│ Name                   │ cluster-admin             │
+│ Cluster Role Reference │ ClusterRole/cluster-admin │
+│ Subjects               │ 1                         │
+│ Subject Type           │ ServiceAccount            │
+│ Subject Name           │ admin                     │
+│ Subject Namespace      │ kube-system               │
+│ Age                    │ 30 days                   │
+│ Created                │ 2024-01-17T08:00:00Z      │
+└────────────────────────┴───────────────────────────┘
 ```
 
 **Notes:**
@@ -1077,15 +1077,15 @@ ops k8s cluster-role-bindings create monitoring-access \
 
 ```text
 Created ClusterRoleBinding: admin-binding
-┌────────────┬────────────────────────────┐
-│ Field      │ Value                      │
-├────────────┼────────────────────────────┤
-│ Name       │ admin-binding              │
-│ Status     │ Created                    │
-│ ClusterRole│ cluster-admin              │
-│ Subjects   │ 1                          │
-│ Created    │ 2024-02-16T14:00:00Z       │
-└────────────┴────────────────────────────┘
+┌─────────────┬──────────────────────┐
+│ Field       │ Value                │
+├─────────────┼──────────────────────┤
+│ Name        │ admin-binding        │
+│ Status      │ Created              │
+│ ClusterRole │ cluster-admin        │
+│ Subjects    │ 1                    │
+│ Created     │ 2024-02-16T14:00:00Z │
+└─────────────┴──────────────────────┘
 ```
 
 **Notes:**

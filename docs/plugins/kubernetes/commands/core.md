@@ -79,15 +79,15 @@ ops k8s status -o yaml
 **Example Output (Table):**
 
 ```text
-┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┓
-┃ Property        ┃ Value           ┃
-┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━┩
-│ Context         │ production      │
-│ Namespace       │ default         │
-│ Connected       │ Yes             │
-│ Cluster Version │ v1.27.4         │
-│ Nodes           │ 3               │
-└─────────────────┴─────────────────┘
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓
+┃ Property        ┃ Value      ┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩
+│ Context         │ production │
+│ Namespace       │ default    │
+│ Connected       │ Yes        │
+│ Cluster Version │ v1.27.4    │
+│ Nodes           │ 3          │
+└─────────────────┴────────────┘
 ```
 
 **Example Output (JSON):**
@@ -245,16 +245,16 @@ ops k8s cluster-info -o yaml
 **Example Output (Table):**
 
 ```text
-┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Property       ┃ Value                  ┃
-┡━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ api_server     │ https://10.0.0.1:6443  │
-│ version        │ v1.27.4                │
-│ platform       │ linux/amd64            │
-│ git_version    │ v1.27.4                │
-│ git_commit     │ 5abcdef123456          │
-│ build_date     │ 2023-08-15T12:00:00Z   │
-└────────────────┴────────────────────────┘
+┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Property    ┃ Value                 ┃
+┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━┩
+│ api_server  │ https://10.0.0.1:6443 │
+│ version     │ v1.27.4               │
+│ platform    │ linux/amd64           │
+│ git_version │ v1.27.4               │
+│ git_commit  │ 5abcdef123456         │
+│ build_date  │ 2023-08-15T12:00:00Z  │
+└─────────────┴───────────────────────┘
 ```
 
 **Example Output (JSON):**
@@ -308,13 +308,13 @@ ops k8s nodes list --output json
 **Example Output (Table):**
 
 ```text
-┏━━━━━━━━━━━━┳━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━┓
-┃ Name       ┃ Status ┃ Roles        ┃ Version   ┃ Internal-IP ┃ Age      ┃
-┡━━━━━━━━━━━━╇━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━┩
-│ control-1  │ Ready │ control-plane │ v1.27.4  │ 10.0.0.10   │ 365d     │
-│ worker-1   │ Ready │ <none>        │ v1.27.4  │ 10.0.0.11   │ 90d      │
-│ worker-2   │ Ready │ <none>        │ v1.27.4  │ 10.0.0.12   │ 45d      │
-└────────────┴───────┴──────────────┴──────────┴─────────────┴──────────┘
+┏━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━┓
+┃ Name      ┃ Status ┃ Roles         ┃ Version ┃ Internal-IP ┃ Age  ┃
+┡━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━┩
+│ control-1 │ Ready  │ control-plane │ v1.27.4 │ 10.0.0.10   │ 365d │
+│ worker-1  │ Ready  │ <none>        │ v1.27.4 │ 10.0.0.11   │ 90d  │
+│ worker-2  │ Ready  │ <none>        │ v1.27.4 │ 10.0.0.12   │ 45d  │
+└───────────┴────────┴───────────────┴─────────┴─────────────┴──────┘
 ```
 
 **Example Output (JSON):**
@@ -394,23 +394,23 @@ ops k8s nodes get worker-2 -o yaml
 **Example Output (Table):**
 
 ```text
-┏━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Property           ┃ Value                    ┃
-┡━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ Name               │ worker-1                 │
-│ Status             │ Ready                    │
-│ Roles              │ <none>                   │
-│ Version            │ v1.27.4                  │
-│ Internal-IP        │ 10.0.0.11                │
+┏━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Property           ┃ Value                     ┃
+┡━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ Name               │ worker-1                  │
+│ Status             │ Ready                     │
+│ Roles              │ <none>                    │
+│ Version            │ v1.27.4                   │
+│ Internal-IP        │ 10.0.0.11                 │
 │ Hostname           │ ip-10-0-0-11.ec2.internal │
-│ OS Image           │ Ubuntu 20.04.6 LTS       │
-│ Kernel Version     │ 5.15.0-1050-aws          │
-│ Capacity CPU       │ 4                        │
-│ Capacity Memory    │ 16Gi                     │
-│ Allocatable CPU    │ 3900m                    │
-│ Allocatable Memory │ 15500Mi                  │
-│ Age                │ 90d                      │
-└────────────────────┴──────────────────────────┘
+│ OS Image           │ Ubuntu 20.04.6 LTS        │
+│ Kernel Version     │ 5.15.0-1050-aws           │
+│ Capacity CPU       │ 4                         │
+│ Capacity Memory    │ 16Gi                      │
+│ Allocatable CPU    │ 3900m                     │
+│ Allocatable Memory │ 15500Mi                   │
+│ Age                │ 90d                       │
+└────────────────────┴───────────────────────────┘
 ```
 
 **Example Output (YAML):**
@@ -480,18 +480,18 @@ ops k8s events list --output json
 **Example Output (Table):**
 
 ```text
-┏━━━━━━━━━━━━━━━━━┳━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━┓
-┃ Last Seen       ┃ Type ┃ Reason        ┃ Source ┃ Message               ┃ Cnt ┃
-┡━━━━━━━━━━━━━━━━━╇━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━┩
-│ 1s             │ Normal │ Pulled       │ kubelet │ Successfully pulled  │ 1   │
-│                │       │              │        │ image nginx:latest   │     │
-│ 2s             │ Normal │ Created      │ kubelet │ Created container    │ 1   │
-│                │       │              │        │ web                  │     │
-│ 5s             │ Normal │ Started      │ kubelet │ Started container    │ 1   │
-│                │       │              │        │ web                  │     │
-│ 1h             │ Warning │ BackOff     │ kubelet │ Back-off restarting  │ 12  │
-│                │        │              │        │ failed container     │     │
-└─────────────────┴────────┴──────────────┴────────┴───────────────────────┴─────┘
+┏━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━┳━━━━━┓
+┃ Last Seen ┃ Type    ┃ Reason  ┃ Source  ┃ Message             ┃ Cnt ┃
+┡━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━╇━━━━━┩
+│ 1s        │ Normal  │ Pulled  │ kubelet │ Successfully pulled │ 1   │
+│           │         │         │         │ image nginx:latest  │     │
+│ 2s        │ Normal  │ Created │ kubelet │ Created container   │ 1   │
+│           │         │         │         │ web                 │     │
+│ 5s        │ Normal  │ Started │ kubelet │ Started container   │ 1   │
+│           │         │         │         │ web                 │     │
+│ 1h        │ Warning │ BackOff │ kubelet │ Back-off restarting │ 12  │
+│           │         │         │         │ failed container    │     │
+└───────────┴─────────┴─────────┴─────────┴─────────────────────┴─────┘
 ```
 
 **Example Output (JSON):**
@@ -572,17 +572,17 @@ ops k8s namespaces list --output json
 **Example Output (Table):**
 
 ```text
-┏━━━━━━━━━━━━━━━┳━━━━━━┳━━━━━━┓
-┃ Name          ┃ Status ┃ Age  ┃
-┡━━━━━━━━━━━━━━━╇━━━━━━╇━━━━━━┩
-│ default       │ Active │ 1y   │
-│ kube-system   │ Active │ 1y   │
-│ kube-public   │ Active │ 1y   │
-│ kube-node-lease │ Active │ 1y │
-│ production    │ Active │ 90d  │
-│ staging       │ Active │ 60d  │
-│ dev           │ Active │ 30d  │
-└───────────────┴────────┴──────┘
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━┓
+┃ Name            ┃ Status ┃ Age ┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━┩
+│ default         │ Active │ 1y  │
+│ kube-system     │ Active │ 1y  │
+│ kube-public     │ Active │ 1y  │
+│ kube-node-lease │ Active │ 1y  │
+│ production      │ Active │ 90d │
+│ staging         │ Active │ 60d │
+│ dev             │ Active │ 30d │
+└─────────────────┴────────┴─────┘
 ```
 
 **Example Output (JSON):**
@@ -642,15 +642,15 @@ ops k8s namespaces get staging --output json
 **Example Output (Table):**
 
 ```text
-┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property     ┃ Value            ┃
-┡━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name         │ production       │
-│ Status       │ Active           │
-│ Age          │ 90d              │
-│ Labels       │ env: production  │
-│              │ team: platform   │
-└──────────────┴──────────────────┘
+┏━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┓
+┃ Property ┃ Value           ┃
+┡━━━━━━━━━━╇━━━━━━━━━━━━━━━━━┩
+│ Name     │ production      │
+│ Status   │ Active          │
+│ Age      │ 90d             │
+│ Labels   │ env: production │
+│          │ team: platform  │
+└──────────┴─────────────────┘
 ```
 
 **Example Output (YAML):**
@@ -706,14 +706,14 @@ ops k8s namespaces create test -l env=test -o json
 **Example Output (Table):**
 
 ```text
-┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property     ┃ Value            ┃
-┡━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name         │ production       │
-│ Status       │ Active           │
-│ Age          │ 0s               │
-│ Labels       │ env: production  │
-└──────────────┴──────────────────┘
+┏━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┓
+┃ Property ┃ Value           ┃
+┡━━━━━━━━━━╇━━━━━━━━━━━━━━━━━┩
+│ Name     │ production      │
+│ Status   │ Active          │
+│ Age      │ 0s              │
+│ Labels   │ env: production │
+└──────────┴─────────────────┘
 ```
 
 **Example Output (JSON):**

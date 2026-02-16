@@ -84,14 +84,14 @@ ops k8s services list --output json
 **Example Output (Table):**
 
 ```text
-┏━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━┳━━━━┓
-┃ Name          ┃ Namespace ┃ Type     ┃ Cluster-IP ┃ External-IP ┃ Ports ┃ Age ┃
-┡━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━╇━━━━┩
-│ kubernetes    │ default  │ ClusterIP │ 10.0.0.1 │ <none>    │ 443   │ 1y  │
-│ nginx         │ default  │ ClusterIP │ 10.0.1.5 │ <none>    │ 80    │ 30d │
-│ web-api       │ default  │ LoadBalancer │ 10.0.1.10 │ 34.56.78.90 │ 80 │ 15d │
-│ db-internal   │ default  │ ClusterIP │ 10.0.1.20 │ <none>    │ 5432  │ 7d  │
-└───────────────┴──────────┴──────────┴──────────┴───────────┴───────┴─────┘
+┏━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━┳━━━━━┓
+┃ Name        ┃ Namespace ┃ Type         ┃ Cluster-IP ┃ External-IP ┃ Ports ┃ Age ┃
+┡━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━╇━━━━━┩
+│ kubernetes  │ default   │ ClusterIP    │ 10.0.0.1   │ <none>      │ 443   │ 1y  │
+│ nginx       │ default   │ ClusterIP    │ 10.0.1.5   │ <none>      │ 80    │ 30d │
+│ web-api     │ default   │ LoadBalancer │ 10.0.1.10  │ 34.56.78.90 │ 80    │ 15d │
+│ db-internal │ default   │ ClusterIP    │ 10.0.1.20  │ <none>      │ 5432  │ 7d  │
+└─────────────┴───────────┴──────────────┴────────────┴─────────────┴───────┴─────┘
 ```
 
 **Service Types:**
@@ -159,20 +159,20 @@ ops k8s services get db-internal -o yaml
 **Example Output (Table):**
 
 ```text
-┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property        ┃ Value            ┃
-┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name            │ web-api          │
-│ Namespace       │ default          │
-│ Type            │ LoadBalancer     │
-│ Cluster IP      │ 10.0.1.10        │
-│ External IP     │ 34.56.78.90      │
-│ Ports           │ 80:30080/TCP     │
-│ Selector        │ app: web         │
-│                 │ version: 1       │
-│ Session Affinity │ None            │
-│ Age             │ 15d              │
-└─────────────────┴──────────────────┘
+┏━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┓
+┃ Property         ┃ Value        ┃
+┡━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━┩
+│ Name             │ web-api      │
+│ Namespace        │ default      │
+│ Type             │ LoadBalancer │
+│ Cluster IP       │ 10.0.1.10    │
+│ External IP      │ 34.56.78.90  │
+│ Ports            │ 80:30080/TCP │
+│ Selector         │ app: web     │
+│                  │ version: 1   │
+│ Session Affinity │ None         │
+│ Age              │ 15d          │
+└──────────────────┴──────────────┘
 ```
 
 **Example Output (YAML):**
@@ -286,15 +286,15 @@ ops k8s services create cache --type ClusterIP \
 ```text
 Created Service: web-api
 
-┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property        ┃ Value            ┃
-┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name            │ web-api          │
-│ Type            │ LoadBalancer     │
-│ Cluster IP      │ 10.0.1.100       │
-│ Ports           │ 80:8080/TCP      │
-│ Selector        │ app: web         │
-└─────────────────┴──────────────────┘
+┏━━━━━━━━━━━━┳━━━━━━━━━━━━━━┓
+┃ Property   ┃ Value        ┃
+┡━━━━━━━━━━━━╇━━━━━━━━━━━━━━┩
+│ Name       │ web-api      │
+│ Type       │ LoadBalancer │
+│ Cluster IP │ 10.0.1.100   │
+│ Ports      │ 80:8080/TCP  │
+│ Selector   │ app: web     │
+└────────────┴──────────────┘
 ```
 
 **Selector Matching:**
@@ -370,15 +370,15 @@ ops k8s services update internal-db -n backend --selector app=postgres
 ```text
 Updated Service: web-api
 
-┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property        ┃ Value            ┃
-┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name            │ web-api          │
-│ Type            │ LoadBalancer     │
-│ Cluster IP      │ 10.0.1.100       │
-│ Ports           │ 80:8080/TCP      │
-│ Selector        │ app: web         │
-└─────────────────┴──────────────────┘
+┏━━━━━━━━━━━━┳━━━━━━━━━━━━━━┓
+┃ Property   ┃ Value        ┃
+┡━━━━━━━━━━━━╇━━━━━━━━━━━━━━┩
+│ Name       │ web-api      │
+│ Type       │ LoadBalancer │
+│ Cluster IP │ 10.0.1.100   │
+│ Ports      │ 80:8080/TCP  │
+│ Selector   │ app: web     │
+└────────────┴──────────────┘
 ```
 
 **Notes:**
@@ -470,13 +470,13 @@ ops k8s ingresses list --output json
 **Example Output (Table):**
 
 ```text
-┏━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━┓
-┃ Name          ┃ Namespace ┃ Class ┃ Hosts           ┃ Addresses  ┃ Age ┃
-┡━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━┩
-│ web           │ default  │ nginx │ example.com     │ 34.56.78.1 │ 30d │
-│ api           │ default  │ nginx │ api.example.com │ 34.56.78.1 │ 15d │
-│ admin         │ default  │ nginx │ admin.prod      │ pending    │ 2d  │
-└───────────────┴──────────┴───────┴─────────────────┴────────────┴─────┘
+┏━━━━━━━┳━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━┓
+┃ Name  ┃ Namespace ┃ Class ┃ Hosts           ┃ Addresses  ┃ Age ┃
+┡━━━━━━━╇━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━┩
+│ web   │ default   │ nginx │ example.com     │ 34.56.78.1 │ 30d │
+│ api   │ default   │ nginx │ api.example.com │ 34.56.78.1 │ 15d │
+│ admin │ default   │ nginx │ admin.prod      │ pending    │ 2d  │
+└───────┴───────────┴───────┴─────────────────┴────────────┴─────┘
 ```
 
 **Ingress Class:**
@@ -527,18 +527,18 @@ ops k8s ingresses get admin -o yaml
 **Example Output (Table):**
 
 ```text
-┏━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property          ┃ Value            ┃
-┡━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name              │ web              │
-│ Namespace         │ default          │
-│ Ingress Class     │ nginx            │
-│ Hosts             │ example.com      │
-│ Address           │ 34.56.78.1       │
-│ Rules             │ 1                │
-│ TLS Enabled       │ Yes              │
-│ Age               │ 30d              │
-└───────────────────┴──────────────────┘
+┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┓
+┃ Property      ┃ Value       ┃
+┡━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━┩
+│ Name          │ web         │
+│ Namespace     │ default     │
+│ Ingress Class │ nginx       │
+│ Hosts         │ example.com │
+│ Address       │ 34.56.78.1  │
+│ Rules         │ 1           │
+│ TLS Enabled   │ Yes         │
+│ Age           │ 30d         │
+└───────────────┴─────────────┘
 ```
 
 **Example Output (YAML):**
@@ -673,15 +673,15 @@ ops k8s ingresses create secure --class-name nginx \
 ```text
 Created Ingress: web
 
-┏━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property          ┃ Value            ┃
-┡━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name              │ web              │
-│ Ingress Class     │ nginx            │
-│ Hosts             │ example.com      │
-│ Rules             │ 1                │
-│ TLS Enabled       │ Yes              │
-└───────────────────┴──────────────────┘
+┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┓
+┃ Property      ┃ Value       ┃
+┡━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━┩
+│ Name          │ web         │
+│ Ingress Class │ nginx       │
+│ Hosts         │ example.com │
+│ Rules         │ 1           │
+│ TLS Enabled   │ Yes         │
+└───────────────┴─────────────┘
 ```
 
 **Notes:**
@@ -743,14 +743,14 @@ ops k8s ingresses update internal -n backend --class-name internal
 ```text
 Updated Ingress: web
 
-┏━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property          ┃ Value            ┃
-┡━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name              │ web              │
-│ Ingress Class     │ nginx            │
-│ Hosts             │ example.com      │
-│ Rules             │ 1                │
-└───────────────────┴──────────────────┘
+┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┓
+┃ Property      ┃ Value       ┃
+┡━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━┩
+│ Name          │ web         │
+│ Ingress Class │ nginx       │
+│ Hosts         │ example.com │
+│ Rules         │ 1           │
+└───────────────┴─────────────┘
 ```
 
 **Notes:**
@@ -835,14 +835,14 @@ ops k8s network-policies list --output json
 **Example Output (Table):**
 
 ```text
-┏━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━┓
-┃ Name          ┃ Namespace ┃ Policy Types ┃ Ingress Rules ┃ Egress Rules ┃ Age ┃
-┡━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━┩
-│ default-deny  │ default  │ Ingress     │ 0            │ -           │ 60d │
-│ allow-web     │ default  │ Ingress     │ 1            │ -           │ 45d │
-│ frontend-egress │ default │ Egress    │ -            │ 2           │ 30d │
-│ db-allow      │ default  │ Ingress,Egress │ 1       │ 1           │ 15d │
-└───────────────┴──────────┴─────────────┴──────────────┴─────────────┴─────┘
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━┓
+┃ Name            ┃ Namespace ┃ Policy Types   ┃ Ingress Rules ┃ Egress Rules ┃ Age ┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━┩
+│ default-deny    │ default   │ Ingress        │ 0             │ -            │ 60d │
+│ allow-web       │ default   │ Ingress        │ 1             │ -            │ 45d │
+│ frontend-egress │ default   │ Egress         │ -             │ 2            │ 30d │
+│ db-allow        │ default   │ Ingress,Egress │ 1             │ 1            │ 15d │
+└─────────────────┴───────────┴────────────────┴───────────────┴──────────────┴─────┘
 ```
 
 **Policy Type:**
@@ -892,17 +892,17 @@ ops k8s network-policies get db-policy -o yaml
 **Example Output (Table):**
 
 ```text
-┏━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property            ┃ Value            ┃
-┡━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name                │ allow-web        │
-│ Namespace           │ default          │
-│ Pod Selector        │ app: web         │
-│ Policy Types        │ Ingress          │
-│ Ingress Rules       │ 1                │
-│ Egress Rules        │ -                │
-│ Age                 │ 45d              │
-└─────────────────────┴──────────────────┘
+┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━┓
+┃ Property      ┃ Value     ┃
+┡━━━━━━━━━━━━━━━╇━━━━━━━━━━━┩
+│ Name          │ allow-web │
+│ Namespace     │ default   │
+│ Pod Selector  │ app: web  │
+│ Policy Types  │ Ingress   │
+│ Ingress Rules │ 1         │
+│ Egress Rules  │ -         │
+│ Age           │ 45d       │
+└───────────────┴───────────┘
 ```
 
 **Example Output (YAML):**
@@ -1008,15 +1008,15 @@ ops k8s network-policies create db-access \
 ```text
 Created NetworkPolicy: allow-web
 
-┏━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property            ┃ Value            ┃
-┡━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name                │ allow-web        │
-│ Pod Selector        │ app: web         │
-│ Policy Types        │ Ingress          │
-│ Ingress Rules       │ 0                │
-│ Egress Rules        │ -                │
-└─────────────────────┴──────────────────┘
+┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━┓
+┃ Property      ┃ Value     ┃
+┡━━━━━━━━━━━━━━━╇━━━━━━━━━━━┩
+│ Name          │ allow-web │
+│ Pod Selector  │ app: web  │
+│ Policy Types  │ Ingress   │
+│ Ingress Rules │ 0         │
+│ Egress Rules  │ -         │
+└───────────────┴───────────┘
 ```
 
 **Policy Type Considerations:**

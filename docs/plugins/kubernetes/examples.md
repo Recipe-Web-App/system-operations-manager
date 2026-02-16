@@ -48,15 +48,15 @@ ops k8s status
 **Expected Output**:
 
 ```text
-┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
-┃ Property        ┃ Value           ┃
-┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━┩
-│ Context         │ minikube        │
-│ Namespace       │ default         │
-│ Connected       │ Yes             │
-│ Cluster Version │ v1.27.4         │
-│ Nodes           │ 1               │
-└─────────────────┴─────────────────┘
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┓
+┃ Property        ┃ Value    ┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━┩
+│ Context         │ minikube │
+│ Namespace       │ default  │
+│ Connected       │ Yes      │
+│ Cluster Version │ v1.27.4  │
+│ Nodes           │ 1        │
+└─────────────────┴──────────┘
 ```
 
 **Step 2: List Available Contexts**
@@ -70,12 +70,12 @@ ops k8s contexts
 **Expected Output**:
 
 ```text
-┏━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━┓
-┃   ┃ Name     ┃ Cluster       ┃ Namespace┃
-┡━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━┩
-│ * │ minikube │ minikube      │ default  │
-│   │ docker   │ docker-for-desktop │ default  │
-└───┴──────────┴───────────────┴──────────┘
+┏━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┓
+┃   ┃ Name     ┃ Cluster            ┃ Namespace ┃
+┡━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━┩
+│ * │ minikube │ minikube           │ default   │
+│   │ docker   │ docker-for-desktop │ default   │
+└───┴──────────┴────────────────────┴───────────┘
 ```
 
 **Step 3: View Cluster Information**
@@ -89,15 +89,15 @@ ops k8s cluster-info
 **Expected Output**:
 
 ```text
-┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Property      ┃ Value                    ┃
-┡━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ api_server    │ https://127.0.0.1:32768  │
-│ version       │ v1.27.4                  │
-│ platform      │ linux/amd64              │
-│ git_version   │ v1.27.4                  │
-│ build_date    │ 2023-08-16T12:34:56Z     │
-└───────────────┴──────────────────────────┘
+┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Property    ┃ Value                   ┃
+┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ api_server  │ https://127.0.0.1:32768 │
+│ version     │ v1.27.4                 │
+│ platform    │ linux/amd64             │
+│ git_version │ v1.27.4                 │
+│ build_date  │ 2023-08-16T12:34:56Z    │
+└─────────────┴─────────────────────────┘
 ```
 
 **Step 4: List Nodes**
@@ -111,11 +111,11 @@ ops k8s nodes list
 **Expected Output**:
 
 ```text
-┏━━━━━━━━━━┳━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━┓
-┃ Name     ┃ Status ┃ Roles          ┃ Version   ┃ Internal-IP ┃ Age  ┃
-┡━━━━━━━━━━╇━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━┩
-│ minikube │ Ready  │ control-plane │ v1.27.4  │ 192.168.1.10│ 30d  │
-└──────────┴────────┴────────────────┴──────────┴──────────────┴──────┘
+┏━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━┓
+┃ Name     ┃ Status ┃ Roles         ┃ Version ┃ Internal-IP  ┃ Age ┃
+┡━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━┩
+│ minikube │ Ready  │ control-plane │ v1.27.4 │ 192.168.1.10 │ 30d │
+└──────────┴────────┴───────────────┴─────────┴──────────────┴─────┘
 ```
 
 **Troubleshooting**:
@@ -193,14 +193,14 @@ ops k8s status
 
 ```text
 ┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
-┃ Property        ┃ Value           ┃
+┃ Property        ┃ Value          ┃
 ┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━┩
-│ Context         │ docker-desktop  │
-│ Namespace       │ development     │
-│ Connected       │ Yes             │
-│ Cluster Version │ v1.25.0         │
-│ Nodes           │ 1               │
-└─────────────────┴─────────────────┘
+│ Context         │ docker-desktop │
+│ Namespace       │ development    │
+│ Connected       │ Yes            │
+│ Cluster Version │ v1.25.0        │
+│ Nodes           │ 1              │
+└─────────────────┴────────────────┘
 ```
 
 **Step 3: Switch to Staging**
@@ -217,9 +217,9 @@ ops k8s status
 ```text
 Switched to context 'staging-cluster'
 
-┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┓
 ┃ Property        ┃ Value           ┃
-┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━┩
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━┩
 │ Context         │ staging-cluster │
 │ Namespace       │ staging         │
 │ Connected       │ Yes             │
@@ -242,15 +242,15 @@ ops k8s status
 ```text
 Switched to context 'prod-cluster'
 
-┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
-┃ Property        ┃ Value           ┃
-┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━┩
-│ Context         │ prod-cluster    │
-│ Namespace       │ default         │
-│ Connected       │ Yes             │
-│ Cluster Version │ v1.27.4         │
-│ Nodes           │ 5               │
-└─────────────────┴─────────────────┘
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┓
+┃ Property        ┃ Value        ┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━┩
+│ Context         │ prod-cluster │
+│ Namespace       │ default      │
+│ Connected       │ Yes          │
+│ Cluster Version │ v1.27.4      │
+│ Nodes           │ 5            │
+└─────────────────┴──────────────┘
 ```
 
 **Step 5: Override Context for Single Command**
@@ -264,12 +264,12 @@ OPS_K8S_CONTEXT=staging-cluster ops k8s pods list -n staging
 **Expected Output**:
 
 ```text
-┏━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━┓
-┃ Name           ┃ Ready    ┃ Status ┃ Restarts ┃ Age         ┃
-┡━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━┩
-│ api-server-1   │ 1/1     │ Running │ 0        │ 10d         │
-│ api-server-2   │ 1/1     │ Running │ 0        │ 10d         │
-└────────────────┴──────────┴────────┴──────────┴─────────────┘
+┏━━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━┳━━━━━┓
+┃ Name         ┃ Ready ┃ Status  ┃ Restarts ┃ Age ┃
+┡━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━╇━━━━━┩
+│ api-server-1 │ 1/1   │ Running │ 0        │ 10d │
+│ api-server-2 │ 1/1   │ Running │ 0        │ 10d │
+└──────────────┴───────┴─────────┴──────────┴─────┘
 ```
 
 **Troubleshooting**:
@@ -405,15 +405,15 @@ ops k8s namespaces create my-app -l env=production -l team=backend
 **Expected Output**:
 
 ```text
-┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Property      ┃ Value                  ┃
-┡━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ Name          │ my-app                 │
-│ Status        │ Active                 │
-│ Age           │ 0s                     │
-│ Labels        │ env: production        │
-│              │ team: backend          │
-└───────────────┴────────────────────────┘
+┏━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┓
+┃ Property ┃ Value           ┃
+┡━━━━━━━━━━╇━━━━━━━━━━━━━━━━━┩
+│ Name     │ my-app          │
+│ Status   │ Active          │
+│ Age      │ 0s              │
+│ Labels   │ env: production │
+│          │ team: backend   │
+└──────────┴─────────────────┘
 ```
 
 **Step 2: Create ConfigMap for Configuration**
@@ -540,16 +540,16 @@ ops k8s deployments get my-app -n my-app
 **Expected Output**:
 
 ```text
-┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┓
-┃ Property     ┃ Value            ┃
-┡━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━┩
-│ Name         │ my-app           │
-│ Replicas     │ 3/3              │
-│ Ready        │ 3/3              │
-│ Updated      │ 3/3              │
-│ Available    │ 3/3              │
-│ Age          │ 2m               │
-└──────────────┴──────────────────┘
+┏━━━━━━━━━━━┳━━━━━━━━┓
+┃ Property  ┃ Value  ┃
+┡━━━━━━━━━━━╇━━━━━━━━┩
+│ Name      │ my-app │
+│ Replicas  │ 3/3    │
+│ Ready     │ 3/3    │
+│ Updated   │ 3/3    │
+│ Available │ 3/3    │
+│ Age       │ 2m     │
+└───────────┴────────┘
 ```
 
 **Step 6: Verify Pods Are Running**
@@ -563,13 +563,13 @@ ops k8s pods list -n my-app
 **Expected Output**:
 
 ```text
-┏━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━┓
-┃ Name                   ┃ Ready ┃ Status   ┃ Restarts ┃ Age    ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━┩
-│ my-app-7d8c5b9f4-abc1d │ 1/1   │ Running  │ 0        │ 2m     │
-│ my-app-7d8c5b9f4-def2e │ 1/1   │ Running  │ 0        │ 2m     │
-│ my-app-7d8c5b9f4-ghi3f │ 1/1   │ Running  │ 0        │ 2m     │
-└────────────────────────┴───────┴──────────┴──────────┴────────┘
+┏━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━┳━━━━━┓
+┃ Name                   ┃ Ready ┃ Status  ┃ Restarts ┃ Age ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━╇━━━━━┩
+│ my-app-7d8c5b9f4-abc1d │ 1/1   │ Running │ 0        │ 2m  │
+│ my-app-7d8c5b9f4-def2e │ 1/1   │ Running │ 0        │ 2m  │
+│ my-app-7d8c5b9f4-ghi3f │ 1/1   │ Running │ 0        │ 2m  │
+└────────────────────────┴───────┴─────────┴──────────┴─────┘
 ```
 
 **Step 7: Create Service**
@@ -616,17 +616,17 @@ ops k8s services get my-app -n my-app
 **Expected Output**:
 
 ```text
-┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓
-┃ Property      ┃ Value      ┃
-┡━━━━━━━━━━━━━━━╇━━━━━━━━━━━━┩
-│ Name          │ my-app     │
-│ Type          │ ClusterIP  │
-│ Cluster IP    │ 10.0.0.100 │
-│ Port          │ 80         │
-│ Target Port   │ 80         │
-│ Endpoints     │ 3 active   │
-│ Age           │ 1m         │
-└───────────────┴────────────┘
+┏━━━━━━━━━━━━━┳━━━━━━━━━━━━┓
+┃ Property    ┃ Value      ┃
+┡━━━━━━━━━━━━━╇━━━━━━━━━━━━┩
+│ Name        │ my-app     │
+│ Type        │ ClusterIP  │
+│ Cluster IP  │ 10.0.0.100 │
+│ Port        │ 80         │
+│ Target Port │ 80         │
+│ Endpoints   │ 3 active   │
+│ Age         │ 1m         │
+└─────────────┴────────────┘
 ```
 
 **Step 9: Scale the Deployment**
@@ -1780,20 +1780,20 @@ The terminal will display an interactive dashboard showing:
 ║                     Kubernetes Cluster Dashboard - minikube                    ║
 ╠════════════════════════════════════════════════════════════════════════════════╣
 ║                                                                                ║
-║  Dashboard        Namespaces        Resources        Logs        Ecosystem    ║
+║  Dashboard        Namespaces        Resources        Logs        Ecosystem     ║
 ║  ────────────────────────────────────────────────────────────────────────────  ║
 ║                                                                                ║
-║  Cluster Status                                                               ║
-║  ├─ Context: minikube                                                        ║
-║  ├─ Version: v1.27.4                                                         ║
-║  ├─ Nodes: 1 Ready                                                           ║
-║  ├─ Namespaces: 7                                                            ║
-║  └─ Pods: 18 Running, 0 Pending, 0 Failed                                   ║
+║  Cluster Status                                                                ║
+║  ├─ Context: minikube                                                          ║
+║  ├─ Version: v1.27.4                                                           ║
+║  ├─ Nodes: 1 Ready                                                             ║
+║  ├─ Namespaces: 7                                                              ║
+║  └─ Pods: 18 Running, 0 Pending, 0 Failed                                      ║
 ║                                                                                ║
-║  Quick Stats                                                                  ║
-║  ├─ CPU Usage: 2.3 cores (28% of 8 available)                               ║
-║  ├─ Memory Usage: 3.2 Gi (40% of 8 Gi available)                            ║
-║  └─ Storage Usage: 12.5 Gi (62% of 20 Gi available)                         ║
+║  Quick Stats                                                                   ║
+║  ├─ CPU Usage: 2.3 cores (28% of 8 available)                                  ║
+║  ├─ Memory Usage: 3.2 Gi (40% of 8 Gi available)                               ║
+║  └─ Storage Usage: 12.5 Gi (62% of 20 Gi available)                            ║
 ║                                                                                ║
 ╚════════════════════════════════════════════════════════════════════════════════╝
 
@@ -1809,24 +1809,24 @@ Press right arrow or click "Namespaces" tab:
 ║                    Kubernetes Cluster Dashboard - minikube                     ║
 ╠════════════════════════════════════════════════════════════════════════════════╣
 ║                                                                                ║
-║  Dashboard        Namespaces        Resources        Logs        Ecosystem    ║
+║  Dashboard        Namespaces        Resources        Logs        Ecosystem     ║
 ║  ────────────────────────────────────────────────────────────────────────────  ║
 ║                                                                                ║
-║  Namespaces (7 total)                                                        ║
-║  ┌──────────────────────┬────────┬────────┬───────────┬──────────────┐      ║
-║  │ NAME                 │ STATUS │ PODS   │ CPU USED  │ MEMORY USED  │      ║
-║  ├──────────────────────┼────────┼────────┼───────────┼──────────────┤      ║
-║  │ default              │ Active │ 3      │ 100m      │ 256Mi        │      ║
-║  │ kube-system          │ Active │ 9      │ 800m      │ 1.2Gi        │      ║
-║  │ kube-node-lease      │ Active │ 1      │ 10m       │ 50Mi         │      ║
-║  │ kube-public          │ Active │ 1      │ 20m       │ 64Mi         │      ║
-║  │ kube-apiserver       │ Active │ 2      │ 150m      │ 512Mi        │      ║
-║  │ production           │ Active │ 2      │ 250m      │ 512Mi        │      ║
-║  │ staging              │ Active │ 0      │ 0m        │ 0Mi          │      ║
-║  └──────────────────────┴────────┴────────┴───────────┴──────────────┘      ║
+║  Namespaces (7 total)                                                          ║
+║  ┌──────────────────────┬────────┬────────┬───────────┬──────────────┐         ║
+║  │ NAME                 │ STATUS │ PODS   │ CPU USED  │ MEMORY USED  │         ║
+║  ├──────────────────────┼────────┼────────┼───────────┼──────────────┤         ║
+║  │ default              │ Active │ 3      │ 100m      │ 256Mi        │         ║
+║  │ kube-system          │ Active │ 9      │ 800m      │ 1.2Gi        │         ║
+║  │ kube-node-lease      │ Active │ 1      │ 10m       │ 50Mi         │         ║
+║  │ kube-public          │ Active │ 1      │ 20m       │ 64Mi         │         ║
+║  │ kube-apiserver       │ Active │ 2      │ 150m      │ 512Mi        │         ║
+║  │ production           │ Active │ 2      │ 250m      │ 512Mi        │         ║
+║  │ staging              │ Active │ 0      │ 0m        │ 0Mi          │         ║
+║  └──────────────────────┴────────┴────────┴───────────┴──────────────┘         ║
 ║                                                                                ║
-║  Select a namespace to view resources:                                       ║
-║  [A]ll namespaces, [P]roduction, [S]taging, [D]efault, or [Q]uit             ║
+║  Select a namespace to view resources:                                         ║
+║  [A]ll namespaces, [P]roduction, [S]taging, [D]efault, or [Q]uit               ║
 ║                                                                                ║
 ╚════════════════════════════════════════════════════════════════════════════════╝
 ```
@@ -1840,27 +1840,27 @@ Press right arrow or click "Resources" tab to explore resource types:
 ║                    Kubernetes Cluster Dashboard - minikube                     ║
 ╠════════════════════════════════════════════════════════════════════════════════╣
 ║                                                                                ║
-║  Dashboard        Namespaces        Resources        Logs        Ecosystem    ║
+║  Dashboard        Namespaces        Resources        Logs        Ecosystem     ║
 ║  ────────────────────────────────────────────────────────────────────────────  ║
-║  Namespace: production                                                        ║
+║  Namespace: production                                                         ║
 ║                                                                                ║
-║  Resource Types                                                              ║
-║  ├─ Pods (2)                                                                 ║
-║  │  ├─ my-app-abc123 (Running) - 100m CPU, 256Mi Memory                     ║
-║  │  └─ my-app-def456 (Running) - 80m CPU, 200Mi Memory                      ║
-║  ├─ Deployments (1)                                                         ║
-║  │  └─ my-app (3/3 Ready) - 250m CPU limit, 512Mi Memory limit              ║
-║  ├─ Services (2)                                                            ║
-║  │  ├─ my-app (ClusterIP) - 10.0.0.100:80                                   ║
-║  │  └─ api-gateway (LoadBalancer) - 203.0.113.42:443                        ║
-║  ├─ ConfigMaps (1)                                                          ║
-║  │  └─ app-config - 3 keys                                                  ║
-║  ├─ Secrets (2)                                                             ║
-║  │  ├─ app-credentials - 3 keys                                             ║
-║  │  └─ docker-registry - registry credentials                              ║
-║  └─ StatefulSets (0)                                                        ║
+║  Resource Types                                                                ║
+║  ├─ Pods (2)                                                                   ║
+║  │  ├─ my-app-abc123 (Running) - 100m CPU, 256Mi Memory                        ║
+║  │  └─ my-app-def456 (Running) - 80m CPU, 200Mi Memory                         ║
+║  ├─ Deployments (1)                                                            ║
+║  │  └─ my-app (3/3 Ready) - 250m CPU limit, 512Mi Memory limit                 ║
+║  ├─ Services (2)                                                               ║
+║  │  ├─ my-app (ClusterIP) - 10.0.0.100:80                                      ║
+║  │  └─ api-gateway (LoadBalancer) - 203.0.113.42:443                           ║
+║  ├─ ConfigMaps (1)                                                             ║
+║  │  └─ app-config - 3 keys                                                     ║
+║  ├─ Secrets (2)                                                                ║
+║  │  ├─ app-credentials - 3 keys                                                ║
+║  │  └─ docker-registry - registry credentials                                  ║
+║  └─ StatefulSets (0)                                                           ║
 ║                                                                                ║
-║  Use [J]/[K] to navigate, [ENTER] to select, [Q] to quit                    ║
+║  Use [J]/[K] to navigate, [ENTER] to select, [Q] to quit                       ║
 ║                                                                                ║
 ╚════════════════════════════════════════════════════════════════════════════════╝
 ```
@@ -1874,24 +1874,24 @@ Navigate to Logs tab:
 ║                    Kubernetes Cluster Dashboard - minikube                     ║
 ╠════════════════════════════════════════════════════════════════════════════════╣
 ║                                                                                ║
-║  Dashboard        Namespaces        Resources        Logs        Ecosystem    ║
+║  Dashboard        Namespaces        Resources        Logs        Ecosystem     ║
 ║  ────────────────────────────────────────────────────────────────────────────  ║
-║  Pod: my-app-abc123 (production)                                             ║
+║  Pod: my-app-abc123 (production)                                               ║
 ║                                                                                ║
-║  [F]ollow logs  [C]lear screen  [T]ail 100 lines  [S]earch  [Q]uit           ║
+║  [F]ollow logs  [C]lear screen  [T]ail 100 lines  [S]earch  [Q]uit             ║
 ║  ────────────────────────────────────────────────────────────────────────────  ║
 ║                                                                                ║
-║  2024-02-16T10:30:45.123Z [INFO] Application started                         ║
-║  2024-02-16T10:30:46.456Z [INFO] Server listening on 0.0.0.0:8080            ║
-║  2024-02-16T10:30:47.789Z [INFO] Connected to database: postgres://db:5432  ║
-║  2024-02-16T10:30:50.234Z [INFO] Cache initialized: redis://cache:6379      ║
-║  2024-02-16T10:31:15.567Z [INFO] GET /health 200 45ms                       ║
-║  2024-02-16T10:31:20.890Z [INFO] POST /api/users 201 234ms                  ║
-║  2024-02-16T10:31:25.123Z [WARN] Slow query detected: 1.2s                  ║
-║  2024-02-16T10:31:30.456Z [INFO] GET /api/users 200 89ms                    ║
-║  2024-02-16T10:31:35.789Z [INFO] GET /api/users/123 200 45ms                ║
+║  2024-02-16T10:30:45.123Z [INFO] Application started                           ║
+║  2024-02-16T10:30:46.456Z [INFO] Server listening on 0.0.0.0:8080              ║
+║  2024-02-16T10:30:47.789Z [INFO] Connected to database: postgres://db:5432     ║
+║  2024-02-16T10:30:50.234Z [INFO] Cache initialized: redis://cache:6379         ║
+║  2024-02-16T10:31:15.567Z [INFO] GET /health 200 45ms                          ║
+║  2024-02-16T10:31:20.890Z [INFO] POST /api/users 201 234ms                     ║
+║  2024-02-16T10:31:25.123Z [WARN] Slow query detected: 1.2s                     ║
+║  2024-02-16T10:31:30.456Z [INFO] GET /api/users 200 89ms                       ║
+║  2024-02-16T10:31:35.789Z [INFO] GET /api/users/123 200 45ms                   ║
 ║                                                                                ║
-║  [F] - Follow (stream logs), [C] - Clear, [T] - Last 100, [S] - Search      ║
+║  [F] - Follow (stream logs), [C] - Clear, [T] - Last 100, [S] - Search         ║
 ║                                                                                ║
 ╚════════════════════════════════════════════════════════════════════════════════╝
 ```
@@ -1905,31 +1905,31 @@ View integrated ecosystem tools:
 ║                    Kubernetes Cluster Dashboard - minikube                     ║
 ╠════════════════════════════════════════════════════════════════════════════════╣
 ║                                                                                ║
-║  Dashboard        Namespaces        Resources        Logs        Ecosystem    ║
+║  Dashboard        Namespaces        Resources        Logs        Ecosystem     ║
 ║  ────────────────────────────────────────────────────────────────────────────  ║
 ║                                                                                ║
-║  Ecosystem Tools Status                                                       ║
-║  ├─ Helm                                                  [AVAILABLE]        ║
-║  │  ├─ Version: 3.12.1                                                      ║
-║  │  ├─ Releases: 3 installed                                                ║
-║  │  └─ Repositories: 5 configured                                           ║
-║  ├─ ArgoCD                                                [INSTALLED]        ║
-║  │  ├─ Version: 2.8.0                                                       ║
-║  │  ├─ Namespace: argocd                                                    ║
-║  │  └─ Applications: 5 total (4 synced, 1 out-of-sync)                      ║
-║  ├─ Kyverno                                               [INSTALLED]        ║
-║  │  ├─ Version: 1.9.0                                                       ║
-║  │  ├─ Namespace: kyverno                                                   ║
-║  │  └─ Policies: 8 cluster policies, 3 violations                          ║
-║  ├─ Cert-Manager                                          [INSTALLED]        ║
-║  │  ├─ Version: 1.13.0                                                      ║
-║  │  └─ Certificates: 5 issued, 0 pending                                    ║
-║  ├─ Flux                                                  [INSTALLED]        ║
-║  │  ├─ Version: 2.1.0                                                       ║
-║  │  └─ Kustomizations: 3, HelmReleases: 2                                   ║
-║  └─ Argo Rollouts                                         [NOT INSTALLED]    ║
+║  Ecosystem Tools Status                                                        ║
+║  ├─ Helm                                                  [AVAILABLE]          ║
+║  │  ├─ Version: 3.12.1                                                         ║
+║  │  ├─ Releases: 3 installed                                                   ║
+║  │  └─ Repositories: 5 configured                                              ║
+║  ├─ ArgoCD                                                [INSTALLED]          ║
+║  │  ├─ Version: 2.8.0                                                          ║
+║  │  ├─ Namespace: argocd                                                       ║
+║  │  └─ Applications: 5 total (4 synced, 1 out-of-sync)                         ║
+║  ├─ Kyverno                                               [INSTALLED]          ║
+║  │  ├─ Version: 1.9.0                                                          ║
+║  │  ├─ Namespace: kyverno                                                      ║
+║  │  └─ Policies: 8 cluster policies, 3 violations                              ║
+║  ├─ Cert-Manager                                          [INSTALLED]          ║
+║  │  ├─ Version: 1.13.0                                                         ║
+║  │  └─ Certificates: 5 issued, 0 pending                                       ║
+║  ├─ Flux                                                  [INSTALLED]          ║
+║  │  ├─ Version: 2.1.0                                                          ║
+║  │  └─ Kustomizations: 3, HelmReleases: 2                                      ║
+║  └─ Argo Rollouts                                         [NOT INSTALLED]      ║
 ║                                                                                ║
-║  [H] - Helm, [A] - ArgoCD, [K] - Kyverno, [C] - Cert-Manager, [Q] - Quit    ║
+║  [H] - Helm, [A] - ArgoCD, [K] - Kyverno, [C] - Cert-Manager, [Q] - Quit       ║
 ║                                                                                ║
 ╚════════════════════════════════════════════════════════════════════════════════╝
 ```
@@ -1990,18 +1990,18 @@ ops k8s optimize analyze
 Analyzing cluster resources...
 
 Cluster Summary:
-├─ Total CPU Requested:     2000m (25% of 8 cores available)
-├─ Total Memory Requested:  4.5Gi (56% of 8 Gi available)
-├─ Pods with No Limits:     12 pods
-├─ Pods with No Requests:   8 pods
-├─ Overallocated Pods:      3 pods (using less than 10% requested)
-└─ Under-provisioned Pods:  1 pod (using 95% of limit)
+├─ Total CPU Requested:     2000m (25% of 8 cores available)─────┤
+├─ Total Memory Requested:  4.5Gi (56% of 8 Gi available)────────┤
+├─ Pods with No Limits:     12 pods──────────────────────────────┤
+├─ Pods with No Requests:   8 pods───────────────────────────────┤
+├─ Overallocated Pods:      3 pods (using less than 10% requested┤
+└─ Under-provisioned Pods:  1 pod (using 95% of limit)───────────┘
 
 Namespace Breakdown:
-├─ production  - CPU: 1200m, Memory: 2.8Gi
-├─ staging     - CPU: 500m, Memory: 1.2Gi
-├─ default     - CPU: 200m, Memory: 256Mi
-└─ kube-system - CPU: 100m, Memory: 256Mi
+├─ production  - CPU: 1200m, Memory: 2.8Gi───────────────────────┤
+├─ staging     - CPU: 500m, Memory: 1.2Gi────────────────────────┤
+├─ default     - CPU: 200m, Memory: 256Mi────────────────────────┤
+└─ kube-system - CPU: 100m, Memory: 256Mi────────────────────────┘
 ```
 
 **Step 2: Get Optimization Recommendations**
@@ -2018,33 +2018,33 @@ ops k8s optimize recommendations
 Optimization Recommendations (24 total):
 
 Priority: High
-├─ [1] Pod: web-frontend (production)
-│    Issue: No memory limits set
-│    Recommendation: Set memory limit to 512Mi
-│    Expected Saving: 15% memory overhead reduction
-│
-├─ [2] Pod: api-server (production)
-│    Issue: Overallocated - uses 50m of 500m CPU
-│    Recommendation: Reduce CPU request to 100m
-│    Expected Saving: 80m CPU per pod, 240m total (3 replicas)
-│
+├─ [1] Pod: web-frontend (production)─────┤
+│    Issue: No memory limits set          │
+│    Recommendation: Set memory limit to 512Mi│
+│    Expected Saving: 15% memory overhead reduction│
+│                                         │
+├─ [2] Pod: api-server (production)───────┤
+│    Issue: Overallocated - uses 50m of 500m CPU│
+│    Recommendation: Reduce CPU request to 100m│
+│    Expected Saving: 80m CPU per pod, 240m total (3 replicas)│
+│                                         │
 
 Priority: Medium
-├─ [3] Deployment: worker-jobs (staging)
-│    Issue: No liveness probe configured
-│    Recommendation: Add liveness probe
-│    Expected Impact: Improved reliability and pod restart handling
-│
-├─ [4] StatefulSet: db-replica (production)
-│    Issue: Manual pod management detected
-│    Recommendation: Implement pod disruption budget
-│    Expected Impact: Better high availability
+├─ [3] Deployment: worker-jobs (staging)──┤
+│    Issue: No liveness probe configured  │
+│    Recommendation: Add liveness probe   │
+│    Expected Impact: Improved reliability and pod restart handling│
+│                                         │
+├─ [4] StatefulSet: db-replica (production┤
+│    Issue: Manual pod management detected│
+│    Recommendation: Implement pod disruption budget│
+│    Expected Impact: Better high availability│
 
 Priority: Low
-├─ [5] ConfigMap: unused-config (default)
-│    Issue: Not mounted by any pod
-│    Recommendation: Delete unused ConfigMap
-│    Expected Saving: Negligible storage, improves cluster cleanliness
+├─ [5] ConfigMap: unused-config (default)─┤
+│    Issue: Not mounted by any pod        │
+│    Recommendation: Delete unused ConfigMap│
+│    Expected Saving: Negligible storage, improves cluster cleanliness│
 ```
 
 **Step 3: Filter Recommendations by Type**
@@ -2197,12 +2197,12 @@ Expected output after optimization:
 Analyzing cluster resources...
 
 Cluster Summary:
-├─ Total CPU Requested:     1500m (19% of 8 cores available)  # Reduced from 2000m
-├─ Total Memory Requested:  2.5Gi (31% of 8 Gi available)   # Reduced from 4.5Gi
-├─ Pods with No Limits:     8 pods (down from 12)           # Improved
-├─ Pods with No Requests:   4 pods (down from 8)            # Improved
-├─ Overallocated Pods:      1 pod (down from 3)             # Improved
-└─ Under-provisioned Pods:  0 pods (down from 1)            # Fixed
+├─ Total CPU Requested:     1500m (19% of 8 cores available)  # Reduced from 2000┤
+├─ Total Memory Requested:  2.5Gi (31% of 8 Gi available)   # Reduced from 4.5Gi─┤
+├─ Pods with No Limits:     8 pods (down from 12)           # Improved───────────┤
+├─ Pods with No Requests:   4 pods (down from 8)            # Improved───────────┤
+├─ Overallocated Pods:      1 pod (down from 3)             # Improved───────────┤
+└─ Under-provisioned Pods:  0 pods (down from 1)            # Fixed──────────────┘
 ```
 
 **Troubleshooting**:
