@@ -1,6 +1,6 @@
 version = 1
 revision = 3
-requires-python = ">=3.14"
+requires-python = ">=3.14.3"
 
 [[package]]
 name = "alabaster"
@@ -1845,14 +1845,14 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "azure-identity", marker = "extra == 'vault'", specifier = ">=1.25.1" },
+    { name = "azure-identity", marker = "extra == 'vault'", specifier = ">=1.25.2" },
     { name = "azure-keyvault-secrets", marker = "extra == 'vault'", specifier = ">=4.10.0" },
     { name = "blessed", marker = "extra == 'cli'", specifier = ">=1.30.0" },
-    { name = "boto3", marker = "extra == 'vault'", specifier = ">=1.42.44" },
+    { name = "boto3", marker = "extra == 'vault'", specifier = ">=1.42.49" },
     { name = "cement", marker = "extra == 'cli'", specifier = ">=3.0.14" },
     { name = "click", specifier = ">=8.3.1" },
     { name = "cloup", marker = "extra == 'cli'", specifier = ">=3.0.8" },
-    { name = "cryptography", specifier = ">=46.0.4" },
+    { name = "cryptography", specifier = ">=46.0.5" },
     { name = "elasticsearch", marker = "extra == 'monitoring'", specifier = ">=9.3.0" },
     { name = "google-cloud-secret-manager", marker = "extra == 'vault'", specifier = ">=2.26.0" },
     { name = "grafana-api", marker = "extra == 'monitoring'", specifier = ">=1.0.3" },
@@ -1880,7 +1880,7 @@ requires-dist = [
     { name = "system-operations-cli", extras = ["cli", "kubernetes", "monitoring", "vault"], marker = "extra == 'all'" },
     { name = "tenacity", specifier = ">=9.1.4" },
     { name = "textual", specifier = ">=7.5.0" },
-    { name = "typer", specifier = ">=0.21.1" },
+    { name = "typer", specifier = ">=0.23.1" },
 ]
 provides-extras = ["cli", "kubernetes", "monitoring", "vault", "all"]
 
@@ -1893,7 +1893,7 @@ dev = [
     { name = "pytest-cov", specifier = ">=7.0.0" },
     { name = "pytest-mock", specifier = ">=3.15.1" },
     { name = "respx", specifier = ">=0.22.0" },
-    { name = "ruff", specifier = ">=0.15.0" },
+    { name = "ruff", specifier = ">=0.15.1" },
     { name = "sphinx", specifier = ">=9.1.0" },
     { name = "sphinx-rtd-theme", specifier = ">=3.1.0" },
     { name = "testcontainers", specifier = ">=4.14.1" },
