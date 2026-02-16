@@ -14,7 +14,7 @@ authors = [
 maintainers = [
     { name = "jsamuelsen11", email = "jsamuelsen11@gmail.com" },
 ]
-requires-python = ">=3.14"
+requires-python = ">=3.14.3"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
@@ -41,7 +41,7 @@ keywords = [
 ]
 dependencies = [
     "click>=8.3.1",
-    "typer>=0.21.1",
+    "typer>=0.23.1",
     "rich>=14.3.2",
     "inquirerpy>=0.3.4",
     "sh>=2.2.2",
@@ -51,7 +51,7 @@ dependencies = [
     "httpx>=0.28.1",
     "jinja2>=3.1.6",
     "structlog>=25.5.0",
-    "cryptography>=46.0.4",
+    "cryptography>=46.0.5",
     "jsonschema>=4.26.0",
     "psutil>=7.2.2",
     "pluggy>=1.6.0",
@@ -80,9 +80,9 @@ monitoring = [
 ]
 vault = [
     "hvac>=2.4.0",
-    "boto3>=1.42.44",
+    "boto3>=1.42.49",
     "azure-keyvault-secrets>=4.10.0",
-    "azure-identity>=1.25.1",
+    "azure-identity>=1.25.2",
     "google-cloud-secret-manager>=2.26.0",
     "pyjwt>=2.11.0",
 ]
@@ -96,7 +96,7 @@ dev = [
     "pytest-asyncio>=1.3.0",
     "pytest-cov>=7.0.0",
     "pytest-mock>=3.15.1",
-    "ruff>=0.15.0",
+    "ruff>=0.15.1",
     "mypy>=1.19.1",
     "pre-commit>=4.5.1",
     "sphinx>=9.1.0",
