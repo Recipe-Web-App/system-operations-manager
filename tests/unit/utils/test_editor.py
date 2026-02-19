@@ -16,6 +16,7 @@ from system_operations_manager.utils.editor import (
 )
 
 
+@pytest.mark.unit
 class TestGetEditor:
     """Tests for get_editor function."""
 
@@ -82,6 +83,7 @@ class TestGetEditor:
             assert result == "code --wait"
 
 
+@pytest.mark.unit
 class TestCreateMergeTemplate:
     """Tests for create_merge_template function."""
 
@@ -128,6 +130,7 @@ class TestCreateMergeTemplate:
         assert "host" in result
 
 
+@pytest.mark.unit
 class TestParseMergeResult:
     """Tests for parse_merge_result function."""
 
@@ -164,6 +167,7 @@ class TestParseMergeResult:
             parse_merge_result(content)
 
 
+@pytest.mark.unit
 class TestStripJsonComments:
     """Tests for strip_json_comments function."""
 

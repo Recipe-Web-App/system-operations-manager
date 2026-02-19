@@ -122,6 +122,7 @@ def service() -> ConflictResolutionService:
 # ============================================================================
 
 
+@pytest.mark.unit
 class TestConflict:
     """Tests for the Conflict model."""
 
@@ -186,6 +187,7 @@ class TestConflict:
 # ============================================================================
 
 
+@pytest.mark.unit
 class TestResolutionAction:
     """Tests for the ResolutionAction enum."""
 
@@ -210,6 +212,7 @@ class TestResolutionAction:
 # ============================================================================
 
 
+@pytest.mark.unit
 class TestResolution:
     """Tests for the Resolution model."""
 
@@ -281,6 +284,7 @@ class TestResolution:
 # ============================================================================
 
 
+@pytest.mark.unit
 class TestConflictResolutionService:
     """Tests for ConflictResolutionService."""
 
@@ -483,6 +487,7 @@ class TestConflictResolutionService:
 # ============================================================================
 
 
+@pytest.mark.unit
 class TestDiffGeneration:
     """Tests for diff generation utilities."""
 
@@ -543,6 +548,7 @@ class TestDiffGeneration:
 # ============================================================================
 
 
+@pytest.mark.unit
 class TestResolutionPreview:
     """Tests for ResolutionPreview model."""
 
