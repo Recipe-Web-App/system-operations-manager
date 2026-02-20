@@ -269,6 +269,291 @@ class TestLogsManager:
         mock_es_client.search_error_logs.assert_called()
         assert len(errors) == 1
 
+    @pytest.mark.unit
+    def test_from_elasticsearch(
+        self, es_config: ElasticsearchConfig, mock_es_client: MagicMock
+    ) -> None:
+        """from_elasticsearch classmethod should create ES-backed manager."""
+        manager = LogsManager.from_elasticsearch(es_config)
+
+        assert manager.backend == "elasticsearch"
+
+    @pytest.mark.unit
+    def test_from_loki(self, loki_config: LokiConfig, mock_loki_client: MagicMock) -> None:
+        """from_loki classmethod should create Loki-backed manager."""
+        manager = LogsManager.from_loki(loki_config)
+
+        assert manager.backend == "loki"
+
+    @pytest.mark.unit
+    def test_es_client_not_configured_raises(
+        self, loki_config: LokiConfig, mock_loki_client: MagicMock
+    ) -> None:
+        """Accessing es_client on a Loki-only manager should raise RuntimeError."""
+        manager = LogsManager(loki_config=loki_config)
+
+        with pytest.raises(RuntimeError, match="Elasticsearch is not configured"):
+            _ = manager.es_client
+
+    @pytest.mark.unit
+    def test_loki_client_not_configured_raises(
+        self, es_config: ElasticsearchConfig, mock_es_client: MagicMock
+    ) -> None:
+        """Accessing loki_client on an ES-only manager should raise RuntimeError."""
+        manager = LogsManager(elasticsearch_config=es_config)
+
+        with pytest.raises(RuntimeError, match="Loki is not configured"):
+            _ = manager.loki_client
+
+    @pytest.mark.unit
+    def test_close_es_client(
+        self, es_config: ElasticsearchConfig, mock_es_client: MagicMock
+    ) -> None:
+        """close() should call close on the ES client and clear the reference."""
+        manager = LogsManager(elasticsearch_config=es_config)
+        # Trigger client creation
+        _ = manager.es_client
+
+        manager.close()
+
+        mock_es_client.close.assert_called_once()
+        assert manager._es_client is None
+
+    @pytest.mark.unit
+    def test_close_loki_client(self, loki_config: LokiConfig, mock_loki_client: MagicMock) -> None:
+        """close() should call close on the Loki client and clear the reference."""
+        manager = LogsManager(loki_config=loki_config)
+        # Trigger client creation
+        _ = manager.loki_client
+
+        manager.close()
+
+        mock_loki_client.close.assert_called_once()
+        assert manager._loki_client is None
+
+    @pytest.mark.unit
+    def test_context_manager(
+        self, es_config: ElasticsearchConfig, mock_es_client: MagicMock
+    ) -> None:
+        """LogsManager should work as a context manager and call close on exit."""
+        with LogsManager(elasticsearch_config=es_config) as manager:
+            assert manager is not None
+            # Force client creation so close() has something to close
+            _ = manager.es_client
+
+        mock_es_client.close.assert_called_once()
+
+    @pytest.mark.unit
+    def test_is_available_exception_returns_false(
+        self, es_config: ElasticsearchConfig, mock_es_client: MagicMock
+    ) -> None:
+        """is_available should return False when health_check raises an exception."""
+        mock_es_client.health_check.side_effect = ConnectionError("refused")
+
+        manager = LogsManager(elasticsearch_config=es_config)
+
+        assert manager.is_available() is False
+
+    @pytest.mark.unit
+    def test_get_error_logs_loki(
+        self, loki_config: LokiConfig, mock_loki_client: MagicMock
+    ) -> None:
+        """get_error_logs should delegate to loki_client.get_kong_error_logs."""
+        mock_loki_client.get_kong_error_logs.return_value = [
+            {"timestamp": datetime.now(), "line": "error log entry"},
+        ]
+
+        manager = LogsManager(loki_config=loki_config)
+        errors = manager.get_error_logs(service="my-api", limit=50)
+
+        mock_loki_client.get_kong_error_logs.assert_called_once_with(
+            service="my-api",
+            start_time=None,
+            end_time=None,
+            limit=50,
+        )
+        assert len(errors) == 1
+
+    @pytest.mark.unit
+    def test_get_services_elasticsearch(
+        self, es_config: ElasticsearchConfig, mock_es_client: MagicMock
+    ) -> None:
+        """get_services on ES backend should return keys from aggregate_by_service."""
+        mock_es_client.aggregate_by_service.return_value = {
+            "api-svc": 120,
+            "auth-svc": 80,
+        }
+
+        manager = LogsManager(elasticsearch_config=es_config)
+        services = manager.get_services()
+
+        mock_es_client.aggregate_by_service.assert_called_once()
+        assert set(services) == {"api-svc", "auth-svc"}
+
+    @pytest.mark.unit
+    def test_get_services_loki(self, loki_config: LokiConfig, mock_loki_client: MagicMock) -> None:
+        """get_services on Loki backend should delegate to get_kong_services."""
+        mock_loki_client.get_kong_services.return_value = ["svc-a", "svc-b"]
+
+        manager = LogsManager(loki_config=loki_config)
+        services = manager.get_services()
+
+        mock_loki_client.get_kong_services.assert_called_once()
+        assert services == ["svc-a", "svc-b"]
+
+    @pytest.mark.unit
+    def test_get_routes_loki(self, loki_config: LokiConfig, mock_loki_client: MagicMock) -> None:
+        """get_routes on Loki backend should delegate to get_kong_routes."""
+        mock_loki_client.get_kong_routes.return_value = ["/v1/foo", "/v1/bar"]
+
+        manager = LogsManager(loki_config=loki_config)
+        routes = manager.get_routes()
+
+        mock_loki_client.get_kong_routes.assert_called_once()
+        assert routes == ["/v1/foo", "/v1/bar"]
+
+    @pytest.mark.unit
+    def test_get_routes_elasticsearch_empty(
+        self, es_config: ElasticsearchConfig, mock_es_client: MagicMock
+    ) -> None:
+        """get_routes on ES backend should return an empty list."""
+        manager = LogsManager(elasticsearch_config=es_config)
+        routes = manager.get_routes()
+
+        assert routes == []
+
+    @pytest.mark.unit
+    def test_get_status_distribution_elasticsearch(
+        self, es_config: ElasticsearchConfig, mock_es_client: MagicMock
+    ) -> None:
+        """get_status_distribution on ES backend should delegate to aggregate_by_status."""
+        mock_es_client.aggregate_by_status.return_value = {200: 500, 404: 10, 500: 5}
+
+        manager = LogsManager(elasticsearch_config=es_config)
+        dist = manager.get_status_distribution(service="my-api")
+
+        mock_es_client.aggregate_by_status.assert_called_once_with(
+            start_time=None,
+            end_time=None,
+            service="my-api",
+        )
+        assert dist == {200: 500, 404: 10, 500: 5}
+
+    @pytest.mark.unit
+    def test_get_status_distribution_loki_unsupported(
+        self, loki_config: LokiConfig, mock_loki_client: MagicMock
+    ) -> None:
+        """get_status_distribution on Loki backend should return empty dict."""
+        manager = LogsManager(loki_config=loki_config)
+        dist = manager.get_status_distribution()
+
+        assert dist == {}
+
+    @pytest.mark.unit
+    def test_get_service_distribution_elasticsearch(
+        self, es_config: ElasticsearchConfig, mock_es_client: MagicMock
+    ) -> None:
+        """get_service_distribution on ES backend should delegate to aggregate_by_service."""
+        mock_es_client.aggregate_by_service.return_value = {"svc-a": 300, "svc-b": 150}
+
+        manager = LogsManager(elasticsearch_config=es_config)
+        dist = manager.get_service_distribution()
+
+        mock_es_client.aggregate_by_service.assert_called_once_with(
+            start_time=None,
+            end_time=None,
+        )
+        assert dist == {"svc-a": 300, "svc-b": 150}
+
+    @pytest.mark.unit
+    def test_get_service_distribution_loki_unsupported(
+        self, loki_config: LokiConfig, mock_loki_client: MagicMock
+    ) -> None:
+        """get_service_distribution on Loki backend should return empty dict."""
+        manager = LogsManager(loki_config=loki_config)
+        dist = manager.get_service_distribution()
+
+        assert dist == {}
+
+    @pytest.mark.unit
+    def test_count_logs_elasticsearch(
+        self, es_config: ElasticsearchConfig, mock_es_client: MagicMock
+    ) -> None:
+        """count_logs on ES backend should delegate to es_client.count_logs."""
+        mock_es_client.count_logs.return_value = 42
+
+        manager = LogsManager(elasticsearch_config=es_config)
+        count = manager.count_logs(service="my-api")
+
+        mock_es_client.count_logs.assert_called_once_with(
+            start_time=None,
+            end_time=None,
+            service="my-api",
+        )
+        assert count == 42
+
+    @pytest.mark.unit
+    def test_count_logs_loki_unsupported(
+        self, loki_config: LokiConfig, mock_loki_client: MagicMock
+    ) -> None:
+        """count_logs on Loki backend should return 0."""
+        manager = LogsManager(loki_config=loki_config)
+        count = manager.count_logs()
+
+        assert count == 0
+
+    @pytest.mark.unit
+    def test_get_summary_elasticsearch(
+        self, es_config: ElasticsearchConfig, mock_es_client: MagicMock
+    ) -> None:
+        """get_summary on ES backend should return aggregated statistics."""
+        mock_es_client.count_logs.return_value = 600
+        mock_es_client.aggregate_by_status.return_value = {200: 550, 500: 50}
+        mock_es_client.aggregate_by_service.return_value = {"svc-a": 400, "svc-b": 200}
+
+        manager = LogsManager(elasticsearch_config=es_config)
+        start = datetime(2024, 1, 1, 0, 0, 0)
+        end = datetime(2024, 1, 1, 1, 0, 0)
+        summary = manager.get_summary(start_time=start, end_time=end)
+
+        assert summary["backend"] == "elasticsearch"
+        assert summary["total_logs"] == 600
+        assert summary["status_distribution"] == {200: 550, 500: 50}
+        assert summary["error_count"] == 50
+        assert summary["service_distribution"] == {"svc-a": 400, "svc-b": 200}
+        assert "time_range" in summary
+        assert summary["time_range"]["start"] == start.isoformat()
+        assert summary["time_range"]["end"] == end.isoformat()
+
+    @pytest.mark.unit
+    def test_get_summary_with_service_filter(
+        self, es_config: ElasticsearchConfig, mock_es_client: MagicMock
+    ) -> None:
+        """get_summary with a service filter should omit service_distribution."""
+        mock_es_client.count_logs.return_value = 100
+        mock_es_client.aggregate_by_status.return_value = {200: 95, 404: 5}
+
+        manager = LogsManager(elasticsearch_config=es_config)
+        summary = manager.get_summary(service="my-api")
+
+        assert "service_distribution" not in summary
+        assert summary["total_logs"] == 100
+        assert summary["error_count"] == 5
+
+    @pytest.mark.unit
+    def test_get_summary_loki(self, loki_config: LokiConfig, mock_loki_client: MagicMock) -> None:
+        """get_summary on Loki backend should return zeros and empty distributions."""
+        manager = LogsManager(loki_config=loki_config)
+        start = datetime(2024, 6, 1, 12, 0, 0)
+        end = datetime(2024, 6, 1, 13, 0, 0)
+        summary = manager.get_summary(start_time=start, end_time=end)
+
+        assert summary["backend"] == "loki"
+        assert summary["total_logs"] == 0
+        assert summary["status_distribution"] == {}
+        assert summary["error_count"] == 0
+        assert summary["service_distribution"] == {}
+
 
 class TestTracingManager:
     """Tests for TracingManager."""
