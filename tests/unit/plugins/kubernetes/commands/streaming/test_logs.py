@@ -164,3 +164,41 @@ class TestParseDuration:
     def test_parse_empty(self) -> None:
         with pytest.raises(typer.BadParameter):
             _parse_duration("")
+
+
+@pytest.mark.unit
+@pytest.mark.kubernetes
+class TestLogsStreamingKeyboardInterrupt:
+    """Tests for the KeyboardInterrupt branch during log streaming (lines 317-318)."""
+
+    @pytest.fixture
+    def app(self, get_streaming_manager: Callable[[], MagicMock]) -> typer.Typer:
+        """Create a test app with streaming commands."""
+        app = typer.Typer()
+        register_streaming_commands(app, get_streaming_manager)
+        return app
+
+    def test_logs_keyboard_interrupt_during_streaming(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_streaming_manager: MagicMock,
+    ) -> None:
+        """logs should catch KeyboardInterrupt during streaming iteration and exit cleanly."""
+
+        def _raise_keyboard_interrupt() -> None:
+            raise KeyboardInterrupt
+
+        # Return an iterator whose __next__ raises KeyboardInterrupt on the first element.
+        class _InterruptingIterator:
+            def __iter__(self) -> _InterruptingIterator:
+                return self
+
+            def __next__(self) -> str:
+                raise KeyboardInterrupt
+
+        mock_streaming_manager.stream_logs.return_value = _InterruptingIterator()
+
+        result = cli_runner.invoke(app, ["logs", "my-pod", "--follow"])
+
+        assert result.exit_code == 0
