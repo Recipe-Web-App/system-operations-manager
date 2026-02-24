@@ -784,3 +784,393 @@ class TestKongPluginManager:
 
         mock_client.get.assert_called_with("services/my-service/plugins")
         assert len(plugins) == 1
+
+    @pytest.mark.unit
+    def test_list_available_non_dict_data(
+        self,
+        manager: KongPluginManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """list_available should handle non-dict plugin data (booleans)."""
+        mock_client.get_info.return_value = {
+            "plugins": {
+                "available_on_server": {
+                    "basic-auth": True,
+                    "key-auth": {"version": "1.0"},
+                }
+            }
+        }
+        available = manager.list_available()
+        assert "basic-auth" in available
+        assert available["basic-auth"].name == "basic-auth"
+
+    @pytest.mark.unit
+    def test_list_by_route(
+        self,
+        manager: KongPluginManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """list_by_route should filter by route."""
+        mock_client.get.return_value = {"data": [{"id": "p1", "name": "cors", "enabled": True}]}
+        plugins = manager.list_by_route("my-route")
+        assert len(plugins) == 1
+        mock_client.get.assert_called_with("routes/my-route/plugins")
+
+    @pytest.mark.unit
+    def test_list_by_consumer(
+        self,
+        manager: KongPluginManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """list_by_consumer should filter by consumer."""
+        mock_client.get.return_value = {
+            "data": [{"id": "p1", "name": "rate-limiting", "enabled": True}]
+        }
+        plugins = manager.list_by_consumer("my-consumer")
+        assert len(plugins) == 1
+        mock_client.get.assert_called_with("consumers/my-consumer/plugins")
+
+    @pytest.mark.unit
+    def test_enable_with_all_params(
+        self,
+        manager: KongPluginManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """enable should pass route, consumer, protocols, and instance_name."""
+        mock_client.post.return_value = {
+            "id": "p1",
+            "name": "rate-limiting",
+            "enabled": True,
+        }
+        manager.enable(
+            "rate-limiting",
+            route="r1",
+            consumer="c1",
+            protocols=["http"],
+            instance_name="rl-1",
+        )
+        call_args = mock_client.post.call_args
+        payload = call_args[1]["json"]
+        assert payload["route"] == {"id": "r1"}
+        assert payload["consumer"] == {"id": "c1"}
+        assert payload["protocols"] == ["http"]
+        assert payload["instance_name"] == "rl-1"
+
+    @pytest.mark.unit
+    def test_update_config_with_enabled(
+        self,
+        manager: KongPluginManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """update_config should pass enabled param when provided."""
+        mock_client.patch.return_value = {
+            "id": "p1",
+            "name": "rl",
+            "enabled": False,
+            "config": {"minute": 10},
+        }
+        plugin = manager.update_config("p1", {"minute": 10}, enabled=False)
+        call_args = mock_client.patch.call_args
+        assert call_args[1]["json"]["enabled"] is False
+        assert plugin.enabled is False
+
+
+class TestServiceManagerExtended:
+    """Additional tests for ServiceManager missing coverage."""
+
+    @pytest.fixture
+    def manager(self, mock_client: MagicMock) -> ServiceManager:
+        """Create a ServiceManager with mock client."""
+        return ServiceManager(mock_client)
+
+    @pytest.mark.unit
+    def test_get_plugins(
+        self,
+        manager: ServiceManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """get_plugins should return list of plugin dicts for a service."""
+        mock_client.get.return_value = {"data": [{"id": "p1", "name": "rate-limiting"}]}
+        plugins = manager.get_plugins("my-service")
+        assert len(plugins) == 1
+        mock_client.get.assert_called_once_with("services/my-service/plugins")
+
+    @pytest.mark.unit
+    def test_list_by_tag(
+        self,
+        manager: ServiceManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """list_by_tag should return services filtered by a single tag."""
+        mock_client.get.return_value = {
+            "data": [{"id": "s1", "name": "svc", "host": "h.local"}],
+            "offset": None,
+        }
+        services = manager.list_by_tag("production")
+        assert len(services) == 1
+
+    @pytest.mark.unit
+    def test_enable(
+        self,
+        manager: ServiceManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """enable should call update with enabled=True."""
+        mock_client.patch.return_value = {
+            "id": "s1",
+            "name": "svc",
+            "host": "h.local",
+            "enabled": True,
+        }
+        result = manager.enable("svc")
+        assert result.enabled is True
+
+    @pytest.mark.unit
+    def test_disable(
+        self,
+        manager: ServiceManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """disable should call update with enabled=False."""
+        mock_client.patch.return_value = {
+            "id": "s1",
+            "name": "svc",
+            "host": "h.local",
+            "enabled": False,
+        }
+        result = manager.disable("svc")
+        assert result.enabled is False
+
+
+class TestRouteManagerExtended:
+    """Additional tests for RouteManager missing coverage."""
+
+    @pytest.fixture
+    def manager(self, mock_client: MagicMock) -> RouteManager:
+        """Create a RouteManager with mock client."""
+        return RouteManager(mock_client)
+
+    @pytest.mark.unit
+    def test_list_by_service_with_params(
+        self,
+        manager: RouteManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """list_by_service should pass tags, limit, and offset params."""
+        mock_client.get.return_value = {"data": [], "offset": None}
+        manager.list_by_service("svc", tags=["prod"], limit=50, offset="abc")
+        call_args = mock_client.get.call_args
+        assert call_args[1]["params"]["tags"] == "prod"
+        assert call_args[1]["params"]["size"] == 50
+        assert call_args[1]["params"]["offset"] == "abc"
+
+    @pytest.mark.unit
+    def test_get_plugins(
+        self,
+        manager: RouteManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """get_plugins should return list of plugin dicts for a route."""
+        mock_client.get.return_value = {"data": [{"id": "p1", "name": "key-auth"}]}
+        plugins = manager.get_plugins("my-route")
+        assert len(plugins) == 1
+        mock_client.get.assert_called_once_with("routes/my-route/plugins")
+
+
+class TestConsumerManagerExtended:
+    """Additional tests for ConsumerManager missing coverage."""
+
+    @pytest.fixture
+    def manager(self, mock_client: MagicMock) -> ConsumerManager:
+        """Create a ConsumerManager with mock client."""
+        return ConsumerManager(mock_client)
+
+    @pytest.mark.unit
+    def test_get_credential(
+        self,
+        manager: ConsumerManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """get_credential should return a specific credential."""
+        mock_client.get.return_value = {"id": "cred-1", "key": "my-key"}
+        cred = manager.get_credential("user1", "key-auth", "cred-1")
+        assert cred.id == "cred-1"
+
+    @pytest.mark.unit
+    def test_add_to_acl_group_with_tags(
+        self,
+        manager: ConsumerManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """add_to_acl_group should pass tags in the payload."""
+        mock_client.post.return_value = {"id": "acl-1", "group": "admin"}
+        acl = manager.add_to_acl_group("user1", "admin", tags=["env:prod"])
+        call_args = mock_client.post.call_args
+        assert call_args[1]["json"]["tags"] == ["env:prod"]
+        assert acl.group == "admin"
+
+    @pytest.mark.unit
+    def test_remove_from_acl_group(
+        self,
+        manager: ConsumerManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """remove_from_acl_group should DELETE the ACL entry."""
+        manager.remove_from_acl_group("user1", "acl-1")
+        mock_client.delete.assert_called_once_with("consumers/user1/acls/acl-1")
+
+    @pytest.mark.unit
+    def test_get_plugins(
+        self,
+        manager: ConsumerManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """get_plugins should return list of plugin dicts for a consumer."""
+        mock_client.get.return_value = {"data": [{"id": "p1", "name": "rate-limiting"}]}
+        plugins = manager.get_plugins("user1")
+        assert len(plugins) == 1
+        mock_client.get.assert_called_once_with("consumers/user1/plugins")
+
+    @pytest.mark.unit
+    def test_unknown_credential_type(
+        self,
+        manager: ConsumerManager,
+    ) -> None:
+        """_get_credential_endpoint should raise ValueError for unknown type."""
+        with pytest.raises(ValueError, match="Unknown credential type"):
+            manager._get_credential_endpoint("invalid-type")
+
+
+class TestUpstreamManagerExtended:
+    """Additional tests for UpstreamManager missing coverage."""
+
+    @pytest.fixture
+    def manager(self, mock_client: MagicMock) -> UpstreamManager:
+        """Create an UpstreamManager with mock client."""
+        return UpstreamManager(mock_client)
+
+    @pytest.mark.unit
+    def test_list_targets_with_params(
+        self,
+        manager: UpstreamManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """list_targets should pass limit and offset params."""
+        mock_client.get.return_value = {"data": [], "offset": "next"}
+        _targets, offset = manager.list_targets("ups", limit=10, offset="abc")
+        call_args = mock_client.get.call_args
+        assert call_args[1]["params"]["size"] == 10
+        assert call_args[1]["params"]["offset"] == "abc"
+        assert offset == "next"
+
+    @pytest.mark.unit
+    def test_get_target(
+        self,
+        manager: UpstreamManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """get_target should return a specific target by ID."""
+        mock_client.get.return_value = {
+            "id": "t1",
+            "target": "10.0.0.1:8080",
+            "weight": 100,
+        }
+        target = manager.get_target("ups", "t1")
+        assert target.target == "10.0.0.1:8080"
+        mock_client.get.assert_called_once_with("upstreams/ups/targets/t1")
+
+    @pytest.mark.unit
+    def test_add_target_with_tags(
+        self,
+        manager: UpstreamManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """add_target should include tags and weight in the payload."""
+        mock_client.post.return_value = {
+            "id": "t1",
+            "target": "10.0.0.1:8080",
+            "weight": 50,
+        }
+        target = manager.add_target("ups", "10.0.0.1:8080", weight=50, tags=["canary"])
+        call_args = mock_client.post.call_args
+        assert call_args[1]["json"]["tags"] == ["canary"]
+        assert call_args[1]["json"]["weight"] == 50
+        assert target.weight == 50
+
+    @pytest.mark.unit
+    def test_update_target_with_weight(
+        self,
+        manager: UpstreamManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """update_target should PATCH with the new weight."""
+        mock_client.patch.return_value = {
+            "id": "t1",
+            "target": "10.0.0.1:8080",
+            "weight": 200,
+        }
+        target = manager.update_target("ups", "t1", weight=200)
+        assert target.weight == 200
+
+    @pytest.mark.unit
+    def test_update_target_with_tags(
+        self,
+        manager: UpstreamManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """update_target should PATCH with the new tags."""
+        mock_client.patch.return_value = {
+            "id": "t1",
+            "target": "10.0.0.1:8080",
+            "weight": 100,
+        }
+        manager.update_target("ups", "t1", tags=["new-tag"])
+        call_args = mock_client.patch.call_args
+        assert call_args[1]["json"]["tags"] == ["new-tag"]
+
+    @pytest.mark.unit
+    def test_update_target_no_changes(
+        self,
+        manager: UpstreamManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """update_target with no args should return current target without PATCHing."""
+        mock_client.get.return_value = {
+            "id": "t1",
+            "target": "10.0.0.1:8080",
+            "weight": 100,
+        }
+        target = manager.update_target("ups", "t1")
+        mock_client.patch.assert_not_called()
+        assert target.target == "10.0.0.1:8080"
+
+    @pytest.mark.unit
+    def test_get_targets_health(
+        self,
+        manager: UpstreamManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """get_targets_health should return list of target health data."""
+        mock_client.get.return_value = {"data": [{"target": "10.0.0.1:8080", "health": "HEALTHY"}]}
+        data = manager.get_targets_health("ups")
+        assert len(data) == 1
+
+    @pytest.mark.unit
+    def test_set_target_healthy(
+        self,
+        manager: UpstreamManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """set_target_healthy should PUT to the /healthy endpoint."""
+        manager.set_target_healthy("ups", "t1")
+        mock_client.put.assert_called_once_with("upstreams/ups/targets/t1/healthy", json={})
+
+    @pytest.mark.unit
+    def test_set_target_unhealthy(
+        self,
+        manager: UpstreamManager,
+        mock_client: MagicMock,
+    ) -> None:
+        """set_target_unhealthy should PUT to the /unhealthy endpoint."""
+        manager.set_target_unhealthy("ups", "t1")
+        mock_client.put.assert_called_once_with("upstreams/ups/targets/t1/unhealthy", json={})

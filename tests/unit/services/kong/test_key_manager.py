@@ -387,3 +387,82 @@ class TestKeySetIdentifier:
         """KeySet identifier should return name."""
         key_set = KeySet(name="jwt-keys")
         assert key_set.identifier == "jwt-keys"
+
+
+class TestKeyManagerExtended:
+    """Additional tests for KeyManager missing coverage."""
+
+    @pytest.fixture
+    def manager(self, mock_client: MagicMock) -> KeyManager:
+        """Create a KeyManager with mocked client."""
+        return KeyManager(mock_client)
+
+    @pytest.mark.unit
+    def test_list_by_key_set(self, manager: KeyManager, mock_client: MagicMock) -> None:
+        """list_by_key_set should return all keys in the specified key set."""
+        mock_client.get.return_value = {
+            "data": [
+                {
+                    "id": "key-1",
+                    "kid": "key-id-1",
+                    "name": "signing-key",
+                    "set": {"id": "keyset-1"},
+                },
+                {
+                    "id": "key-2",
+                    "kid": "key-id-2",
+                    "name": "verification-key",
+                    "set": {"id": "keyset-1"},
+                },
+            ]
+        }
+
+        keys = manager.list_by_key_set("keyset-1")
+
+        assert len(keys) == 2
+        assert keys[0].kid == "key-id-1"
+        assert keys[1].kid == "key-id-2"
+        mock_client.get.assert_called_once_with("key-sets/keyset-1/keys")
+
+    @pytest.mark.unit
+    def test_get_by_kid_found(self, manager: KeyManager, mock_client: MagicMock) -> None:
+        """get_by_kid should return the key matching the given kid."""
+        mock_client.get.return_value = {
+            "data": [
+                {
+                    "id": "key-1",
+                    "kid": "target-kid",
+                    "name": "signing-key",
+                },
+                {
+                    "id": "key-2",
+                    "kid": "other-kid",
+                    "name": "other-key",
+                },
+            ],
+            "offset": None,
+        }
+
+        result = manager.get_by_kid("target-kid")
+
+        assert result is not None
+        assert result.kid == "target-kid"
+        assert result.id == "key-1"
+
+    @pytest.mark.unit
+    def test_get_by_kid_not_found(self, manager: KeyManager, mock_client: MagicMock) -> None:
+        """get_by_kid should return None when no key matches the kid."""
+        mock_client.get.return_value = {
+            "data": [
+                {
+                    "id": "key-1",
+                    "kid": "existing-kid",
+                    "name": "signing-key",
+                },
+            ],
+            "offset": None,
+        }
+
+        result = manager.get_by_kid("nonexistent-kid")
+
+        assert result is None
