@@ -1140,7 +1140,7 @@ class TestKonnectClientPlugins:
         self,
         client: KonnectClient,
         mock_httpx_client: MagicMock,
-        scope_kwarg: dict[str, str],
+        scope_kwarg: Any,
         expected_path_fragment: str,
     ) -> None:
         """list_plugins routes to the correct scoped endpoint."""

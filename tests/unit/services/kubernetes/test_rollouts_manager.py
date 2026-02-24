@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -682,7 +683,7 @@ class TestRolloutsManagerEdgeCases:
             },
             "status": {},
         }
-        canary_steps = [{"setWeight": 20}, {"pause": {"duration": "10m"}}]
+        canary_steps: list[dict[str, Any]] = [{"setWeight": 20}, {"pause": {"duration": "10m"}}]
 
         rollouts_manager.create_rollout(
             "my-rollout",
