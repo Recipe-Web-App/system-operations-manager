@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -594,7 +595,7 @@ class TestUnifiedQueryServiceSourceFiltering:
 def full_unified_service(
     mock_gateway_managers: dict[str, MagicMock],
     mock_konnect_managers: dict[str, MagicMock],
-) -> UnifiedQueryService:
+) -> Any:
     """Create UnifiedQueryService with all managers including optional ones."""
     return UnifiedQueryService(
         gateway_service_manager=mock_gateway_managers["service"],
@@ -747,7 +748,7 @@ class TestUnifiedQueryServiceListCertificates:
     @pytest.mark.unit
     def test_list_certificates_gateway_only(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should return certificates from gateway when only gateway configured."""
         cert = Certificate(
@@ -764,7 +765,7 @@ class TestUnifiedQueryServiceListCertificates:
     @pytest.mark.unit
     def test_list_certificates_both_sources(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should merge certificates from both sources."""
         gw_cert = Certificate(
@@ -785,7 +786,7 @@ class TestUnifiedQueryServiceListCertificates:
     @pytest.mark.unit
     def test_list_certificates_merged_by_id(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should merge certificates that share the same ID."""
         shared_id = "cert-shared-1"
@@ -806,7 +807,7 @@ class TestUnifiedQueryServiceListCertificates:
     @pytest.mark.unit
     def test_list_certificates_gateway_pagination(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should handle gateway certificate pagination correctly."""
         full_unified_service._konnect_certificates = None
@@ -829,7 +830,7 @@ class TestUnifiedQueryServiceListCertificates:
     @pytest.mark.unit
     def test_list_certificates_konnect_pagination(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should handle konnect certificate pagination correctly."""
         full_unified_service._gateway_certificates = None
@@ -866,7 +867,7 @@ class TestUnifiedQueryServiceListSNIs:
     @pytest.mark.unit
     def test_list_snis_gateway_only(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should return SNIs from gateway when only gateway manager configured."""
         cert_ref = KongEntityReference(id="cert-1")
@@ -882,7 +883,7 @@ class TestUnifiedQueryServiceListSNIs:
     @pytest.mark.unit
     def test_list_snis_both_sources(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should merge SNIs from both sources."""
         cert_ref = KongEntityReference(id="cert-1")
@@ -900,7 +901,7 @@ class TestUnifiedQueryServiceListSNIs:
     @pytest.mark.unit
     def test_list_snis_merged_by_name(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should merge SNIs that share the same name."""
         cert_ref = KongEntityReference(id="cert-1")
@@ -917,7 +918,7 @@ class TestUnifiedQueryServiceListSNIs:
     @pytest.mark.unit
     def test_list_snis_gateway_pagination(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should handle gateway SNI pagination correctly."""
         full_unified_service._konnect_snis = None
@@ -937,7 +938,7 @@ class TestUnifiedQueryServiceListSNIs:
     @pytest.mark.unit
     def test_list_snis_konnect_pagination(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should handle konnect SNI pagination correctly."""
         full_unified_service._gateway_snis = None
@@ -971,7 +972,7 @@ class TestUnifiedQueryServiceListCACertificates:
     @pytest.mark.unit
     def test_list_ca_certificates_gateway_only(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should return CA certs from gateway when only gateway manager configured."""
         ca_cert = CACertificate(id="ca-1", cert="test-cert-data")
@@ -986,7 +987,7 @@ class TestUnifiedQueryServiceListCACertificates:
     @pytest.mark.unit
     def test_list_ca_certificates_both_sources(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should merge CA certificates from both sources."""
         gw_ca = CACertificate(id="ca-gw-1", cert="test-cert-data")
@@ -1003,7 +1004,7 @@ class TestUnifiedQueryServiceListCACertificates:
     @pytest.mark.unit
     def test_list_ca_certificates_merged_by_id(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should merge CA certificates that share the same ID."""
         shared_id = "ca-shared-1"
@@ -1020,7 +1021,7 @@ class TestUnifiedQueryServiceListCACertificates:
     @pytest.mark.unit
     def test_list_ca_certificates_gateway_pagination(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should handle gateway CA certificate pagination."""
         full_unified_service._konnect_ca_certificates = None
@@ -1039,7 +1040,7 @@ class TestUnifiedQueryServiceListCACertificates:
     @pytest.mark.unit
     def test_list_ca_certificates_konnect_pagination(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should handle konnect CA certificate pagination."""
         full_unified_service._gateway_ca_certificates = None
@@ -1072,7 +1073,7 @@ class TestUnifiedQueryServiceListKeySets:
     @pytest.mark.unit
     def test_list_key_sets_gateway_only(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should return key sets from gateway when only gateway manager configured."""
         key_set = KeySet(id="ks-1", name="jwt-signing-keys")
@@ -1087,7 +1088,7 @@ class TestUnifiedQueryServiceListKeySets:
     @pytest.mark.unit
     def test_list_key_sets_both_sources(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should merge key sets from both sources."""
         gw_ks = KeySet(id="ks-gw-1", name="gw-signing-keys")
@@ -1104,7 +1105,7 @@ class TestUnifiedQueryServiceListKeySets:
     @pytest.mark.unit
     def test_list_key_sets_merged_by_name(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should merge key sets that share the same name."""
         gw_ks = KeySet(id="ks-gw-1", name="shared-signing-keys")
@@ -1120,7 +1121,7 @@ class TestUnifiedQueryServiceListKeySets:
     @pytest.mark.unit
     def test_list_key_sets_gateway_pagination(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should handle gateway key set pagination."""
         full_unified_service._konnect_key_sets = None
@@ -1139,7 +1140,7 @@ class TestUnifiedQueryServiceListKeySets:
     @pytest.mark.unit
     def test_list_key_sets_konnect_pagination(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should handle konnect key set pagination."""
         full_unified_service._gateway_key_sets = None
@@ -1172,7 +1173,7 @@ class TestUnifiedQueryServiceListKeys:
     @pytest.mark.unit
     def test_list_keys_gateway_only(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should return keys from gateway when only gateway manager configured."""
         key = Key(id="key-1", kid="my-key-id")
@@ -1187,7 +1188,7 @@ class TestUnifiedQueryServiceListKeys:
     @pytest.mark.unit
     def test_list_keys_both_sources(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should merge keys from both sources."""
         gw_key = Key(id="key-gw-1", kid="gw-key-id")
@@ -1204,7 +1205,7 @@ class TestUnifiedQueryServiceListKeys:
     @pytest.mark.unit
     def test_list_keys_merged_by_kid(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should merge keys that share the same kid."""
         gw_key = Key(id="key-gw-1", kid="shared-key-id")
@@ -1220,7 +1221,7 @@ class TestUnifiedQueryServiceListKeys:
     @pytest.mark.unit
     def test_list_keys_gateway_pagination(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should handle gateway key pagination."""
         full_unified_service._konnect_keys = None
@@ -1239,7 +1240,7 @@ class TestUnifiedQueryServiceListKeys:
     @pytest.mark.unit
     def test_list_keys_konnect_pagination(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should handle konnect key pagination."""
         full_unified_service._gateway_keys = None
@@ -1272,7 +1273,7 @@ class TestUnifiedQueryServiceListVaults:
     @pytest.mark.unit
     def test_list_vaults_gateway_only(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should return vaults from gateway when only gateway manager configured."""
         vault = Vault(id="vault-1", name="env-vault", prefix="env")
@@ -1287,7 +1288,7 @@ class TestUnifiedQueryServiceListVaults:
     @pytest.mark.unit
     def test_list_vaults_both_sources(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should merge vaults from both sources."""
         gw_vault = Vault(id="vault-gw-1", name="gw-env-vault", prefix="gw-env")
@@ -1304,7 +1305,7 @@ class TestUnifiedQueryServiceListVaults:
     @pytest.mark.unit
     def test_list_vaults_merged_by_name(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should merge vaults that share the same name."""
         gw_vault = Vault(id="vault-gw-1", name="shared-vault", prefix="env")
@@ -1320,7 +1321,7 @@ class TestUnifiedQueryServiceListVaults:
     @pytest.mark.unit
     def test_list_vaults_gateway_pagination(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should handle gateway vault pagination."""
         full_unified_service._konnect_vaults = None
@@ -1339,7 +1340,7 @@ class TestUnifiedQueryServiceListVaults:
     @pytest.mark.unit
     def test_list_vaults_konnect_pagination(
         self,
-        full_unified_service: UnifiedQueryService,
+        full_unified_service: Any,
     ) -> None:
         """Should handle konnect vault pagination."""
         full_unified_service._gateway_vaults = None

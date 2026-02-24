@@ -1071,7 +1071,7 @@ class TestDisplayStatusTableExtended:
         }
 
         # Should not raise
-        _display_sync_status_table(summary, mock_unified_service, ["services"])
+        _display_sync_status_table(summary, ["services"], mock_unified_service)
 
     @pytest.mark.unit
     def test_status_table_drift_with_actual_entities(
@@ -1097,7 +1097,7 @@ class TestDisplayStatusTableExtended:
         }
 
         # Should print drift fields without error
-        _display_sync_status_table(summary, mock_unified_service, ["services"])
+        _display_sync_status_table(summary, ["services"], mock_unified_service)
 
     @pytest.mark.unit
     def test_status_table_unknown_entity_type(
@@ -1120,4 +1120,4 @@ class TestDisplayStatusTableExtended:
         }
 
         # Should not raise - returns empty entity list for unknown type
-        _display_sync_status_table(summary, mock_unified_service, ["unknown_type"])
+        _display_sync_status_table(summary, ["unknown_type"], mock_unified_service)

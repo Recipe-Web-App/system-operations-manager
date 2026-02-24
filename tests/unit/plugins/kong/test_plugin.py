@@ -144,7 +144,7 @@ class TestKongPluginCleanup:
     """Tests for KongPlugin.cleanup."""
 
     def test_cleanup_closes_client(self, kong_plugin: KongPlugin) -> None:
-        client = kong_plugin._client
+        client: Any = kong_plugin._client
         assert client is not None
 
         kong_plugin.cleanup()
@@ -210,8 +210,9 @@ class TestKongPluginStatusCommand:
         cli_runner: CliRunner,
         kong_plugin: KongPlugin,
     ) -> None:
-        assert kong_plugin._client is not None
-        kong_plugin._client.get_status.return_value = {"database": {"reachable": False}}
+        client: Any = kong_plugin._client
+        assert client is not None
+        client.get_status.return_value = {"database": {"reachable": False}}
 
         test_app = typer.Typer()
         kong_plugin._register_status_commands(test_app)
@@ -227,8 +228,9 @@ class TestKongPluginStatusCommand:
         kong_plugin: KongPlugin,
     ) -> None:
         """Status should show OSS when openid-connect is not available."""
-        assert kong_plugin._client is not None
-        kong_plugin._client.get_info.return_value = {
+        client: Any = kong_plugin._client
+        assert client is not None
+        client.get_info.return_value = {
             "hostname": "kong",
             "version": "3.4.0",
             "plugins": {
@@ -250,8 +252,9 @@ class TestKongPluginStatusCommand:
         cli_runner: CliRunner,
         kong_plugin: KongPlugin,
     ) -> None:
-        assert kong_plugin._client is not None
-        kong_plugin._client.get_status.side_effect = KongAPIError("timeout", status_code=503)
+        client: Any = kong_plugin._client
+        assert client is not None
+        client.get_status.side_effect = KongAPIError("timeout", status_code=503)
 
         test_app = typer.Typer()
         kong_plugin._register_status_commands(test_app)
@@ -313,8 +316,9 @@ class TestKongPluginInfoCommand:
         cli_runner: CliRunner,
         kong_plugin: KongPlugin,
     ) -> None:
-        assert kong_plugin._client is not None
-        kong_plugin._client.get_info.side_effect = KongAPIError("timeout", status_code=503)
+        client: Any = kong_plugin._client
+        assert client is not None
+        client.get_info.side_effect = KongAPIError("timeout", status_code=503)
 
         test_app = typer.Typer()
         kong_plugin._register_status_commands(test_app)
@@ -835,7 +839,8 @@ class TestRegisterEntityCommandsObservability:
         _all_patched: dict[str, MagicMock],
     ) -> None:
         """When observability is None, all factories should be None."""
-        kong_plugin._plugin_config.observability = None
+        config: Any = kong_plugin._plugin_config
+        config.observability = None
 
         app = typer.Typer()
         kong_plugin._register_entity_commands(app)

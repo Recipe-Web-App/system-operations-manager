@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 from unittest.mock import MagicMock
 
 import pytest
@@ -1355,7 +1356,9 @@ class TestDeploySingleServiceToKonnect:
         config_dir.mkdir(parents=True)
         return RegistryManager(config_dir)
 
-    def _make_diff(self, service_name: str, operation: str) -> object:
+    def _make_diff(
+        self, service_name: str, operation: Literal["create", "update", "unchanged"]
+    ) -> object:
         from system_operations_manager.integrations.kong.models.service_registry import (
             ServiceDeployDiff,
         )

@@ -1400,7 +1400,8 @@ class TestExtractRefName:
     @pytest.mark.unit
     def test_extract_ref_name_unsupported_type_returns_none(self, manager: ConfigManager) -> None:
         """An unsupported ref type (e.g. list) should return None."""
-        assert manager._extract_ref_name(["svc"]) is None
+        bad_ref: Any = ["svc"]
+        assert manager._extract_ref_name(bad_ref) is None
 
 
 class TestPrepareEntityForApi:
