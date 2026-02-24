@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -487,6 +488,419 @@ class TestTracingErrorHandling(TestTracingCommands):
                 "--global",
             ],
         )
+
+        assert result.exit_code == 1
+        assert "error" in result.stdout.lower()
+
+
+class TestFindTracingPluginHelper(TestTracingCommands):
+    """Tests for _find_tracing_plugin helper branching."""
+
+    @pytest.mark.unit
+    def test_find_returns_none_when_list_is_not_list(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """_find_tracing_plugin should return None when manager.list returns non-list."""
+        mock_plugin_manager.list.return_value = "unexpected-string"
+
+        result = cli_runner.invoke(app, ["tracing", "opentelemetry", "get"])
+
+        assert result.exit_code == 0
+        assert "no opentelemetry" in result.stdout.lower()
+
+    @pytest.mark.unit
+    def test_find_matches_by_service_id(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """_find_tracing_plugin should match plugin by service id."""
+        mock_plugin: Any = MagicMock()
+        mock_plugin.model_dump.return_value = {
+            "id": "plugin-otel",
+            "name": "opentelemetry",
+            "service": {"id": "svc-777", "name": "my-api"},
+            "route": None,
+            "config": {"endpoint": "http://otel:4317"},
+        }
+        mock_plugin_manager.list.return_value = [mock_plugin]
+
+        result = cli_runner.invoke(app, ["tracing", "opentelemetry", "get", "--service", "svc-777"])
+
+        assert result.exit_code == 0
+
+    @pytest.mark.unit
+    def test_find_matches_by_route_id(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """_find_tracing_plugin should match plugin by route id."""
+        mock_plugin: Any = MagicMock()
+        mock_plugin.model_dump.return_value = {
+            "id": "plugin-otel-rt",
+            "name": "opentelemetry",
+            "service": None,
+            "route": {"id": "rt-888", "name": "my-route"},
+            "config": {"endpoint": "http://otel:4317"},
+        }
+        mock_plugin_manager.list.return_value = [mock_plugin]
+
+        result = cli_runner.invoke(app, ["tracing", "opentelemetry", "get", "--route", "rt-888"])
+
+        assert result.exit_code == 0
+
+    @pytest.mark.unit
+    def test_otel_get_error_handling(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """otel_get should handle KongAPIError gracefully."""
+        mock_plugin_manager.list.side_effect = KongAPIError("API error", status_code=500)
+
+        result = cli_runner.invoke(app, ["tracing", "opentelemetry", "get"])
+
+        assert result.exit_code == 1
+        assert "error" in result.stdout.lower()
+
+
+class TestOpenTelemetryDisableExtended(TestTracingCommands):
+    """Additional tests for opentelemetry disable command branches."""
+
+    @pytest.mark.unit
+    def test_disable_not_found(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """opentelemetry disable should show message when plugin not found."""
+        mock_plugin_manager.list.return_value = []
+
+        result = cli_runner.invoke(app, ["tracing", "opentelemetry", "disable", "--force"])
+
+        assert result.exit_code == 0
+        assert "no opentelemetry" in result.stdout.lower()
+
+    @pytest.mark.unit
+    def test_disable_missing_plugin_id(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """opentelemetry disable should exit with code 1 when plugin id is missing."""
+        mock_plugin: Any = MagicMock()
+        mock_plugin.model_dump.return_value = {
+            "id": None,
+            "name": "opentelemetry",
+            "service": None,
+            "route": None,
+        }
+        mock_plugin_manager.list.return_value = [mock_plugin]
+
+        result = cli_runner.invoke(app, ["tracing", "opentelemetry", "disable", "--force"])
+
+        assert result.exit_code == 1
+        assert "plugin id not found" in result.stdout.lower()
+
+    @pytest.mark.unit
+    def test_disable_cancelled(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """opentelemetry disable should show cancelled when user declines confirmation."""
+        mock_plugin: Any = MagicMock()
+        mock_plugin.model_dump.return_value = {
+            "id": "plugin-otel",
+            "name": "opentelemetry",
+            "service": None,
+            "route": None,
+        }
+        mock_plugin_manager.list.return_value = [mock_plugin]
+
+        result = cli_runner.invoke(app, ["tracing", "opentelemetry", "disable"], input="n\n")
+
+        assert result.exit_code == 0
+        assert "cancelled" in result.stdout.lower()
+        mock_plugin_manager.disable.assert_not_called()
+
+    @pytest.mark.unit
+    def test_disable_error_handling(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """opentelemetry disable should handle KongAPIError gracefully."""
+        mock_plugin_manager.list.side_effect = KongAPIError("API error", status_code=500)
+
+        result = cli_runner.invoke(app, ["tracing", "opentelemetry", "disable", "--force"])
+
+        assert result.exit_code == 1
+        assert "error" in result.stdout.lower()
+
+    @pytest.mark.unit
+    def test_disable_with_service_scope(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """opentelemetry disable scope description should include service name."""
+        mock_plugin: Any = MagicMock()
+        mock_plugin.model_dump.return_value = {
+            "id": "plugin-svc",
+            "name": "opentelemetry",
+            "service": {"id": "svc-1", "name": "my-api"},
+            "route": None,
+        }
+        mock_plugin_manager.list.return_value = [mock_plugin]
+
+        result = cli_runner.invoke(
+            app,
+            ["tracing", "opentelemetry", "disable", "--service", "my-api", "--force"],
+        )
+
+        assert result.exit_code == 0
+        mock_plugin_manager.disable.assert_called_once_with("plugin-svc")
+
+    @pytest.mark.unit
+    def test_disable_with_route_scope(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """opentelemetry disable scope description should include route name."""
+        mock_plugin: Any = MagicMock()
+        mock_plugin.model_dump.return_value = {
+            "id": "plugin-rt",
+            "name": "opentelemetry",
+            "service": None,
+            "route": {"id": "rt-1", "name": "my-route"},
+        }
+        mock_plugin_manager.list.return_value = [mock_plugin]
+
+        result = cli_runner.invoke(
+            app,
+            ["tracing", "opentelemetry", "disable", "--route", "my-route", "--force"],
+        )
+
+        assert result.exit_code == 0
+        mock_plugin_manager.disable.assert_called_once_with("plugin-rt")
+
+
+class TestZipkinEnableExtended(TestTracingCommands):
+    """Additional tests for zipkin enable command branches."""
+
+    @pytest.mark.unit
+    def test_enable_with_default_service_name(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """zipkin enable should include default_service_name in config when provided."""
+        mock_plugin_manager.enable.return_value = KongPluginEntity(
+            id="plugin-zip",
+            name="zipkin",
+            enabled=True,
+        )
+
+        result = cli_runner.invoke(
+            app,
+            [
+                "tracing",
+                "zipkin",
+                "enable",
+                "--http-endpoint",
+                "http://zipkin:9411/api/v2/spans",
+                "--default-service-name",
+                "kong-gateway",
+                "--global",
+            ],
+        )
+
+        assert result.exit_code == 0
+        call_kwargs = mock_plugin_manager.enable.call_args
+        assert call_kwargs[1]["config"]["default_service_name"] == "kong-gateway"
+
+
+class TestZipkinGetExtended(TestTracingCommands):
+    """Additional tests for zipkin get command branches."""
+
+    @pytest.mark.unit
+    def test_get_global_found(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """zipkin get should display config for a global plugin."""
+        mock_plugin: Any = MagicMock()
+        mock_plugin.model_dump.return_value = {
+            "id": "plugin-zip",
+            "name": "zipkin",
+            "service": None,
+            "route": None,
+            "config": {"http_endpoint": "http://zipkin:9411/api/v2/spans"},
+        }
+        mock_plugin_manager.list.return_value = [mock_plugin]
+
+        result = cli_runner.invoke(app, ["tracing", "zipkin", "get"])
+
+        assert result.exit_code == 0
+
+    @pytest.mark.unit
+    def test_get_error_handling(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """zipkin get should handle KongAPIError gracefully."""
+        mock_plugin_manager.list.side_effect = KongAPIError("API error", status_code=500)
+
+        result = cli_runner.invoke(app, ["tracing", "zipkin", "get"])
+
+        assert result.exit_code == 1
+        assert "error" in result.stdout.lower()
+
+
+class TestZipkinDisableExtended(TestTracingCommands):
+    """Additional tests for zipkin disable command branches."""
+
+    @pytest.mark.unit
+    def test_disable_not_found(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """zipkin disable should show message when plugin not found."""
+        mock_plugin_manager.list.return_value = []
+
+        result = cli_runner.invoke(app, ["tracing", "zipkin", "disable", "--force"])
+
+        assert result.exit_code == 0
+        assert "no zipkin" in result.stdout.lower()
+
+    @pytest.mark.unit
+    def test_disable_missing_plugin_id(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """zipkin disable should exit with code 1 when plugin id is missing."""
+        mock_plugin: Any = MagicMock()
+        mock_plugin.model_dump.return_value = {
+            "id": None,
+            "name": "zipkin",
+            "service": None,
+            "route": None,
+        }
+        mock_plugin_manager.list.return_value = [mock_plugin]
+
+        result = cli_runner.invoke(app, ["tracing", "zipkin", "disable", "--force"])
+
+        assert result.exit_code == 1
+        assert "plugin id not found" in result.stdout.lower()
+
+    @pytest.mark.unit
+    def test_disable_cancelled(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """zipkin disable should show cancelled when user declines confirmation."""
+        mock_plugin: Any = MagicMock()
+        mock_plugin.model_dump.return_value = {
+            "id": "plugin-zip",
+            "name": "zipkin",
+            "service": None,
+            "route": None,
+        }
+        mock_plugin_manager.list.return_value = [mock_plugin]
+
+        result = cli_runner.invoke(app, ["tracing", "zipkin", "disable"], input="n\n")
+
+        assert result.exit_code == 0
+        assert "cancelled" in result.stdout.lower()
+        mock_plugin_manager.disable.assert_not_called()
+
+    @pytest.mark.unit
+    def test_disable_with_service_scope(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """zipkin disable should match and disable service-scoped plugin."""
+        mock_plugin: Any = MagicMock()
+        mock_plugin.model_dump.return_value = {
+            "id": "plugin-zip-svc",
+            "name": "zipkin",
+            "service": {"id": "svc-9", "name": "my-api"},
+            "route": None,
+        }
+        mock_plugin_manager.list.return_value = [mock_plugin]
+
+        result = cli_runner.invoke(
+            app,
+            ["tracing", "zipkin", "disable", "--service", "my-api", "--force"],
+        )
+
+        assert result.exit_code == 0
+        mock_plugin_manager.disable.assert_called_once_with("plugin-zip-svc")
+
+    @pytest.mark.unit
+    def test_disable_with_route_scope(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """zipkin disable should match and disable route-scoped plugin."""
+        mock_plugin: Any = MagicMock()
+        mock_plugin.model_dump.return_value = {
+            "id": "plugin-zip-rt",
+            "name": "zipkin",
+            "service": None,
+            "route": {"id": "rt-9", "name": "my-route"},
+        }
+        mock_plugin_manager.list.return_value = [mock_plugin]
+
+        result = cli_runner.invoke(
+            app,
+            ["tracing", "zipkin", "disable", "--route", "my-route", "--force"],
+        )
+
+        assert result.exit_code == 0
+        mock_plugin_manager.disable.assert_called_once_with("plugin-zip-rt")
+
+    @pytest.mark.unit
+    def test_disable_error_handling(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """zipkin disable should handle KongAPIError gracefully."""
+        mock_plugin_manager.list.side_effect = KongAPIError("API error", status_code=500)
+
+        result = cli_runner.invoke(app, ["tracing", "zipkin", "disable", "--force"])
 
         assert result.exit_code == 1
         assert "error" in result.stdout.lower()

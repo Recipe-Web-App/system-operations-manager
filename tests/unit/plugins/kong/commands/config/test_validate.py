@@ -207,3 +207,135 @@ class TestValidateCommand:
 
             assert result.exit_code == 1
             assert "error" in result.stdout.lower()
+
+
+class TestValidateCommandJsonAndEdgeCases:
+    """Tests for JSON parsing and schema/generic error handling in config validate."""
+
+    @pytest.fixture
+    def app(self, mock_config_manager: MagicMock) -> typer.Typer:
+        """Create a test app with validate command."""
+        app = typer.Typer()
+        register_validate_command(app, lambda: mock_config_manager)
+        return app
+
+    def _write_config(self, path: Path, config: dict[str, Any]) -> None:
+        """Write config to YAML file."""
+        path.write_text(__import__("yaml").dump(config))
+
+    @pytest.mark.unit
+    def test_validate_reads_json_file(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_config_manager: MagicMock,
+    ) -> None:
+        """validate should parse a JSON config file successfully."""
+        import json
+
+        config_data = {
+            "_format_version": "3.0",
+            "services": [{"name": "svc", "host": "localhost", "port": 80, "protocol": "http"}],
+        }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "kong.json"
+            config_path.write_text(json.dumps(config_data))
+
+            result = cli_runner.invoke(app, [str(config_path)])
+
+            assert result.exit_code == 0
+            assert "valid" in result.stdout.lower()
+
+    @pytest.mark.unit
+    def test_validate_schema_error_shows_field_messages(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+    ) -> None:
+        """validate should display individual field errors from PydanticValidationError."""
+        import yaml as _yaml
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "kong.yaml"
+            # Passing 'services' as a plain string (not a list) triggers a
+            # PydanticValidationError that the validate command catches and reports.
+            config_path.write_text(
+                _yaml.dump(
+                    {
+                        "_format_version": "3.0",
+                        "services": "not-a-list",
+                    }
+                )
+            )
+
+            result = cli_runner.invoke(app, [str(config_path)])
+
+            # A Pydantic schema error must produce exit code 1
+            assert result.exit_code == 1
+
+    @pytest.mark.unit
+    def test_validate_generic_exception_is_caught(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_config_manager: MagicMock,
+        sample_valid_config: dict[str, Any],
+    ) -> None:
+        """validate should catch unexpected exceptions and report them gracefully."""
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "kong.yaml"
+            self._write_config(config_path, sample_valid_config)
+
+            # Patch read_text to raise an unexpected exception
+            with patch.object(Path, "read_text", side_effect=OSError("Disk error")):
+                result = cli_runner.invoke(app, [str(config_path)])
+
+            assert result.exit_code == 1
+            assert "error" in result.stdout.lower()
+
+    @pytest.mark.unit
+    def test_validate_with_errors_shows_table(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_config_manager: MagicMock,
+        sample_valid_config: dict[str, Any],
+        sample_validation_errors: ConfigValidationResult,
+    ) -> None:
+        """validate should render an error table when validation has errors."""
+        mock_config_manager.validate_config.return_value = sample_validation_errors
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "kong.yaml"
+            self._write_config(config_path, sample_valid_config)
+
+            result = cli_runner.invoke(app, [str(config_path)])
+
+            assert result.exit_code == 1
+            # Table should appear with path/message info
+            assert "routes" in result.stdout.lower() or "error" in result.stdout.lower()
+
+    @pytest.mark.unit
+    def test_validate_with_errors_and_warnings_shows_both(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_config_manager: MagicMock,
+        sample_valid_config: dict[str, Any],
+        sample_validation_errors: ConfigValidationResult,
+    ) -> None:
+        """validate should display both errors and warnings when result has both."""
+        mock_config_manager.validate_config.return_value = sample_validation_errors
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            config_path = Path(tmpdir) / "kong.yaml"
+            self._write_config(config_path, sample_valid_config)
+
+            result = cli_runner.invoke(app, [str(config_path)])
+
+            assert result.exit_code == 1
+            assert "error" in result.stdout.lower()
+            assert "warning" in result.stdout.lower()
