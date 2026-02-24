@@ -332,3 +332,106 @@ class TestResolveServiceToPod:
 
         with pytest.raises(KubernetesNotFoundError):
             streaming_manager.resolve_service_to_pod("my-service")
+
+
+@pytest.mark.unit
+@pytest.mark.kubernetes
+class TestFollowLogsOptionalKwargs:
+    """Tests for uncovered optional kwargs in _follow_logs."""
+
+    def test_follow_logs_with_previous_flag(
+        self, streaming_manager: StreamingManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """_follow_logs should include 'previous' kwarg when previous=True."""
+        mock_k8s_client.core_v1.read_namespaced_pod_log.return_value = iter([b"old\n"])
+
+        result = streaming_manager.stream_logs("my-pod", follow=True, previous=True)
+        list(result)
+
+        call_kwargs = mock_k8s_client.core_v1.read_namespaced_pod_log.call_args[1]
+        assert call_kwargs["previous"] is True
+
+    def test_follow_logs_with_since_seconds(
+        self, streaming_manager: StreamingManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """_follow_logs should include 'since_seconds' kwarg when provided."""
+        mock_k8s_client.core_v1.read_namespaced_pod_log.return_value = iter([b"recent\n"])
+
+        result = streaming_manager.stream_logs("my-pod", follow=True, since_seconds=120)
+        list(result)
+
+        call_kwargs = mock_k8s_client.core_v1.read_namespaced_pod_log.call_args[1]
+        assert call_kwargs["since_seconds"] == 120
+
+    def test_follow_logs_api_error(
+        self, streaming_manager: StreamingManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """_follow_logs should translate API errors raised during stream setup."""
+        mock_k8s_client.core_v1.read_namespaced_pod_log.side_effect = Exception("stream failed")
+        mock_k8s_client.translate_api_exception.return_value = KubernetesNotFoundError(
+            resource_type="Pod", resource_name="my-pod"
+        )
+
+        result = streaming_manager.stream_logs("my-pod", follow=True)
+
+        with pytest.raises(KubernetesNotFoundError):
+            list(result)
+
+
+@pytest.mark.unit
+@pytest.mark.kubernetes
+class TestPortForwardErrorHandling:
+    """Tests for error handling in port_forward."""
+
+    def test_port_forward_api_error(
+        self, streaming_manager: StreamingManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """port_forward should translate API errors."""
+        mock_k8s_client.translate_api_exception.return_value = KubernetesNotFoundError(
+            resource_type="Pod", resource_name="my-pod"
+        )
+
+        with (
+            patch(
+                "kubernetes.stream.portforward",
+                side_effect=Exception("portforward failed"),
+            ),
+            pytest.raises(KubernetesNotFoundError),
+        ):
+            streaming_manager.port_forward("my-pod", ports=[(8080, 80)])
+
+
+@pytest.mark.unit
+@pytest.mark.kubernetes
+class TestResolveServiceToPodErrorHandling:
+    """Tests for error paths in resolve_service_to_pod."""
+
+    def test_resolve_service_read_service_api_error(
+        self, streaming_manager: StreamingManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """resolve_service_to_pod should translate errors from read_namespaced_service."""
+        mock_k8s_client.core_v1.read_namespaced_service.side_effect = Exception(
+            "service not reachable"
+        )
+        mock_k8s_client.translate_api_exception.return_value = KubernetesNotFoundError(
+            resource_type="Service", resource_name="my-service"
+        )
+
+        with pytest.raises(KubernetesNotFoundError):
+            streaming_manager.resolve_service_to_pod("my-service")
+
+    def test_resolve_service_list_pods_api_error(
+        self, streaming_manager: StreamingManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """resolve_service_to_pod should translate errors from list_namespaced_pod."""
+        mock_svc = MagicMock()
+        mock_svc.spec.selector = {"app": "nginx"}
+        mock_k8s_client.core_v1.read_namespaced_service.return_value = mock_svc
+
+        mock_k8s_client.core_v1.list_namespaced_pod.side_effect = Exception("pod list failed")
+        mock_k8s_client.translate_api_exception.return_value = KubernetesNotFoundError(
+            resource_type="Pod", resource_name="my-service"
+        )
+
+        with pytest.raises(KubernetesNotFoundError):
+            streaming_manager.resolve_service_to_pod("my-service")

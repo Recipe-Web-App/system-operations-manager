@@ -399,3 +399,336 @@ class TestWorkflowLogsAndArtifacts:
 
             assert len(result) == 1
             assert result[0] == mock_artifact
+
+
+@pytest.mark.unit
+@pytest.mark.kubernetes
+class TestWorkflowOperationsErrorPaths:
+    """Tests for error paths in Workflow operations."""
+
+    def test_list_workflows_with_label_selector(
+        self, workflows_manager: WorkflowsManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should pass label_selector kwarg when provided."""
+        mock_response: dict[str, Any] = {"items": []}
+        mock_k8s_client.custom_objects.list_namespaced_custom_object.return_value = mock_response
+
+        result = workflows_manager.list_workflows(label_selector="app=myapp")
+
+        assert result == []
+        call_kwargs: Any = mock_k8s_client.custom_objects.list_namespaced_custom_object.call_args
+        assert call_kwargs.kwargs.get("label_selector") == "app=myapp" or (
+            "label_selector" in str(call_kwargs)
+        )
+
+    def test_list_workflows_api_error_raises(
+        self, workflows_manager: WorkflowsManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should propagate translated error when API raises on list_workflows."""
+        api_exc = Exception("api error")
+        mock_k8s_client.custom_objects.list_namespaced_custom_object.side_effect = api_exc
+        translated = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.return_value = translated
+
+        with pytest.raises(RuntimeError, match="translated"):
+            workflows_manager.list_workflows()
+
+    def test_get_workflow_api_error_raises(
+        self, workflows_manager: WorkflowsManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should propagate translated error when API raises on get_workflow."""
+        api_exc = Exception("not found")
+        mock_k8s_client.custom_objects.get_namespaced_custom_object.side_effect = api_exc
+        translated = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.return_value = translated
+
+        with pytest.raises(RuntimeError, match="translated"):
+            workflows_manager.get_workflow("missing-workflow")
+
+    def test_create_workflow_api_error_raises(
+        self, workflows_manager: WorkflowsManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should propagate translated error when API raises on create_workflow."""
+        api_exc = Exception("conflict")
+        mock_k8s_client.custom_objects.create_namespaced_custom_object.side_effect = api_exc
+        translated = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.return_value = translated
+
+        with pytest.raises(RuntimeError, match="translated"):
+            workflows_manager.create_workflow("bad-workflow")
+
+    def test_delete_workflow_api_error_raises(
+        self, workflows_manager: WorkflowsManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should propagate translated error when API raises on delete_workflow."""
+        api_exc = Exception("not found")
+        mock_k8s_client.custom_objects.delete_namespaced_custom_object.side_effect = api_exc
+        translated = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.return_value = translated
+
+        with pytest.raises(RuntimeError, match="translated"):
+            workflows_manager.delete_workflow("missing-workflow")
+
+
+@pytest.mark.unit
+@pytest.mark.kubernetes
+class TestWorkflowLogsEdgeCases:
+    """Tests for edge cases and error paths in workflow log retrieval."""
+
+    def test_get_workflow_logs_follow_returns_iterator(
+        self, workflows_manager: WorkflowsManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should return an iterator when follow=True."""
+        mock_wf = {
+            "status": {
+                "nodes": {
+                    "node1": {"type": "Pod", "id": "pod-abc"},
+                }
+            }
+        }
+        mock_k8s_client.custom_objects.get_namespaced_custom_object.return_value = mock_wf
+        # _stream_pod_logs calls read_namespaced_pod_log with follow=True
+        mock_k8s_client.core_v1.read_namespaced_pod_log.return_value = iter(
+            [b"line1\n", b"line2\n"]
+        )
+
+        result = workflows_manager.get_workflow_logs("test-workflow", follow=True)
+
+        # The result should be an iterator (generator)
+        import collections.abc
+
+        assert isinstance(result, collections.abc.Iterator)
+
+    def test_get_workflow_logs_pod_log_unavailable(
+        self, workflows_manager: WorkflowsManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should include unavailable notice when pod log read fails."""
+        mock_wf = {
+            "status": {
+                "nodes": {
+                    "node1": {"type": "Pod", "id": "pod-fail"},
+                }
+            }
+        }
+        mock_k8s_client.custom_objects.get_namespaced_custom_object.return_value = mock_wf
+        mock_k8s_client.core_v1.read_namespaced_pod_log.side_effect = Exception("log unavailable")
+
+        result = workflows_manager.get_workflow_logs("test-workflow", follow=False)
+
+        assert isinstance(result, str)
+        assert "logs unavailable" in result
+        assert "pod-fail" in result
+
+    def test_get_workflow_logs_api_error_raises(
+        self, workflows_manager: WorkflowsManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should propagate translated error when get_workflow_logs API call fails."""
+        api_exc = Exception("api error")
+        mock_k8s_client.custom_objects.get_namespaced_custom_object.side_effect = api_exc
+        translated = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.return_value = translated
+
+        with pytest.raises(RuntimeError, match="translated"):
+            workflows_manager.get_workflow_logs("broken-workflow")
+
+    def test_stream_pod_logs_bytes_lines(
+        self, workflows_manager: WorkflowsManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should decode bytes lines in _stream_pod_logs."""
+        mock_k8s_client.core_v1.read_namespaced_pod_log.return_value = iter(
+            [b"hello\n", b"world\n"]
+        )
+
+        lines = list(workflows_manager._stream_pod_logs("pod-xyz", "default", "main"))
+
+        assert lines == ["hello\n", "world\n"]
+
+    def test_stream_pod_logs_str_lines(
+        self, workflows_manager: WorkflowsManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should yield str lines as-is in _stream_pod_logs."""
+        mock_k8s_client.core_v1.read_namespaced_pod_log.return_value = iter(
+            ["line-a\n", "line-b\n"]
+        )
+
+        lines = list(workflows_manager._stream_pod_logs("pod-xyz", "default", "main"))
+
+        assert lines == ["line-a\n", "line-b\n"]
+
+
+@pytest.mark.unit
+@pytest.mark.kubernetes
+class TestWorkflowTemplateErrorPaths:
+    """Tests for error paths in WorkflowTemplate operations."""
+
+    def test_list_workflow_templates_with_label_selector(
+        self, workflows_manager: WorkflowsManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should pass label_selector when provided to list_workflow_templates."""
+        mock_response: dict[str, Any] = {"items": []}
+        mock_k8s_client.custom_objects.list_namespaced_custom_object.return_value = mock_response
+
+        result = workflows_manager.list_workflow_templates(label_selector="tier=backend")
+
+        assert result == []
+        call_kwargs: Any = mock_k8s_client.custom_objects.list_namespaced_custom_object.call_args
+        assert "tier=backend" in str(call_kwargs)
+
+    def test_list_workflow_templates_api_error_raises(
+        self, workflows_manager: WorkflowsManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should propagate translated error when list_workflow_templates API call fails."""
+        api_exc = Exception("api error")
+        mock_k8s_client.custom_objects.list_namespaced_custom_object.side_effect = api_exc
+        translated = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.return_value = translated
+
+        with pytest.raises(RuntimeError, match="translated"):
+            workflows_manager.list_workflow_templates()
+
+    def test_get_workflow_template_api_error_raises(
+        self, workflows_manager: WorkflowsManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should propagate translated error when get_workflow_template API call fails."""
+        api_exc = Exception("not found")
+        mock_k8s_client.custom_objects.get_namespaced_custom_object.side_effect = api_exc
+        translated = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.return_value = translated
+
+        with pytest.raises(RuntimeError, match="translated"):
+            workflows_manager.get_workflow_template("missing-template")
+
+    def test_create_workflow_template_api_error_raises(
+        self, workflows_manager: WorkflowsManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should propagate translated error when create_workflow_template API call fails."""
+        api_exc = Exception("conflict")
+        mock_k8s_client.custom_objects.create_namespaced_custom_object.side_effect = api_exc
+        translated = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.return_value = translated
+
+        with pytest.raises(RuntimeError, match="translated"):
+            workflows_manager.create_workflow_template("bad-template", spec={"entrypoint": "main"})
+
+    def test_delete_workflow_template_api_error_raises(
+        self, workflows_manager: WorkflowsManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should propagate translated error when delete_workflow_template API call fails."""
+        api_exc = Exception("not found")
+        mock_k8s_client.custom_objects.delete_namespaced_custom_object.side_effect = api_exc
+        translated = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.return_value = translated
+
+        with pytest.raises(RuntimeError, match="translated"):
+            workflows_manager.delete_workflow_template("missing-template")
+
+
+@pytest.mark.unit
+@pytest.mark.kubernetes
+class TestCronWorkflowErrorPaths:
+    """Tests for error paths in CronWorkflow operations."""
+
+    def test_list_cron_workflows_with_label_selector(
+        self, workflows_manager: WorkflowsManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should pass label_selector when provided to list_cron_workflows."""
+        mock_response: dict[str, Any] = {"items": []}
+        mock_k8s_client.custom_objects.list_namespaced_custom_object.return_value = mock_response
+
+        result = workflows_manager.list_cron_workflows(label_selector="env=prod")
+
+        assert result == []
+        call_kwargs: Any = mock_k8s_client.custom_objects.list_namespaced_custom_object.call_args
+        assert "env=prod" in str(call_kwargs)
+
+    def test_list_cron_workflows_api_error_raises(
+        self, workflows_manager: WorkflowsManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should propagate translated error when list_cron_workflows API call fails."""
+        api_exc = Exception("api error")
+        mock_k8s_client.custom_objects.list_namespaced_custom_object.side_effect = api_exc
+        translated = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.return_value = translated
+
+        with pytest.raises(RuntimeError, match="translated"):
+            workflows_manager.list_cron_workflows()
+
+    def test_get_cron_workflow_api_error_raises(
+        self, workflows_manager: WorkflowsManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should propagate translated error when get_cron_workflow API call fails."""
+        api_exc = Exception("not found")
+        mock_k8s_client.custom_objects.get_namespaced_custom_object.side_effect = api_exc
+        translated = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.return_value = translated
+
+        with pytest.raises(RuntimeError, match="translated"):
+            workflows_manager.get_cron_workflow("missing-cron")
+
+    def test_create_cron_workflow_api_error_raises(
+        self, workflows_manager: WorkflowsManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should propagate translated error when create_cron_workflow API call fails."""
+        api_exc = Exception("conflict")
+        mock_k8s_client.custom_objects.create_namespaced_custom_object.side_effect = api_exc
+        translated = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.return_value = translated
+
+        with pytest.raises(RuntimeError, match="translated"):
+            workflows_manager.create_cron_workflow(
+                "bad-cron", schedule="0 * * * *", template_ref="my-template"
+            )
+
+    def test_delete_cron_workflow_api_error_raises(
+        self, workflows_manager: WorkflowsManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should propagate translated error when delete_cron_workflow API call fails."""
+        api_exc = Exception("not found")
+        mock_k8s_client.custom_objects.delete_namespaced_custom_object.side_effect = api_exc
+        translated = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.return_value = translated
+
+        with pytest.raises(RuntimeError, match="translated"):
+            workflows_manager.delete_cron_workflow("missing-cron")
+
+    def test_suspend_cron_workflow_api_error_raises(
+        self, workflows_manager: WorkflowsManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should propagate translated error when suspend_cron_workflow API call fails."""
+        api_exc = Exception("not found")
+        mock_k8s_client.custom_objects.patch_namespaced_custom_object.side_effect = api_exc
+        translated = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.return_value = translated
+
+        with pytest.raises(RuntimeError, match="translated"):
+            workflows_manager.suspend_cron_workflow("missing-cron")
+
+    def test_resume_cron_workflow_api_error_raises(
+        self, workflows_manager: WorkflowsManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should propagate translated error when resume_cron_workflow API call fails."""
+        api_exc = Exception("not found")
+        mock_k8s_client.custom_objects.patch_namespaced_custom_object.side_effect = api_exc
+        translated = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.return_value = translated
+
+        with pytest.raises(RuntimeError, match="translated"):
+            workflows_manager.resume_cron_workflow("missing-cron")
+
+
+@pytest.mark.unit
+@pytest.mark.kubernetes
+class TestWorkflowArtifactsErrorPaths:
+    """Tests for error paths in workflow artifact operations."""
+
+    def test_list_workflow_artifacts_api_error_raises(
+        self, workflows_manager: WorkflowsManager, mock_k8s_client: MagicMock
+    ) -> None:
+        """Should propagate translated error when list_workflow_artifacts API call fails."""
+        api_exc = Exception("api error")
+        mock_k8s_client.custom_objects.get_namespaced_custom_object.side_effect = api_exc
+        translated = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.return_value = translated
+
+        with pytest.raises(RuntimeError, match="translated"):
+            workflows_manager.list_workflow_artifacts("broken-workflow")

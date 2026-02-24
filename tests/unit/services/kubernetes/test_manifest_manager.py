@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -514,3 +515,481 @@ class TestDiffManifests:
 
         assert results[0].namespace == "staging"
         mock_resource_api.get.assert_called_once_with(name="test-app", namespace="staging")
+
+
+# ===========================================================================
+# TestLoadManifestsEdgeCases
+# ===========================================================================
+
+
+@pytest.mark.unit
+class TestLoadManifestsEdgeCases:
+    """Tests for uncovered branches in load_manifests and _load_file."""
+
+    def test_load_empty_directory_returns_empty_list(
+        self, manifest_manager: ManifestManager, tmp_path: Path
+    ) -> None:
+        """Should log a warning and return [] when a directory has no YAML files.
+
+        Covers lines 126-127 in manifest_manager.py.
+        """
+        # tmp_path exists and is a directory but has no .yaml/.yml files
+        (tmp_path / "notes.txt").write_text("not yaml")
+
+        result = manifest_manager.load_manifests(tmp_path)
+
+        assert result == []
+
+    def test_load_path_not_file_or_directory_raises(
+        self, manifest_manager: ManifestManager, tmp_path: Path
+    ) -> None:
+        """Should raise FileNotFoundError for paths that are neither file nor dir.
+
+        Covers line 132 in manifest_manager.py.
+        """
+        # Patch Path.is_file and Path.is_dir to both return False while exists() is True
+        real_path = tmp_path / "fake_special"
+
+        with (
+            patch.object(type(real_path), "exists", return_value=True),
+            patch.object(type(real_path), "is_file", return_value=False),
+            patch.object(type(real_path), "is_dir", return_value=False),
+            pytest.raises(FileNotFoundError, match="neither a file nor a directory"),
+        ):
+            manifest_manager.load_manifests(real_path)
+
+    def test_load_file_invalid_yaml_raises_value_error(
+        self, manifest_manager: ManifestManager, tmp_path: Path
+    ) -> None:
+        """Should raise ValueError when a YAML file cannot be parsed.
+
+        Covers lines 146-147 in manifest_manager.py.
+        """
+        bad_yaml = tmp_path / "bad.yaml"
+        # Tabs are invalid YAML indentation and trigger a YAMLError
+        bad_yaml.write_text("key:\n\t- item\n")
+
+        with pytest.raises(ValueError, match="Failed to parse YAML file"):
+            manifest_manager.load_manifests(bad_yaml)
+
+    def test_load_file_skips_non_dict_documents(
+        self, manifest_manager: ManifestManager, tmp_path: Path
+    ) -> None:
+        """Should skip non-dict YAML documents and log a warning.
+
+        Covers lines 154-159 in manifest_manager.py.
+        """
+        # A bare scalar or list at the top level is valid YAML but not a dict
+        manifest_file = tmp_path / "mixed.yaml"
+        manifest_file.write_text(
+            "- item1\n- item2\n---\napiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cfg\n"
+        )
+
+        result = manifest_manager.load_manifests(manifest_file)
+
+        # The list document should be skipped; only the dict document is kept
+        assert len(result) == 1
+        assert result[0]["kind"] == "ConfigMap"
+
+
+# ===========================================================================
+# TestValidateManifestsEdgeCases
+# ===========================================================================
+
+
+@pytest.mark.unit
+class TestValidateManifestsEdgeCases:
+    """Tests for uncovered type-validation branches in _validate_single."""
+
+    def test_validate_api_version_not_string(self, manifest_manager: ManifestManager) -> None:
+        """Should report error when apiVersion is not a string.
+
+        Covers line 219 in manifest_manager.py.
+        """
+        manifest: dict[str, Any] = {
+            "apiVersion": 42,
+            "kind": "ConfigMap",
+            "metadata": {"name": "cfg"},
+        }
+
+        results = manifest_manager.validate_manifests([manifest])
+
+        assert results[0].valid is False
+        assert any("apiVersion must be a string" in e for e in results[0].errors)
+
+    def test_validate_kind_not_string(self, manifest_manager: ManifestManager) -> None:
+        """Should report error when kind is not a string.
+
+        Covers line 223 in manifest_manager.py.
+        """
+        manifest: dict[str, Any] = {
+            "apiVersion": "v1",
+            "kind": 99,
+            "metadata": {"name": "cfg"},
+        }
+
+        results = manifest_manager.validate_manifests([manifest])
+
+        assert results[0].valid is False
+        assert any("kind must be a string" in e for e in results[0].errors)
+
+    def test_validate_metadata_name_not_string(self, manifest_manager: ManifestManager) -> None:
+        """Should report error when metadata.name is not a string.
+
+        Covers line 230 in manifest_manager.py.
+        """
+        manifest: dict[str, Any] = {
+            "apiVersion": "v1",
+            "kind": "ConfigMap",
+            "metadata": {"name": 123},
+        }
+
+        results = manifest_manager.validate_manifests([manifest])
+
+        assert results[0].valid is False
+        assert any("metadata.name must be a string" in e for e in results[0].errors)
+
+    def test_validate_metadata_not_dict(self, manifest_manager: ManifestManager) -> None:
+        """Should report error when metadata is present but not a dict.
+
+        Covers line 232 in manifest_manager.py.
+
+        Note: _get_resource_identifier calls .get() on the metadata value, so
+        a plain string would raise AttributeError before validation runs.
+        We use a MagicMock (which supports .get()) to allow the code to reach
+        the isinstance check on line 231 and the error-append on line 232.
+        """
+        fake_metadata: Any = MagicMock(spec=[])  # no spec attributes - not a dict
+        # Make manifest.get("metadata", {}) return fake_metadata
+        # and fake_metadata.get("name", "unnamed") return "unnamed" so
+        # _get_resource_identifier can build the resource id string
+        fake_metadata.get = MagicMock(return_value="unnamed")
+
+        manifest: dict[str, Any] = {
+            "apiVersion": "v1",
+            "kind": "ConfigMap",
+            "metadata": fake_metadata,
+        }
+
+        results = manifest_manager.validate_manifests([manifest])
+
+        assert results[0].valid is False
+        assert any("metadata must be a dict" in e for e in results[0].errors)
+
+    def test_validate_uses_source_file_from_manifest(
+        self, manifest_manager: ManifestManager
+    ) -> None:
+        """Should use _source_file metadata as the file label in the result."""
+        manifest: dict[str, Any] = {
+            "apiVersion": "v1",
+            "kind": "ConfigMap",
+            "metadata": {"name": "cfg"},
+            "_source_file": "/path/to/manifest.yaml",
+        }
+
+        results = manifest_manager.validate_manifests([manifest])
+
+        assert results[0].file == "/path/to/manifest.yaml"
+
+
+# ===========================================================================
+# TestApplyManifestsNamespaceOverride
+# ===========================================================================
+
+
+@pytest.mark.unit
+class TestApplyManifestsNamespaceOverride:
+    """Tests for namespace-override branch in apply_manifests (line 299)."""
+
+    @patch("kubernetes.utils.create_from_dict")
+    def test_apply_with_namespace_override_sets_metadata_namespace(
+        self,
+        mock_create: MagicMock,
+        manifest_manager: ManifestManager,
+    ) -> None:
+        """Should mutate clean metadata.namespace when namespace override is provided.
+
+        Covers line 299 in manifest_manager.py.
+        """
+        mock_create.return_value = None
+        manifest: dict[str, Any] = {
+            "apiVersion": "v1",
+            "kind": "ConfigMap",
+            "metadata": {"name": "cfg"},
+        }
+
+        results = manifest_manager.apply_manifests([manifest], namespace="production")
+
+        assert len(results) == 1
+        assert results[0].success is True
+        # Verify that create_from_dict was called (namespace was set in clean copy)
+        mock_create.assert_called_once()
+
+
+# ===========================================================================
+# TestApplySingleApiException
+# ===========================================================================
+
+
+@pytest.mark.unit
+class TestApplySingleApiException:
+    """Tests for ApiException branch in _apply_single (lines 361-362)."""
+
+    @patch("kubernetes.utils.create_from_dict")
+    def test_apply_single_handles_api_exception(
+        self,
+        mock_create: MagicMock,
+        manifest_manager: ManifestManager,
+        valid_manifest: dict[str, object],
+    ) -> None:
+        """Should capture ApiException (not FailToCreateError) as a failed result.
+
+        Covers lines 361-362 in manifest_manager.py.
+        """
+        from kubernetes.client import ApiException
+
+        mock_create.side_effect = ApiException(status=500, reason="Internal Server Error")
+
+        results = manifest_manager.apply_manifests([valid_manifest])
+
+        assert len(results) == 1
+        assert results[0].success is False
+        assert results[0].action == "failed"
+        assert "Internal Server Error" in results[0].message
+
+
+# ===========================================================================
+# TestServerSideApply
+# ===========================================================================
+
+
+@pytest.mark.unit
+class TestServerSideApply:
+    """Tests for _server_side_apply (lines 388-417)."""
+
+    @patch(
+        "system_operations_manager.services.kubernetes.manifest_manager.ManifestManager._get_dynamic_client"
+    )
+    def test_server_side_apply_success(
+        self,
+        mock_get_dynamic: MagicMock,
+        manifest_manager: ManifestManager,
+        valid_manifest: dict[str, object],
+    ) -> None:
+        """Should return a successful 'configured' result on server-side apply.
+
+        Covers lines 388-414 (success path) in manifest_manager.py.
+        """
+        mock_resource_api: Any = MagicMock()
+        mock_resource_api.server_side_apply.return_value = MagicMock()
+        dynamic_client: Any = MagicMock()
+        dynamic_client.resources.get.return_value = mock_resource_api
+        mock_get_dynamic.return_value = dynamic_client
+
+        manifest: dict[str, Any] = {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "metadata": {"name": "test-app", "namespace": "default"},
+            "spec": {"replicas": 1},
+        }
+        result = manifest_manager._server_side_apply(
+            manifest, "default", "Deployment/test-app", dry_run_strategy=None
+        )
+
+        assert result.success is True
+        assert result.action == "configured"
+        mock_resource_api.server_side_apply.assert_called_once()
+
+    @patch(
+        "system_operations_manager.services.kubernetes.manifest_manager.ManifestManager._get_dynamic_client"
+    )
+    def test_server_side_apply_with_dry_run_strategy(
+        self,
+        mock_get_dynamic: MagicMock,
+        manifest_manager: ManifestManager,
+    ) -> None:
+        """Should include dry_run kwarg and label action accordingly.
+
+        Covers the dry_run_strategy branch inside _server_side_apply.
+        """
+        mock_resource_api: Any = MagicMock()
+        mock_resource_api.server_side_apply.return_value = MagicMock()
+        dynamic_client: Any = MagicMock()
+        dynamic_client.resources.get.return_value = mock_resource_api
+        mock_get_dynamic.return_value = dynamic_client
+
+        manifest: dict[str, Any] = {
+            "apiVersion": "v1",
+            "kind": "ConfigMap",
+            "metadata": {"name": "cfg"},
+        }
+        result = manifest_manager._server_side_apply(
+            manifest, "default", "ConfigMap/cfg", dry_run_strategy="All"
+        )
+
+        assert result.success is True
+        assert "server dry-run" in result.action
+        call_kwargs: Any = mock_resource_api.server_side_apply.call_args.kwargs
+        assert call_kwargs.get("dry_run") == "All"
+
+    @patch(
+        "system_operations_manager.services.kubernetes.manifest_manager.ManifestManager._get_dynamic_client"
+    )
+    def test_server_side_apply_exception_returns_failed(
+        self,
+        mock_get_dynamic: MagicMock,
+        manifest_manager: ManifestManager,
+    ) -> None:
+        """Should return a failed ApplyResult when server-side apply raises.
+
+        Covers lines 415-417 (exception path) in manifest_manager.py.
+        """
+        dynamic_client: Any = MagicMock()
+        dynamic_client.resources.get.side_effect = RuntimeError("dynamic client error")
+        mock_get_dynamic.return_value = dynamic_client
+
+        manifest: dict[str, Any] = {
+            "apiVersion": "apps/v1",
+            "kind": "Deployment",
+            "metadata": {"name": "broken"},
+        }
+        result = manifest_manager._server_side_apply(
+            manifest, "default", "Deployment/broken", dry_run_strategy=None
+        )
+
+        assert result.success is False
+        assert result.action == "failed"
+        assert "dynamic client error" in result.message
+
+    @patch(
+        "system_operations_manager.services.kubernetes.manifest_manager.ManifestManager._get_dynamic_client"
+    )
+    @patch("kubernetes.utils.create_from_dict")
+    def test_apply_manifests_triggers_server_side_apply_on_conflict(
+        self,
+        mock_create: MagicMock,
+        mock_get_dynamic: MagicMock,
+        manifest_manager: ManifestManager,
+        valid_manifest: dict[str, object],
+    ) -> None:
+        """Should invoke _server_side_apply end-to-end on 409 Conflict.
+
+        Covers the full integration of apply_manifests -> _apply_single ->
+        _server_side_apply for the success path.
+        """
+        from kubernetes import utils
+
+        mock_api_exc: Any = MagicMock()
+        mock_api_exc.status = 409
+        mock_create.side_effect = utils.FailToCreateError([mock_api_exc])
+
+        mock_resource_api: Any = MagicMock()
+        mock_resource_api.server_side_apply.return_value = MagicMock()
+        dynamic_client: Any = MagicMock()
+        dynamic_client.resources.get.return_value = mock_resource_api
+        mock_get_dynamic.return_value = dynamic_client
+
+        results = manifest_manager.apply_manifests([valid_manifest])
+
+        assert len(results) == 1
+        assert results[0].success is True
+        assert results[0].action == "configured"
+        mock_resource_api.server_side_apply.assert_called_once()
+
+
+# ===========================================================================
+# TestDiffSingleErrorBranches
+# ===========================================================================
+
+
+@pytest.mark.unit
+class TestDiffSingleErrorBranches:
+    """Tests for non-404 ApiException and generic Exception in _diff_single."""
+
+    @patch(
+        "system_operations_manager.services.kubernetes.manifest_manager.ManifestManager._get_dynamic_client"
+    )
+    def test_diff_non_404_api_exception_returns_error_result(
+        self,
+        mock_dynamic: MagicMock,
+        manifest_manager: ManifestManager,
+        valid_manifest: dict[str, object],
+    ) -> None:
+        """Should return a DiffResult with error message for non-404 ApiException.
+
+        Covers lines 486-493 in manifest_manager.py.
+        """
+        from kubernetes.client import ApiException
+
+        mock_resource_api: Any = MagicMock()
+        mock_resource_api.get.side_effect = ApiException(status=403, reason="Forbidden")
+        dynamic_client: Any = MagicMock()
+        dynamic_client.resources.get.return_value = mock_resource_api
+        mock_dynamic.return_value = dynamic_client
+
+        results = manifest_manager.diff_manifests([valid_manifest])
+
+        assert len(results) == 1
+        result = results[0]
+        assert result.exists_on_cluster is False
+        assert result.identical is False
+        assert "Forbidden" in result.diff
+
+    @patch(
+        "system_operations_manager.services.kubernetes.manifest_manager.ManifestManager._get_dynamic_client"
+    )
+    def test_diff_generic_exception_returns_error_result(
+        self,
+        mock_dynamic: MagicMock,
+        manifest_manager: ManifestManager,
+        valid_manifest: dict[str, object],
+    ) -> None:
+        """Should return a DiffResult with error message for unexpected exceptions.
+
+        Covers lines 494-496 in manifest_manager.py.
+        """
+        mock_resource_api: Any = MagicMock()
+        mock_resource_api.get.side_effect = RuntimeError("unexpected failure")
+        dynamic_client: Any = MagicMock()
+        dynamic_client.resources.get.return_value = mock_resource_api
+        mock_dynamic.return_value = dynamic_client
+
+        results = manifest_manager.diff_manifests([valid_manifest])
+
+        assert len(results) == 1
+        result = results[0]
+        assert result.exists_on_cluster is False
+        assert result.identical is False
+        assert "unexpected failure" in result.diff
+
+
+# ===========================================================================
+# TestGetDynamicClient
+# ===========================================================================
+
+
+@pytest.mark.unit
+class TestGetDynamicClient:
+    """Tests for _get_dynamic_client (lines 556-559)."""
+
+    def test_get_dynamic_client_creates_dynamic_client(
+        self,
+        manifest_manager: ManifestManager,
+    ) -> None:
+        """Should construct and return a DynamicClient wrapping a fresh ApiClient.
+
+        Covers lines 556-559 in manifest_manager.py.
+        """
+        with (
+            patch("kubernetes.client.ApiClient") as mock_api_cls,
+            patch("kubernetes.dynamic.DynamicClient") as mock_dyn_cls,
+        ):
+            mock_api_instance: Any = MagicMock()
+            mock_api_cls.return_value = mock_api_instance
+            mock_dynamic_instance: Any = MagicMock()
+            mock_dyn_cls.return_value = mock_dynamic_instance
+
+            result = manifest_manager._get_dynamic_client()
+
+        mock_dyn_cls.assert_called_once_with(mock_api_instance)
+        assert result is mock_dynamic_instance
