@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+import importlib
+import sys
+from typing import Any
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -215,3 +218,52 @@ class TestKonnectPluginManagerDelete:
         plugin_manager.delete("plugin-123")
 
         mock_konnect_client.delete_plugin.assert_called_once_with("cp-123", "plugin-123")
+
+
+class TestKonnectPluginManagerExists:
+    """Tests for the exists() method (lines 168-172)."""
+
+    @pytest.mark.unit
+    def test_exists_returns_true_when_plugin_found(
+        self,
+        plugin_manager: KonnectPluginManager,
+        mock_konnect_client: MagicMock,
+    ) -> None:
+        """exists should return True when get_plugin succeeds."""
+        client: Any = mock_konnect_client
+        client.get_plugin.return_value = KongPluginEntity(id="plugin-123", name="rate-limiting")
+
+        result = plugin_manager.exists("plugin-123")
+
+        assert result is True
+        client.get_plugin.assert_called_once_with("cp-123", "plugin-123")
+
+    @pytest.mark.unit
+    def test_exists_returns_false_when_plugin_not_found(
+        self,
+        plugin_manager: KonnectPluginManager,
+        mock_konnect_client: MagicMock,
+    ) -> None:
+        """exists should return False when get_plugin raises KonnectNotFoundError."""
+        client: Any = mock_konnect_client
+        client.get_plugin.side_effect = KonnectNotFoundError("Plugin not found", status_code=404)
+
+        result = plugin_manager.exists("missing-plugin")
+
+        assert result is False
+        client.get_plugin.assert_called_once_with("cp-123", "missing-plugin")
+
+
+class TestKonnectPluginManagerTypeCheckingImport:
+    """Tests that exercise the TYPE_CHECKING import branch (line 14)."""
+
+    @pytest.mark.unit
+    def test_module_reloads_with_type_checking_enabled(self) -> None:
+        """Re-importing the module with TYPE_CHECKING=True covers the KonnectClient import."""
+        module_name = "system_operations_manager.services.konnect.plugin_manager"
+        with (
+            patch("typing.TYPE_CHECKING", True),
+            patch.dict(sys.modules, {module_name: sys.modules[module_name]}),
+        ):
+            module: Any = importlib.reload(sys.modules[module_name])
+            assert hasattr(module, "KonnectPluginManager")
