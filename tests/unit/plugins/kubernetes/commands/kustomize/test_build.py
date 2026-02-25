@@ -10,8 +10,12 @@ import pytest
 import typer
 from typer.testing import CliRunner
 
+from system_operations_manager.integrations.kubernetes.exceptions import (
+    KubernetesConnectionError,
+)
 from system_operations_manager.integrations.kubernetes.kustomize_client import (
     KustomizeBinaryNotFoundError,
+    KustomizeError,
 )
 from system_operations_manager.plugins.kubernetes.commands.kustomize import (
     register_kustomize_commands,
@@ -128,3 +132,53 @@ class TestBuildCommand:
         assert result.exit_code == 0
         call_kwargs = mock_kustomize_manager.build.call_args.kwargs
         assert call_kwargs.get("enable_helm") is True
+
+    def test_build_kustomize_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_kustomize_manager: MagicMock,
+        tmp_kustomization_dir: Path,
+    ) -> None:
+        """build should handle KustomizeError gracefully (line 171)."""
+        mock_kustomize_manager.build.side_effect = KustomizeError(
+            message="Build failed", stderr="error details"
+        )
+
+        result = cli_runner.invoke(app, ["kustomize", "build", str(tmp_kustomization_dir)])
+
+        assert result.exit_code == 1
+        assert "Kustomize error" in result.stdout
+
+    def test_build_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_kustomize_manager: MagicMock,
+        tmp_kustomization_dir: Path,
+    ) -> None:
+        """build should handle KubernetesError gracefully (line 173)."""
+        mock_kustomize_manager.build.side_effect = KubernetesConnectionError(
+            "Cannot connect to cluster"
+        )
+
+        result = cli_runner.invoke(app, ["kustomize", "build", str(tmp_kustomization_dir)])
+
+        assert result.exit_code == 1
+
+    def test_build_kustomize_error_with_stderr(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_kustomize_manager: MagicMock,
+        tmp_kustomization_dir: Path,
+    ) -> None:
+        """build should display stderr in _handle_kustomize_error (lines 366-369)."""
+        mock_kustomize_manager.build.side_effect = KustomizeError(
+            message="Build failed", stderr="stderr output from kustomize"
+        )
+
+        result = cli_runner.invoke(app, ["kustomize", "build", str(tmp_kustomization_dir)])
+
+        assert result.exit_code == 1
+        assert "stderr output from kustomize" in result.stdout

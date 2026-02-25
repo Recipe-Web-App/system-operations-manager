@@ -10,6 +10,9 @@ import pytest
 import typer
 from typer.testing import CliRunner
 
+from system_operations_manager.integrations.kubernetes.exceptions import (
+    KubernetesConnectionError,
+)
 from system_operations_manager.integrations.kubernetes.models.multicluster import (
     MultiClusterDeployResult,
 )
@@ -222,3 +225,66 @@ class TestMulticlusterDeployCommand:
         assert result.exit_code == 0
         mock_multicluster_manager.load_manifests_from_string.assert_called_once_with(yaml_content)
         mock_multicluster_manager.deploy_manifests_to_clusters.assert_called_once()
+
+    def test_deploy_stdin_empty(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_multicluster_manager: MagicMock,
+    ) -> None:
+        """deploy should exit 1 when stdin is empty (lines 171-172)."""
+        result = cli_runner.invoke(app, ["multicluster", "deploy", "--file", "-"], input="   \n")
+
+        assert result.exit_code == 1
+        assert "No input received from stdin" in result.stdout
+
+    def test_deploy_value_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_multicluster_manager: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """deploy should handle ValueError gracefully (lines 207-208)."""
+        manifest_file = tmp_path / "test-manifest.yaml"
+        manifest_file.write_text("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: test\n")
+
+        test_manifest: dict[str, object] = {
+            "apiVersion": "v1",
+            "kind": "ConfigMap",
+            "metadata": {"name": "test"},
+        }
+        mock_multicluster_manager.load_manifests_from_path.return_value = [test_manifest]
+        mock_multicluster_manager.deploy_manifests_to_clusters.side_effect = ValueError(
+            "Invalid cluster configuration"
+        )
+
+        result = cli_runner.invoke(app, ["multicluster", "deploy", "--file", str(manifest_file)])
+
+        assert result.exit_code == 1
+        assert "Error" in result.stdout
+
+    def test_deploy_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_multicluster_manager: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """deploy should handle KubernetesError gracefully (line 210)."""
+        manifest_file = tmp_path / "test-manifest.yaml"
+        manifest_file.write_text("apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: test\n")
+
+        test_manifest: dict[str, object] = {
+            "apiVersion": "v1",
+            "kind": "ConfigMap",
+            "metadata": {"name": "test"},
+        }
+        mock_multicluster_manager.load_manifests_from_path.return_value = [test_manifest]
+        mock_multicluster_manager.deploy_manifests_to_clusters.side_effect = (
+            KubernetesConnectionError("Cannot connect to cluster")
+        )
+
+        result = cli_runner.invoke(app, ["multicluster", "deploy", "--file", str(manifest_file)])
+
+        assert result.exit_code == 1

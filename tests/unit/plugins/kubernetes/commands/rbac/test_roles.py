@@ -10,6 +10,7 @@ import typer
 from typer.testing import CliRunner
 
 from system_operations_manager.integrations.kubernetes.exceptions import (
+    KubernetesError,
     KubernetesNotFoundError,
 )
 from system_operations_manager.plugins.kubernetes.commands.rbac import (
@@ -85,3 +86,43 @@ class TestRoleCommands:
 
         assert result.exit_code == 1
         assert "not found" in result.stdout.lower()
+
+    def test_list_roles_kubernetes_error(
+        self, cli_runner: CliRunner, app: typer.Typer, mock_rbac_manager: MagicMock
+    ) -> None:
+        """list should handle KubernetesError."""
+        mock_rbac_manager.list_roles.side_effect = KubernetesError("connection failed")
+
+        result = cli_runner.invoke(app, ["roles", "list"])
+
+        assert result.exit_code == 1
+
+    def test_create_role_kubernetes_error(
+        self, cli_runner: CliRunner, app: typer.Typer, mock_rbac_manager: MagicMock
+    ) -> None:
+        """create should handle KubernetesError."""
+        mock_rbac_manager.create_role.side_effect = KubernetesError("connection failed")
+        rule_json = '{"verbs":["get"],"api_groups":[""],"resources":["pods"]}'
+
+        result = cli_runner.invoke(app, ["roles", "create", "test-role", "--rule", rule_json])
+
+        assert result.exit_code == 1
+
+    def test_delete_role_aborts_without_confirmation(
+        self, cli_runner: CliRunner, app: typer.Typer, mock_rbac_manager: MagicMock
+    ) -> None:
+        """delete without --force should abort when user declines."""
+        result = cli_runner.invoke(app, ["roles", "delete", "test-role"], input="n\n")
+
+        assert result.exit_code != 0
+        mock_rbac_manager.delete_role.assert_not_called()
+
+    def test_delete_role_kubernetes_error(
+        self, cli_runner: CliRunner, app: typer.Typer, mock_rbac_manager: MagicMock
+    ) -> None:
+        """delete should handle KubernetesError."""
+        mock_rbac_manager.delete_role.side_effect = KubernetesError("connection failed")
+
+        result = cli_runner.invoke(app, ["roles", "delete", "test-role", "--force"])
+
+        assert result.exit_code == 1

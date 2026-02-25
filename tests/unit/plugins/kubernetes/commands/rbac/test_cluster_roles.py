@@ -10,6 +10,7 @@ import typer
 from typer.testing import CliRunner
 
 from system_operations_manager.integrations.kubernetes.exceptions import (
+    KubernetesError,
     KubernetesNotFoundError,
 )
 from system_operations_manager.plugins.kubernetes.commands.rbac import (
@@ -87,3 +88,47 @@ class TestClusterRoleCommands:
 
         assert result.exit_code == 1
         assert "not found" in result.stdout.lower()
+
+    def test_list_cluster_roles_kubernetes_error(
+        self, cli_runner: CliRunner, app: typer.Typer, mock_rbac_manager: MagicMock
+    ) -> None:
+        """list should handle KubernetesError."""
+        mock_rbac_manager.list_cluster_roles.side_effect = KubernetesError("connection failed")
+
+        result = cli_runner.invoke(app, ["cluster-roles", "list"])
+
+        assert result.exit_code == 1
+
+    def test_create_cluster_role_kubernetes_error(
+        self, cli_runner: CliRunner, app: typer.Typer, mock_rbac_manager: MagicMock
+    ) -> None:
+        """create should handle KubernetesError."""
+        mock_rbac_manager.create_cluster_role.side_effect = KubernetesError("connection failed")
+        rule_json = '{"verbs":["get"],"api_groups":[""],"resources":["nodes"]}'
+
+        result = cli_runner.invoke(
+            app, ["cluster-roles", "create", "test-cluster-role", "--rule", rule_json]
+        )
+
+        assert result.exit_code == 1
+
+    def test_delete_cluster_role_aborts_without_confirmation(
+        self, cli_runner: CliRunner, app: typer.Typer, mock_rbac_manager: MagicMock
+    ) -> None:
+        """delete without --force should abort when user declines."""
+        result = cli_runner.invoke(
+            app, ["cluster-roles", "delete", "test-cluster-role"], input="n\n"
+        )
+
+        assert result.exit_code != 0
+        mock_rbac_manager.delete_cluster_role.assert_not_called()
+
+    def test_delete_cluster_role_kubernetes_error(
+        self, cli_runner: CliRunner, app: typer.Typer, mock_rbac_manager: MagicMock
+    ) -> None:
+        """delete should handle KubernetesError."""
+        mock_rbac_manager.delete_cluster_role.side_effect = KubernetesError("connection failed")
+
+        result = cli_runner.invoke(app, ["cluster-roles", "delete", "test-cluster-role", "--force"])
+
+        assert result.exit_code == 1

@@ -9,6 +9,9 @@ import pytest
 import typer
 from typer.testing import CliRunner
 
+from system_operations_manager.integrations.kubernetes.exceptions import (
+    KubernetesConnectionError,
+)
 from system_operations_manager.integrations.kubernetes.models.multicluster import (
     MultiClusterStatusResult,
 )
@@ -117,6 +120,22 @@ class TestMulticlusterStatusCommand:
         """multicluster status should exit with error if no clusters configured."""
         mock_multicluster_manager.multi_cluster_status.side_effect = ValueError(
             "No clusters configured in multicluster config"
+        )
+
+        result = cli_runner.invoke(app, ["multicluster", "status"])
+
+        assert result.exit_code == 1
+        mock_multicluster_manager.multi_cluster_status.assert_called_once_with(None)
+
+    def test_status_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_multicluster_manager: MagicMock,
+    ) -> None:
+        """multicluster status should handle KubernetesError gracefully (lines 128-129)."""
+        mock_multicluster_manager.multi_cluster_status.side_effect = KubernetesConnectionError(
+            "Cannot connect to cluster"
         )
 
         result = cli_runner.invoke(app, ["multicluster", "status"])

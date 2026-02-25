@@ -10,6 +10,7 @@ import typer
 from typer.testing import CliRunner
 
 from system_operations_manager.integrations.kubernetes.exceptions import (
+    KubernetesError,
     KubernetesNotFoundError,
 )
 from system_operations_manager.plugins.kubernetes.commands.externalsecrets import (
@@ -120,3 +121,66 @@ class TestClusterSecretStoreCommands:
 
         assert result.exit_code == 1
         assert "not found" in result.stdout.lower()
+
+    def test_list_cluster_secret_stores_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_external_secrets_manager: MagicMock,
+    ) -> None:
+        """list should handle KubernetesError."""
+        mock_external_secrets_manager.list_cluster_secret_stores.side_effect = KubernetesError(
+            "connection failed"
+        )
+
+        result = cli_runner.invoke(app, ["cluster-secret-stores", "list"])
+
+        assert result.exit_code == 1
+
+    def test_create_cluster_secret_store_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_external_secrets_manager: MagicMock,
+    ) -> None:
+        """create should handle KubernetesError."""
+        mock_external_secrets_manager.create_cluster_secret_store.side_effect = KubernetesError(
+            "connection failed"
+        )
+
+        config = '{"aws":{"service":"SecretsManager","region":"us-east-1"}}'
+        result = cli_runner.invoke(
+            app,
+            ["cluster-secret-stores", "create", "aws-store", "--provider-config", config],
+        )
+
+        assert result.exit_code == 1
+
+    def test_delete_cluster_secret_store_aborts_without_confirmation(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_external_secrets_manager: MagicMock,
+    ) -> None:
+        """delete without --force should abort when user declines."""
+        result = cli_runner.invoke(
+            app, ["cluster-secret-stores", "delete", "aws-store"], input="n\n"
+        )
+
+        assert result.exit_code != 0
+        mock_external_secrets_manager.delete_cluster_secret_store.assert_not_called()
+
+    def test_delete_cluster_secret_store_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_external_secrets_manager: MagicMock,
+    ) -> None:
+        """delete should handle KubernetesError."""
+        mock_external_secrets_manager.delete_cluster_secret_store.side_effect = KubernetesError(
+            "connection failed"
+        )
+
+        result = cli_runner.invoke(app, ["cluster-secret-stores", "delete", "aws-store", "--force"])
+
+        assert result.exit_code == 1

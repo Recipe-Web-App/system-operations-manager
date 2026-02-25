@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 import typer
 from typer.testing import CliRunner
 
 from system_operations_manager.integrations.kubernetes.exceptions import (
+    KubernetesError,
     KubernetesNotFoundError,
 )
 from system_operations_manager.plugins.kubernetes.commands.argocd import (
@@ -255,3 +256,149 @@ class TestApplicationCommands:
         assert result.exit_code == 0
         call_kwargs = mock_argocd_manager.create_application.call_args
         assert call_kwargs.kwargs["target_revision"] == "v1.2.3"
+
+
+@pytest.mark.unit
+@pytest.mark.kubernetes
+class TestApplicationCommandErrorPaths:
+    """Tests for ArgoCD Application command error handling paths."""
+
+    @pytest.fixture
+    def app(self, get_argocd_manager: Callable[[], MagicMock]) -> typer.Typer:
+        """Create a test app with argocd commands."""
+        app = typer.Typer()
+        register_argocd_commands(app, get_argocd_manager)
+        return app
+
+    def test_list_applications_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_argocd_manager: MagicMock,
+    ) -> None:
+        """list should handle KubernetesError and exit with code 1."""
+        mock_argocd_manager.list_applications.side_effect = KubernetesError(
+            "Failed to list applications"
+        )
+
+        result = cli_runner.invoke(app, ["argocd", "app", "list"])
+
+        assert result.exit_code == 1
+
+    def test_create_application_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_argocd_manager: MagicMock,
+    ) -> None:
+        """create should handle KubernetesError and exit with code 1."""
+        mock_argocd_manager.create_application.side_effect = KubernetesError(
+            "Failed to create application"
+        )
+
+        result = cli_runner.invoke(
+            app,
+            [
+                "argocd",
+                "app",
+                "create",
+                "my-app",
+                "--repo-url",
+                "https://github.com/org/repo",
+                "--path",
+                "k8s",
+            ],
+        )
+
+        assert result.exit_code == 1
+
+    def test_delete_application_cancelled(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_argocd_manager: MagicMock,
+    ) -> None:
+        """delete without --force should exit when confirmation is declined."""
+        with patch(
+            "system_operations_manager.plugins.kubernetes.commands.argocd.confirm_delete",
+            return_value=False,
+        ):
+            result = cli_runner.invoke(app, ["argocd", "app", "delete", "my-app"])
+
+        assert result.exit_code == 0
+        mock_argocd_manager.delete_application.assert_not_called()
+
+    def test_delete_application_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_argocd_manager: MagicMock,
+    ) -> None:
+        """delete should handle KubernetesError and exit with code 1."""
+        mock_argocd_manager.delete_application.side_effect = KubernetesError(
+            "Failed to delete application"
+        )
+
+        result = cli_runner.invoke(app, ["argocd", "app", "delete", "my-app", "--force"])
+
+        assert result.exit_code == 1
+
+    def test_sync_application_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_argocd_manager: MagicMock,
+    ) -> None:
+        """sync should handle KubernetesError and exit with code 1."""
+        mock_argocd_manager.sync_application.side_effect = KubernetesError(
+            "Failed to sync application"
+        )
+
+        result = cli_runner.invoke(app, ["argocd", "app", "sync", "my-app"])
+
+        assert result.exit_code == 1
+
+    def test_rollback_application_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_argocd_manager: MagicMock,
+    ) -> None:
+        """rollback should handle KubernetesError and exit with code 1."""
+        mock_argocd_manager.rollback_application.side_effect = KubernetesError(
+            "Failed to rollback application"
+        )
+
+        result = cli_runner.invoke(app, ["argocd", "app", "rollback", "my-app"])
+
+        assert result.exit_code == 1
+
+    def test_application_health_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_argocd_manager: MagicMock,
+    ) -> None:
+        """health should handle KubernetesError and exit with code 1."""
+        mock_argocd_manager.get_application_health.side_effect = KubernetesError(
+            "Failed to get application health"
+        )
+
+        result = cli_runner.invoke(app, ["argocd", "app", "health", "my-app"])
+
+        assert result.exit_code == 1
+
+    def test_application_diff_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_argocd_manager: MagicMock,
+    ) -> None:
+        """diff should handle KubernetesError and exit with code 1."""
+        mock_argocd_manager.diff_application.side_effect = KubernetesError(
+            "Failed to diff application"
+        )
+
+        result = cli_runner.invoke(app, ["argocd", "app", "diff", "my-app"])
+
+        assert result.exit_code == 1
