@@ -228,6 +228,10 @@ source = ["src/system_operations_manager"]
 omit = ["*/tests/*", "*/test_*.py", "*/__pycache__/*", "*/venv/*", "*/.venv/*"]
 
 [tool.coverage.report]
+fail_under = 90
+precision = 2
+show_missing = true
+skip_covered = true
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
