@@ -307,6 +307,94 @@ class TestSyncAuditServiceListSyncs:
         assert syncs[0].updated == 1
 
     @pytest.mark.unit
+    def test_list_syncs_counts_merged_entries(self, audit_service: SyncAuditService) -> None:
+        """list_syncs should count merge resolutions separately from updates."""
+        sync_id = "merge-sync"
+        timestamp = datetime.now(UTC).isoformat()
+
+        # Regular update
+        audit_service.record(
+            SyncAuditEntry(
+                sync_id=sync_id,
+                timestamp=timestamp,
+                operation="push",
+                dry_run=False,
+                entity_type="services",
+                entity_name="svc-1",
+                action="update",
+                source="gateway",
+                target="konnect",
+                status="success",
+            )
+        )
+
+        # Merge resolution update
+        audit_service.record(
+            SyncAuditEntry(
+                sync_id=sync_id,
+                timestamp=timestamp,
+                operation="push",
+                dry_run=False,
+                entity_type="services",
+                entity_name="svc-2",
+                action="update",
+                source="gateway",
+                target="konnect",
+                status="success",
+                resolution_action="merge",
+            )
+        )
+
+        syncs = audit_service.list_syncs()
+        assert len(syncs) == 1
+        assert syncs[0].updated == 1
+        assert syncs[0].merged == 1
+
+    @pytest.mark.unit
+    def test_list_syncs_counts_errors_and_skips(self, audit_service: SyncAuditService) -> None:
+        """list_syncs should count failed and skipped entries."""
+        sync_id = "error-sync"
+        timestamp = datetime.now(UTC).isoformat()
+
+        # Failed entry
+        audit_service.record(
+            SyncAuditEntry(
+                sync_id=sync_id,
+                timestamp=timestamp,
+                operation="push",
+                dry_run=False,
+                entity_type="services",
+                entity_name="svc-fail",
+                action="update",
+                source="gateway",
+                target="konnect",
+                status="failed",
+                error="API error",
+            )
+        )
+
+        # Skipped entry
+        audit_service.record(
+            SyncAuditEntry(
+                sync_id=sync_id,
+                timestamp=timestamp,
+                operation="push",
+                dry_run=False,
+                entity_type="services",
+                entity_name="svc-skip",
+                action="skip",
+                source="gateway",
+                target="konnect",
+                status="success",
+            )
+        )
+
+        syncs = audit_service.list_syncs()
+        assert len(syncs) == 1
+        assert syncs[0].errors == 1
+        assert syncs[0].skipped == 1
+
+    @pytest.mark.unit
     def test_list_syncs_filters_by_since(self, audit_service: SyncAuditService) -> None:
         """list_syncs should filter by since parameter."""
         now = datetime.now(UTC)
@@ -602,6 +690,12 @@ class TestSyncAuditServiceEdgeCases:
     """Tests for edge cases in SyncAuditService."""
 
     @pytest.mark.unit
+    def test_audit_file_property(self, audit_file: Path) -> None:
+        """audit_file property should return the configured path."""
+        service = SyncAuditService(audit_file=audit_file)
+        assert service.audit_file == audit_file
+
+    @pytest.mark.unit
     def test_handles_empty_audit_file(self, audit_file: Path) -> None:
         """Service should handle empty audit file gracefully."""
         audit_file.write_text("")
@@ -617,6 +711,7 @@ class TestSyncAuditServiceEdgeCases:
         # File doesn't exist yet
         assert audit_service.list_syncs() == []
         assert audit_service.get_sync_details("any") == []
+        assert audit_service.get_entity_history("services", "any") == []
 
     @pytest.mark.unit
     def test_handles_malformed_lines(self, audit_file: Path) -> None:
@@ -645,6 +740,78 @@ class TestSyncAuditServiceEdgeCases:
 
         assert len(syncs) == 1
         assert syncs[0].sync_id == "valid-sync"
+
+    @pytest.mark.unit
+    def test_handles_blank_lines_in_list_syncs(self, audit_file: Path) -> None:
+        """list_syncs should skip blank lines in audit file."""
+        entry = SyncAuditEntry(
+            sync_id="test-sync",
+            timestamp=datetime.now(UTC).isoformat(),
+            operation="push",
+            dry_run=False,
+            entity_type="services",
+            entity_name="svc",
+            action="create",
+            source="gateway",
+            target="konnect",
+            status="success",
+        )
+        with audit_file.open("w") as f:
+            f.write("\n")
+            f.write(entry.model_dump_json() + "\n")
+            f.write("\n")
+
+        service = SyncAuditService(audit_file=audit_file)
+        syncs = service.list_syncs()
+        assert len(syncs) == 1
+
+    @pytest.mark.unit
+    def test_handles_blank_lines_in_get_sync_details(self, audit_file: Path) -> None:
+        """get_sync_details should skip blank lines."""
+        entry = SyncAuditEntry(
+            sync_id="target-sync",
+            timestamp=datetime.now(UTC).isoformat(),
+            operation="push",
+            dry_run=False,
+            entity_type="services",
+            entity_name="svc",
+            action="create",
+            source="gateway",
+            target="konnect",
+            status="success",
+        )
+        with audit_file.open("w") as f:
+            f.write("\n")
+            f.write(entry.model_dump_json() + "\n")
+            f.write("bad json\n")
+
+        service = SyncAuditService(audit_file=audit_file)
+        entries = service.get_sync_details("target-sync")
+        assert len(entries) == 1
+
+    @pytest.mark.unit
+    def test_handles_blank_lines_in_get_entity_history(self, audit_file: Path) -> None:
+        """get_entity_history should skip blank lines and malformed entries."""
+        entry = SyncAuditEntry(
+            sync_id="test-sync",
+            timestamp=datetime.now(UTC).isoformat(),
+            operation="push",
+            dry_run=False,
+            entity_type="services",
+            entity_name="target-svc",
+            action="create",
+            source="gateway",
+            target="konnect",
+            status="success",
+        )
+        with audit_file.open("w") as f:
+            f.write("\n")
+            f.write(entry.model_dump_json() + "\n")
+            f.write("malformed\n")
+
+        service = SyncAuditService(audit_file=audit_file)
+        entries = service.get_entity_history("services", "target-svc")
+        assert len(entries) == 1
 
 
 class TestParseSince:
