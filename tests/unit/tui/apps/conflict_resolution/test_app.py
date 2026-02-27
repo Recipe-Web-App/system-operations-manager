@@ -5,6 +5,9 @@ Tests the main TUI application for conflict resolution.
 
 from __future__ import annotations
 
+from typing import Any
+from unittest.mock import MagicMock
+
 import pytest
 
 from system_operations_manager.services.kong.conflict_resolver import (
@@ -287,3 +290,239 @@ class TestRunAndGetResolutions:
         assert isinstance(app._result, list)
         assert len(app._result) == 1
         assert app._result[0].action == ResolutionAction.KEEP_SOURCE
+
+
+# ============================================================================
+# Sync __new__ helper
+# ============================================================================
+
+
+def _sample_conflict() -> Conflict:
+    """Create a sample conflict for sync tests."""
+    return Conflict(
+        entity_type="services",
+        entity_id="svc-123",
+        entity_name="test-service",
+        source_state={"host": "old.example.com", "port": 80},
+        target_state={"host": "new.example.com", "port": 80},
+        drift_fields=["host"],
+        source_system_id="gw-svc-123",
+        target_system_id="kn-svc-123",
+        direction="push",
+    )
+
+
+def _make_conflict_app() -> Any:
+    """Create a ConflictResolutionApp bypassing __init__ for sync tests.
+
+    Returns Any so callers can use MagicMock attributes without mypy errors.
+    The underlying object is a ConflictResolutionApp instance.
+    """
+    app: Any = ConflictResolutionApp.__new__(ConflictResolutionApp)
+    app.conflicts = [_sample_conflict()]
+    app.direction = "push"
+    app.dry_run = False
+    app.service = MagicMock()
+    app._result = []
+    app.push_screen = MagicMock()
+    app.pop_screen = MagicMock()
+    app.notify = MagicMock()
+    app.exit = MagicMock()
+    return app
+
+
+# ============================================================================
+# Sync Action Tests
+# ============================================================================
+
+
+@pytest.mark.unit
+class TestConflictResolutionAppActions:
+    """Sync tests for ConflictResolutionApp action methods."""
+
+    def test_action_apply_with_resolutions(self) -> None:
+        """action_apply pushes SummaryScreen when resolutions exist."""
+        from system_operations_manager.tui.apps.conflict_resolution.screens import (
+            SummaryScreen,
+        )
+
+        app = _make_conflict_app()
+        conflict = _sample_conflict()
+        resolution = Resolution(conflict=conflict, action=ResolutionAction.KEEP_SOURCE)
+        app.service.get_all_resolutions.return_value = [resolution]
+
+        app.action_apply()
+
+        app.push_screen.assert_called_once()
+        pushed_screen = app.push_screen.call_args[0][0]
+        assert isinstance(pushed_screen, SummaryScreen)
+
+    def test_action_apply_no_resolutions(self) -> None:
+        """action_apply does not push SummaryScreen when no resolutions."""
+        app = _make_conflict_app()
+        app.service.get_all_resolutions.return_value = []
+
+        app.action_apply()
+
+        app.push_screen.assert_not_called()
+
+    def test_action_help_notifies(self) -> None:
+        """action_help calls notify with help text."""
+        app = _make_conflict_app()
+
+        app.action_help()
+
+        app.notify.assert_called_once()
+        call_args = app.notify.call_args[0][0]
+        assert "Help" in call_args
+
+    def test_handle_conflict_selected_pushes_detail_screen(self) -> None:
+        """handle_conflict_selected pushes ConflictDetailScreen."""
+        from system_operations_manager.tui.apps.conflict_resolution.screens import (
+            ConflictDetailScreen,
+            ConflictListScreen,
+        )
+
+        app = _make_conflict_app()
+        conflict = _sample_conflict()
+        event = ConflictListScreen.ConflictSelected(conflict)
+
+        app.handle_conflict_selected(event)
+
+        app.push_screen.assert_called_once()
+        pushed_screen = app.push_screen.call_args[0][0]
+        assert isinstance(pushed_screen, ConflictDetailScreen)
+        assert pushed_screen.conflict is conflict
+
+    def test_handle_resolution_made_calls_service(self) -> None:
+        """handle_resolution_made stores resolution via service."""
+        from system_operations_manager.tui.apps.conflict_resolution.screens import (
+            ConflictDetailScreen,
+        )
+
+        app = _make_conflict_app()
+        conflict = _sample_conflict()
+        resolution = Resolution(conflict=conflict, action=ResolutionAction.KEEP_SOURCE)
+        event = ConflictDetailScreen.ResolutionMade(resolution)
+
+        app.handle_resolution_made(event)
+
+        app.service.set_resolution.assert_called_once_with(resolution)
+
+    def test_handle_resolution_made_pops_screen(self) -> None:
+        """handle_resolution_made pops the current screen."""
+        from system_operations_manager.tui.apps.conflict_resolution.screens import (
+            ConflictDetailScreen,
+        )
+
+        app = _make_conflict_app()
+        conflict = _sample_conflict()
+        resolution = Resolution(conflict=conflict, action=ResolutionAction.KEEP_SOURCE)
+        event = ConflictDetailScreen.ResolutionMade(resolution)
+
+        app.handle_resolution_made(event)
+
+        app.pop_screen.assert_called_once()
+
+    def test_handle_resolution_made_notifies(self) -> None:
+        """handle_resolution_made sends a notification."""
+        from system_operations_manager.tui.apps.conflict_resolution.screens import (
+            ConflictDetailScreen,
+        )
+
+        app = _make_conflict_app()
+        conflict = _sample_conflict()
+        resolution = Resolution(conflict=conflict, action=ResolutionAction.KEEP_SOURCE)
+        event = ConflictDetailScreen.ResolutionMade(resolution)
+
+        app.handle_resolution_made(event)
+
+        app.notify.assert_called_once()
+        msg: str = app.notify.call_args[0][0]
+        assert "test-service" in msg
+
+    def test_handle_apply_confirmed_stores_resolutions(self) -> None:
+        """handle_apply_confirmed stores resolutions in _result."""
+        from system_operations_manager.tui.apps.conflict_resolution.screens import (
+            SummaryScreen,
+        )
+
+        app = _make_conflict_app()
+        conflict = _sample_conflict()
+        resolution = Resolution(conflict=conflict, action=ResolutionAction.KEEP_SOURCE)
+        event = SummaryScreen.ApplyConfirmed([resolution])
+
+        app.handle_apply_confirmed(event)
+
+        assert app._result == [resolution]
+
+    def test_handle_apply_confirmed_calls_exit(self) -> None:
+        """handle_apply_confirmed calls exit with the resolutions."""
+        from system_operations_manager.tui.apps.conflict_resolution.screens import (
+            SummaryScreen,
+        )
+
+        app = _make_conflict_app()
+        conflict = _sample_conflict()
+        resolution = Resolution(conflict=conflict, action=ResolutionAction.KEEP_SOURCE)
+        event = SummaryScreen.ApplyConfirmed([resolution])
+
+        app.handle_apply_confirmed(event)
+
+        app.exit.assert_called_once_with([resolution])
+
+    def test_handle_apply_cancelled_pops_screen(self) -> None:
+        """handle_apply_cancelled pops the current screen."""
+        from system_operations_manager.tui.apps.conflict_resolution.screens import (
+            SummaryScreen,
+        )
+
+        app = _make_conflict_app()
+        event = SummaryScreen.ApplyCancelled()
+
+        app.handle_apply_cancelled(event)
+
+        app.pop_screen.assert_called_once()
+
+
+# ============================================================================
+# run_and_get_resolutions Sync Tests
+# ============================================================================
+
+
+@pytest.mark.unit
+class TestRunAndGetResolutionsSync:
+    """Sync tests for run_and_get_resolutions using __new__ pattern."""
+
+    def test_run_and_get_resolutions_with_result(self) -> None:
+        """run_and_get_resolutions returns the list when run() returns one."""
+        app = _make_conflict_app()
+        conflict = _sample_conflict()
+        resolution = Resolution(conflict=conflict, action=ResolutionAction.KEEP_SOURCE)
+
+        # Patch self.run() to return a list of resolutions
+        app.run = MagicMock(return_value=[resolution])
+
+        result = app.run_and_get_resolutions()
+
+        assert result == [resolution]
+
+    def test_run_and_get_resolutions_none_returns_empty(self) -> None:
+        """run_and_get_resolutions returns [] when run() returns None."""
+        app = _make_conflict_app()
+
+        app.run = MagicMock(return_value=None)
+
+        result = app.run_and_get_resolutions()
+
+        assert result == []
+
+    def test_run_and_get_resolutions_empty_list_returns_empty(self) -> None:
+        """run_and_get_resolutions returns [] when run() returns empty list."""
+        app = _make_conflict_app()
+
+        app.run = MagicMock(return_value=[])
+
+        result = app.run_and_get_resolutions()
+
+        assert result == []
