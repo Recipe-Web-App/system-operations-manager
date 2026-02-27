@@ -5,7 +5,7 @@ Tests the main TUI application for Kubernetes resource browsing.
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from textual.binding import Binding
@@ -201,3 +201,109 @@ class TestKubernetesAppAsync:
 
             async with app.run_test() as pilot:
                 await pilot.press("q")
+
+
+# ============================================================================
+# Helper
+# ============================================================================
+
+
+def _make_app() -> KubernetesApp:
+    """Create a KubernetesApp bypassing __init__ for sync testing."""
+    app = KubernetesApp.__new__(KubernetesApp)
+    app._client = MagicMock()
+    app.push_screen = MagicMock()
+    app.pop_screen = MagicMock()
+    app.notify = MagicMock()
+    return app
+
+
+# ============================================================================
+# KubernetesApp Action Tests (sync via __new__)
+# ============================================================================
+
+
+@pytest.mark.unit
+class TestKubernetesAppActionBack:
+    """Tests for action_back navigating back."""
+
+    @pytest.mark.asyncio
+    async def test_action_back_pops_when_multiple_screens(self) -> None:
+        """action_back pops screen when stack has >1 screens."""
+        app = _make_app()
+        type(app).screen_stack = PropertyMock(return_value=[MagicMock(), MagicMock()])
+        await app.action_back()
+        app.pop_screen.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_action_back_does_not_pop_when_single_screen(self) -> None:
+        """action_back does nothing when stack has 1 screen."""
+        app = _make_app()
+        type(app).screen_stack = PropertyMock(return_value=[MagicMock()])
+        await app.action_back()
+        app.pop_screen.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_action_back_does_not_pop_when_empty(self) -> None:
+        """action_back does nothing when stack is empty."""
+        app = _make_app()
+        type(app).screen_stack = PropertyMock(return_value=[])
+        await app.action_back()
+        app.pop_screen.assert_not_called()
+
+
+@pytest.mark.unit
+class TestKubernetesAppSyncActions:
+    """Tests for sync action methods: dashboard, ecosystem, help."""
+
+    def test_action_dashboard_pushes_dashboard_screen(self) -> None:
+        """action_dashboard pushes a DashboardScreen."""
+        from system_operations_manager.tui.apps.kubernetes.screens import DashboardScreen
+
+        app = _make_app()
+        app.action_dashboard()
+        app.push_screen.assert_called_once()
+        pushed = app.push_screen.call_args[0][0]
+        assert isinstance(pushed, DashboardScreen)
+
+    def test_action_ecosystem_pushes_ecosystem_screen(self) -> None:
+        """action_ecosystem pushes an EcosystemScreen."""
+        from system_operations_manager.tui.apps.kubernetes.ecosystem_screen import (
+            EcosystemScreen,
+        )
+
+        app = _make_app()
+        app.action_ecosystem()
+        app.push_screen.assert_called_once()
+        pushed = app.push_screen.call_args[0][0]
+        assert isinstance(pushed, EcosystemScreen)
+
+    def test_action_help_notifies_shortcut_info(self) -> None:
+        """action_help calls notify with shortcut information."""
+        app = _make_app()
+        app.action_help()
+        app.notify.assert_called_once()
+        msg = app.notify.call_args[0][0]
+        assert "j/k" in msg
+        assert "q" in msg
+
+
+@pytest.mark.unit
+class TestKubernetesAppHandleResourceSelected:
+    """Tests for handle_resource_selected event handler."""
+
+    def test_pushes_resource_detail_screen(self) -> None:
+        """handle_resource_selected pushes a ResourceDetailScreen."""
+        from system_operations_manager.tui.apps.kubernetes.screens import (
+            ResourceDetailScreen,
+            ResourceListScreen,
+        )
+
+        app = _make_app()
+        mock_resource = MagicMock()
+        mock_resource.name = "test-pod"
+        event = ResourceListScreen.ResourceSelected(mock_resource, ResourceType.PODS)
+        app.handle_resource_selected(event)
+        app.push_screen.assert_called_once()
+        pushed = app.push_screen.call_args[0][0]
+        assert isinstance(pushed, ResourceDetailScreen)
