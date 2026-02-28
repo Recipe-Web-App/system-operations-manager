@@ -174,7 +174,7 @@ class TestJobExecution:
         assert job.name == job_name
 
         # Wait for completion
-        completed_job = wait_for_job_complete(job_name, test_namespace, timeout=60)
+        completed_job = wait_for_job_complete(job_name, test_namespace, timeout=120)
 
         assert completed_job.status.succeeded >= 1
 

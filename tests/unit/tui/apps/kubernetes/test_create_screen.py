@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -118,13 +118,13 @@ def _make_create_screen(
     """Create a ResourceCreateScreen bypassing __init__ for sync testing."""
     screen = ResourceCreateScreen.__new__(ResourceCreateScreen)
     screen._resource_type = resource_type
-    screen._client = MagicMock()
+    object.__setattr__(screen, "_client", MagicMock())
     screen._namespace = "default"
     screen._field_specs = RESOURCE_FIELD_SPECS[resource_type]
-    screen.go_back = MagicMock()
-    screen.notify_user = MagicMock()
-    screen.post_message = MagicMock()
-    screen.query_one = MagicMock()
+    object.__setattr__(screen, "go_back", MagicMock())
+    object.__setattr__(screen, "notify_user", MagicMock())
+    object.__setattr__(screen, "post_message", MagicMock())
+    object.__setattr__(screen, "query_one", MagicMock())
     return screen
 
 
@@ -141,7 +141,7 @@ class TestActionCancel:
         """action_cancel calls go_back."""
         screen = _make_create_screen()
         screen.action_cancel()
-        screen.go_back.assert_called_once()
+        cast(MagicMock, screen.go_back).assert_called_once()
 
 
 # ============================================================================
@@ -156,29 +156,35 @@ class TestActionSubmit:
     def test_submit_returns_early_on_validation_failure(self) -> None:
         """action_submit returns early when _collect_values returns None."""
         screen = _make_create_screen()
-        screen._collect_values = MagicMock(return_value=None)
+        object.__setattr__(screen, "_collect_values", MagicMock(return_value=None))
         screen.action_submit()
-        screen.go_back.assert_not_called()
+        cast(MagicMock, screen.go_back).assert_not_called()
 
     def test_submit_success_posts_message_and_goes_back(self) -> None:
         """action_submit creates resource, posts message, and goes back."""
         screen = _make_create_screen()
-        screen._collect_values = MagicMock(return_value={"name": "test", "image": "nginx"})
-        screen._create_resource = MagicMock(return_value="test")
+        object.__setattr__(
+            screen, "_collect_values", MagicMock(return_value={"name": "test", "image": "nginx"})
+        )
+        object.__setattr__(screen, "_create_resource", MagicMock(return_value="test"))
         screen.action_submit()
-        screen.post_message.assert_called_once()
-        screen.go_back.assert_called_once()
-        screen.notify_user.assert_called_once()
-        assert "test" in screen.notify_user.call_args[0][0]
+        cast(MagicMock, screen.post_message).assert_called_once()
+        cast(MagicMock, screen.go_back).assert_called_once()
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert "test" in cast(MagicMock, screen.notify_user).call_args[0][0]
 
     def test_submit_failure_shows_error(self) -> None:
         """action_submit shows error on exception."""
         screen = _make_create_screen()
-        screen._collect_values = MagicMock(return_value={"name": "test", "image": "nginx"})
-        screen._create_resource = MagicMock(side_effect=RuntimeError("api error"))
+        object.__setattr__(
+            screen, "_collect_values", MagicMock(return_value={"name": "test", "image": "nginx"})
+        )
+        object.__setattr__(
+            screen, "_create_resource", MagicMock(side_effect=RuntimeError("api error"))
+        )
         screen.action_submit()
-        screen.notify_user.assert_called_once()
-        assert screen.notify_user.call_args[1]["severity"] == "error"
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert cast(MagicMock, screen.notify_user).call_args[1]["severity"] == "error"
 
 
 # ============================================================================
@@ -193,31 +199,31 @@ class TestOnButtonPressed:
     def test_create_button_calls_submit(self) -> None:
         """Pressing btn-create calls action_submit."""
         screen = _make_create_screen()
-        screen.action_submit = MagicMock()
+        object.__setattr__(screen, "action_submit", MagicMock())
         event = MagicMock()
         event.button.id = "btn-create"
         screen.on_button_pressed(event)
-        screen.action_submit.assert_called_once()
+        cast(MagicMock, screen.action_submit).assert_called_once()
 
     def test_cancel_button_calls_cancel(self) -> None:
         """Pressing btn-cancel calls action_cancel."""
         screen = _make_create_screen()
-        screen.action_cancel = MagicMock()
+        object.__setattr__(screen, "action_cancel", MagicMock())
         event = MagicMock()
         event.button.id = "btn-cancel"
         screen.on_button_pressed(event)
-        screen.action_cancel.assert_called_once()
+        cast(MagicMock, screen.action_cancel).assert_called_once()
 
     def test_unknown_button_does_nothing(self) -> None:
         """Pressing unknown button does nothing."""
         screen = _make_create_screen()
-        screen.action_submit = MagicMock()
-        screen.action_cancel = MagicMock()
+        object.__setattr__(screen, "action_submit", MagicMock())
+        object.__setattr__(screen, "action_cancel", MagicMock())
         event = MagicMock()
         event.button.id = "btn-other"
         screen.on_button_pressed(event)
-        screen.action_submit.assert_not_called()
-        screen.action_cancel.assert_not_called()
+        cast(MagicMock, screen.action_submit).assert_not_called()
+        cast(MagicMock, screen.action_cancel).assert_not_called()
 
 
 # ============================================================================
@@ -555,7 +561,7 @@ class TestCollectValuesDeployment:
     def test_collect_values_success(self) -> None:
         """All valid values are collected and returned."""
         screen = _make_create_screen(ResourceType.DEPLOYMENTS)
-        screen.query_one = MagicMock(side_effect=self._build_query())
+        object.__setattr__(screen, "query_one", MagicMock(side_effect=self._build_query()))
         result = screen._collect_values()
         assert result is not None
         assert result["namespace"] == "default"
@@ -568,7 +574,7 @@ class TestCollectValuesDeployment:
         """When namespace input is empty, falls back to screen._namespace."""
         screen = _make_create_screen(ResourceType.DEPLOYMENTS)
         screen._namespace = "fallback-ns"
-        screen.query_one = MagicMock(side_effect=self._build_query(ns=""))
+        object.__setattr__(screen, "query_one", MagicMock(side_effect=self._build_query(ns="")))
         result = screen._collect_values()
         assert result is not None
         assert result["namespace"] == "fallback-ns"
@@ -577,26 +583,30 @@ class TestCollectValuesDeployment:
         """Returns None and notifies when a required field is empty."""
         screen = _make_create_screen(ResourceType.DEPLOYMENTS)
         # name is required; pass empty string for it
-        screen.query_one = MagicMock(side_effect=self._build_query(name=""))
+        object.__setattr__(screen, "query_one", MagicMock(side_effect=self._build_query(name="")))
         result = screen._collect_values()
         assert result is None
-        screen.notify_user.assert_called_once()
-        call_args = screen.notify_user.call_args
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        call_args = cast(MagicMock, screen.notify_user).call_args
         assert call_args[1].get("severity") == "error" or "required" in call_args[0][0].lower()
 
     def test_collect_values_int_field_invalid_returns_none(self) -> None:
         """Returns None and notifies when an int field has a non-numeric value."""
         screen = _make_create_screen(ResourceType.DEPLOYMENTS)
-        screen.query_one = MagicMock(side_effect=self._build_query(replicas="abc"))
+        object.__setattr__(
+            screen, "query_one", MagicMock(side_effect=self._build_query(replicas="abc"))
+        )
         result = screen._collect_values()
         assert result is None
-        screen.notify_user.assert_called_once()
-        assert screen.notify_user.call_args[1].get("severity") == "error"
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert cast(MagicMock, screen.notify_user).call_args[1].get("severity") == "error"
 
     def test_collect_values_empty_int_field_stored_as_string(self) -> None:
         """An optional int field left blank is stored as an empty string (not converted)."""
         screen = _make_create_screen(ResourceType.DEPLOYMENTS)
-        screen.query_one = MagicMock(side_effect=self._build_query(replicas="", port=""))
+        object.__setattr__(
+            screen, "query_one", MagicMock(side_effect=self._build_query(replicas="", port=""))
+        )
         result = screen._collect_values()
         assert result is not None
         # Empty int fields are passed through as empty strings (no ValueError)
@@ -622,7 +632,7 @@ class TestCollectValuesClusterScoped:
                 return labels_ta
             return MagicMock(value="", text="")
 
-        screen.query_one = MagicMock(side_effect=mock_query)
+        object.__setattr__(screen, "query_one", MagicMock(side_effect=mock_query))
         result = screen._collect_values()
         assert result is not None
         assert "namespace" not in result
@@ -655,7 +665,7 @@ class TestCollectValuesSelectField:
             }
             return mapping.get(selector, MagicMock(value="", text=""))
 
-        screen.query_one = MagicMock(side_effect=mock_query)
+        object.__setattr__(screen, "query_one", MagicMock(side_effect=mock_query))
 
         # Patch Select.BLANK so our mock value != BLANK
         with patch(
@@ -695,7 +705,7 @@ class TestCollectValuesSelectField:
             }
             return mapping.get(selector, MagicMock(value="", text=""))
 
-        screen.query_one = MagicMock(side_effect=mock_query)
+        object.__setattr__(screen, "query_one", MagicMock(side_effect=mock_query))
 
         with patch(
             "system_operations_manager.tui.apps.kubernetes.create_screen.Select"
@@ -733,7 +743,7 @@ class TestCollectValuesTextareaField:
             }
             return mapping.get(selector, MagicMock(value="", text=""))
 
-        screen.query_one = MagicMock(side_effect=mock_query)
+        object.__setattr__(screen, "query_one", MagicMock(side_effect=mock_query))
         result = screen._collect_values()
         assert result is not None
         assert result["data"] == "key1=val1\n  key2=val2"

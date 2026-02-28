@@ -6,7 +6,7 @@ and row conversion.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -932,7 +932,7 @@ class TestBuildStatusTextAllTypes:
         # Override: remove phase attribute so no branch matches
         del mock_resource.phase
         # Use a mock that doesn't match any if/elif
-        screen._resource_type = MagicMock()
+        object.__setattr__(screen, "_resource_type", MagicMock())
         status = screen._build_status_text()
         assert "No status information" in status
 
@@ -1038,7 +1038,7 @@ class TestFetchResources:
     def _make_screen(self, resource_type: ResourceType) -> ResourceListScreen:
         """Create screen bypassing __init__."""
         screen = ResourceListScreen.__new__(ResourceListScreen)
-        screen._client = MagicMock()
+        object.__setattr__(screen, "_client", MagicMock())
         screen._current_type = resource_type
         screen._current_namespace = "default"
         screen._resources = []
@@ -1200,48 +1200,48 @@ class TestResourceListScreenActions:
     def _make_screen(self) -> ResourceListScreen:
         """Create a ResourceListScreen bypassing __init__."""
         screen = ResourceListScreen.__new__(ResourceListScreen)
-        screen._client = MagicMock()
+        object.__setattr__(screen, "_client", MagicMock())
         screen._current_type = ResourceType.PODS
         screen._current_namespace = "default"
         screen._resources = []
         screen._namespaces = ["default"]
         screen._contexts = ["minikube"]
         screen._pending_delete = None
-        screen.go_back = MagicMock()
-        screen.notify_user = MagicMock()
-        screen.query_one = MagicMock()
-        screen.post_message = MagicMock()
+        object.__setattr__(screen, "go_back", MagicMock())
+        object.__setattr__(screen, "notify_user", MagicMock())
+        object.__setattr__(screen, "query_one", MagicMock())
+        object.__setattr__(screen, "post_message", MagicMock())
         return screen
 
     def test_action_back_calls_go_back(self) -> None:
         """action_back calls go_back."""
         screen = self._make_screen()
         screen.action_back()
-        screen.go_back.assert_called_once()
+        cast(MagicMock, screen.go_back).assert_called_once()
 
     def test_action_logs_warns_for_non_pods(self) -> None:
         """action_logs warns when not viewing pods."""
         screen = self._make_screen()
         screen._current_type = ResourceType.DEPLOYMENTS
         screen.action_logs()
-        screen.notify_user.assert_called_once()
-        assert "Pods" in screen.notify_user.call_args[0][0]
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert "Pods" in cast(MagicMock, screen.notify_user).call_args[0][0]
 
     def test_action_create_warns_for_non_creatable(self) -> None:
         """action_create warns for non-creatable types."""
         screen = self._make_screen()
         screen._current_type = ResourceType.EVENTS
         screen.action_create()
-        screen.notify_user.assert_called_once()
-        assert "Cannot create" in screen.notify_user.call_args[0][0]
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert "Cannot create" in cast(MagicMock, screen.notify_user).call_args[0][0]
 
     def test_action_delete_warns_for_non_deletable(self) -> None:
         """action_delete warns for non-deletable types."""
         screen = self._make_screen()
         screen._current_type = ResourceType.EVENTS
         screen.action_delete()
-        screen.notify_user.assert_called_once()
-        assert "Cannot delete" in screen.notify_user.call_args[0][0]
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert "Cannot delete" in cast(MagicMock, screen.notify_user).call_args[0][0]
 
 
 # ============================================================================
@@ -1265,18 +1265,18 @@ class TestResourceDetailScreenActions:
             restarts=0,
         )
         screen._resource_type = ResourceType.PODS
-        screen._client = MagicMock()
+        object.__setattr__(screen, "_client", MagicMock())
         screen._yaml_visible = True
-        screen.go_back = MagicMock()
-        screen.notify_user = MagicMock()
-        screen.query_one = MagicMock()
+        object.__setattr__(screen, "go_back", MagicMock())
+        object.__setattr__(screen, "notify_user", MagicMock())
+        object.__setattr__(screen, "query_one", MagicMock())
         return screen
 
     def test_action_back(self) -> None:
         """action_back calls go_back."""
         screen = self._make_detail_screen()
         screen.action_back()
-        screen.go_back.assert_called_once()
+        cast(MagicMock, screen.go_back).assert_called_once()
 
     def test_action_toggle_yaml(self) -> None:
         """action_toggle_yaml toggles _yaml_visible."""
@@ -1290,10 +1290,10 @@ class TestResourceDetailScreenActions:
     def test_action_refresh_events(self) -> None:
         """action_refresh_events loads events and notifies."""
         screen = self._make_detail_screen()
-        screen._load_events = MagicMock()
+        object.__setattr__(screen, "_load_events", MagicMock())
         screen.action_refresh_events()
-        screen._load_events.assert_called_once()
-        screen.notify_user.assert_called_once_with("Events refreshed")
+        cast(MagicMock, screen._load_events).assert_called_once()
+        cast(MagicMock, screen.notify_user).assert_called_once_with("Events refreshed")
 
 
 # ============================================================================
@@ -1380,17 +1380,17 @@ def _make_resource_list_screen() -> ResourceListScreen:
     Tests that exercise those managers should patch them at the module level.
     """
     screen = ResourceListScreen.__new__(ResourceListScreen)
-    screen._client = MagicMock()
+    object.__setattr__(screen, "_client", MagicMock())
     screen._current_type = ResourceType.PODS
     screen._current_namespace = "default"
     screen._resources = []
     screen._pending_delete = None
     screen._namespaces = ["default", "kube-system"]
     screen._contexts = ["minikube"]
-    screen.go_back = MagicMock()
-    screen.notify_user = MagicMock()
-    screen.query_one = MagicMock()
-    screen.post_message = MagicMock()
+    object.__setattr__(screen, "go_back", MagicMock())
+    object.__setattr__(screen, "notify_user", MagicMock())
+    object.__setattr__(screen, "query_one", MagicMock())
+    object.__setattr__(screen, "post_message", MagicMock())
     return screen
 
 
@@ -1410,12 +1410,12 @@ def _make_resource_detail_screen(
         )
     screen._resource = resource
     screen._resource_type = resource_type
-    screen._client = MagicMock()
+    object.__setattr__(screen, "_client", MagicMock())
     screen._yaml_visible = True
-    screen.go_back = MagicMock()
-    screen.notify_user = MagicMock()
-    screen.query_one = MagicMock()
-    screen.post_message = MagicMock()
+    object.__setattr__(screen, "go_back", MagicMock())
+    object.__setattr__(screen, "notify_user", MagicMock())
+    object.__setattr__(screen, "query_one", MagicMock())
+    object.__setattr__(screen, "post_message", MagicMock())
     return screen
 
 
@@ -1426,9 +1426,12 @@ class TestResourceListScreenLoadContexts:
     def test_load_contexts_success(self) -> None:
         """_load_contexts populates _contexts from client."""
         screen = _make_resource_list_screen()
-        screen._client.list_contexts.return_value = [{"name": "ctx1"}, {"name": "ctx2"}]
+        cast(MagicMock, screen._client.list_contexts).return_value = [
+            {"name": "ctx1"},
+            {"name": "ctx2"},
+        ]
         mock_selector = MagicMock()
-        screen.query_one.return_value = mock_selector
+        cast(MagicMock, screen.query_one).return_value = mock_selector
 
         screen._load_contexts()
 
@@ -1438,8 +1441,8 @@ class TestResourceListScreenLoadContexts:
     def test_load_contexts_failure_falls_back_to_current_context(self) -> None:
         """_load_contexts falls back to current context on error."""
         screen = _make_resource_list_screen()
-        screen._client.list_contexts.side_effect = RuntimeError("api error")
-        screen._client.get_current_context.return_value = "fallback-ctx"
+        cast(MagicMock, screen._client.list_contexts).side_effect = RuntimeError("api error")
+        cast(MagicMock, screen._client.get_current_context).return_value = "fallback-ctx"
 
         screen._load_contexts()
 
@@ -1463,7 +1466,7 @@ class TestResourceListScreenLoadNamespaces:
         mock_ns2 = MagicMock()
         mock_ns2.name = "kube-system"
         mock_selector = MagicMock()
-        screen.query_one.return_value = mock_selector
+        cast(MagicMock, screen.query_one).return_value = mock_selector
 
         with patch(
             "system_operations_manager.services.kubernetes.namespace_manager.NamespaceClusterManager"
@@ -1506,14 +1509,14 @@ class TestResourceListScreenLoadResources:
             total_count=1,
             restarts=0,
         )
-        screen._fetch_resources = MagicMock(return_value=[mock_pod])
-        screen._populate_table = MagicMock()
+        object.__setattr__(screen, "_fetch_resources", MagicMock(return_value=[mock_pod]))
+        object.__setattr__(screen, "_populate_table", MagicMock())
         mock_label = MagicMock()
-        screen.query_one.return_value = mock_label
+        cast(MagicMock, screen.query_one).return_value = mock_label
 
         screen._load_resources()
 
-        screen._populate_table.assert_called_once()
+        cast(MagicMock, screen._populate_table).assert_called_once()
         mock_label.update.assert_called_once()
         update_text = mock_label.update.call_args[0][0]
         assert "1" in update_text
@@ -1521,16 +1524,18 @@ class TestResourceListScreenLoadResources:
     def test_load_resources_failure_shows_error(self) -> None:
         """_load_resources catches exception and notifies user."""
         screen = _make_resource_list_screen()
-        screen._fetch_resources = MagicMock(side_effect=RuntimeError("network error"))
-        screen._populate_table = MagicMock()
+        object.__setattr__(
+            screen, "_fetch_resources", MagicMock(side_effect=RuntimeError("network error"))
+        )
+        object.__setattr__(screen, "_populate_table", MagicMock())
         mock_label = MagicMock()
-        screen.query_one.return_value = mock_label
+        cast(MagicMock, screen.query_one).return_value = mock_label
 
         screen._load_resources()
 
-        screen.notify_user.assert_called_once()
-        assert "error" in screen.notify_user.call_args[1].get("severity", "")
-        screen._populate_table.assert_called_once()
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert "error" in cast(MagicMock, screen.notify_user).call_args[1].get("severity", "")
+        cast(MagicMock, screen._populate_table).assert_called_once()
         mock_label.update.assert_called_once()
 
 
@@ -1547,7 +1552,7 @@ class TestResourceListScreenPopulateTable:
         """_populate_table calls clear(columns=True) and adds column headers."""
         screen = _make_resource_list_screen()
         mock_table = MagicMock()
-        screen.query_one.return_value = mock_table
+        cast(MagicMock, screen.query_one).return_value = mock_table
 
         pod = PodSummary(
             name="nginx",
@@ -1574,7 +1579,7 @@ class TestResourceListScreenPopulateTable:
         """_populate_table with no resources still clears and adds columns."""
         screen = _make_resource_list_screen()
         mock_table = MagicMock()
-        screen.query_one.return_value = mock_table
+        cast(MagicMock, screen.query_one).return_value = mock_table
         screen._resources = []
         screen._current_type = ResourceType.PODS
 
@@ -1597,7 +1602,7 @@ class TestResourceListScreenActionMethods:
         """action_cursor_down calls DataTable.action_cursor_down."""
         screen = _make_resource_list_screen()
         mock_table = MagicMock()
-        screen.query_one.return_value = mock_table
+        cast(MagicMock, screen.query_one).return_value = mock_table
 
         screen.action_cursor_down()
 
@@ -1607,7 +1612,7 @@ class TestResourceListScreenActionMethods:
         """action_cursor_up calls DataTable.action_cursor_up."""
         screen = _make_resource_list_screen()
         mock_table = MagicMock()
-        screen.query_one.return_value = mock_table
+        cast(MagicMock, screen.query_one).return_value = mock_table
 
         screen.action_cursor_up()
 
@@ -1627,12 +1632,12 @@ class TestResourceListScreenActionMethods:
         screen._resources = [pod]
         mock_table = MagicMock()
         mock_table.cursor_row = 0
-        screen.query_one.return_value = mock_table
+        cast(MagicMock, screen.query_one).return_value = mock_table
 
         screen.action_select()
 
-        screen.post_message.assert_called_once()
-        msg = screen.post_message.call_args[0][0]
+        cast(MagicMock, screen.post_message).assert_called_once()
+        msg = cast(MagicMock, screen.post_message).call_args[0][0]
         assert isinstance(msg, ResourceListScreen.ResourceSelected)
         assert msg.resource.name == "nginx"
 
@@ -1642,11 +1647,11 @@ class TestResourceListScreenActionMethods:
         screen._resources = []
         mock_table = MagicMock()
         mock_table.cursor_row = None
-        screen.query_one.return_value = mock_table
+        cast(MagicMock, screen.query_one).return_value = mock_table
 
         screen.action_select()
 
-        screen.post_message.assert_not_called()
+        cast(MagicMock, screen.post_message).assert_not_called()
 
     def test_handle_row_selected_posts_message(self) -> None:
         """handle_row_selected posts ResourceSelected for valid row."""
@@ -1667,8 +1672,8 @@ class TestResourceListScreenActionMethods:
 
         screen.handle_row_selected(mock_event)
 
-        screen.post_message.assert_called_once()
-        msg = screen.post_message.call_args[0][0]
+        cast(MagicMock, screen.post_message).assert_called_once()
+        msg = cast(MagicMock, screen.post_message).call_args[0][0]
         assert msg.resource.name == "redis"
 
     def test_handle_row_selected_out_of_bounds(self) -> None:
@@ -1682,17 +1687,17 @@ class TestResourceListScreenActionMethods:
 
         screen.handle_row_selected(mock_event)
 
-        screen.post_message.assert_not_called()
+        cast(MagicMock, screen.post_message).assert_not_called()
 
     def test_action_refresh_calls_load_and_notifies(self) -> None:
         """action_refresh calls _load_resources and notifies."""
         screen = _make_resource_list_screen()
-        screen._load_resources = MagicMock()
+        object.__setattr__(screen, "_load_resources", MagicMock())
 
         screen.action_refresh()
 
-        screen._load_resources.assert_called_once()
-        screen.notify_user.assert_called_once_with("Refreshed")
+        cast(MagicMock, screen._load_resources).assert_called_once()
+        cast(MagicMock, screen.notify_user).assert_called_once_with("Refreshed")
 
     def test_action_create_not_creatable_warns(self) -> None:
         """action_create warns for non-creatable types (e.g. EVENTS)."""
@@ -1701,8 +1706,8 @@ class TestResourceListScreenActionMethods:
 
         screen.action_create()
 
-        screen.notify_user.assert_called_once()
-        assert "Cannot create" in screen.notify_user.call_args[0][0]
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert "Cannot create" in cast(MagicMock, screen.notify_user).call_args[0][0]
 
     def test_action_create_pushes_screen_for_creatable_type(self) -> None:
         """action_create pushes ResourceCreateScreen for creatable types."""
@@ -1719,16 +1724,16 @@ class TestResourceListScreenActionMethods:
             mock_create_cls.return_value = MagicMock()
             screen.action_create()
 
-        mock_app.push_screen.assert_called_once()
+        cast(MagicMock, mock_app.push_screen).assert_called_once()
 
     def test_handle_create_dismissed_calls_load_resources(self) -> None:
         """_handle_create_dismissed calls _load_resources."""
         screen = _make_resource_list_screen()
-        screen._load_resources = MagicMock()
+        object.__setattr__(screen, "_load_resources", MagicMock())
 
         screen._handle_create_dismissed(None)
 
-        screen._load_resources.assert_called_once()
+        cast(MagicMock, screen._load_resources).assert_called_once()
 
     def test_action_delete_not_deletable_warns(self) -> None:
         """action_delete warns for non-deletable types."""
@@ -1737,8 +1742,8 @@ class TestResourceListScreenActionMethods:
 
         screen.action_delete()
 
-        screen.notify_user.assert_called_once()
-        assert "Cannot delete" in screen.notify_user.call_args[0][0]
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert "Cannot delete" in cast(MagicMock, screen.notify_user).call_args[0][0]
 
     def test_action_delete_no_cursor_returns_early(self) -> None:
         """action_delete returns without pushing modal when cursor is None."""
@@ -1746,13 +1751,13 @@ class TestResourceListScreenActionMethods:
         screen._current_type = ResourceType.PODS
         mock_table = MagicMock()
         mock_table.cursor_row = None
-        screen.query_one.return_value = mock_table
+        cast(MagicMock, screen.query_one).return_value = mock_table
         mock_app = MagicMock()
 
         with patch.object(type(screen), "app", new_callable=PropertyMock, return_value=mock_app):
             screen.action_delete()
 
-        mock_app.push_screen.assert_not_called()
+        cast(MagicMock, mock_app.push_screen).assert_not_called()
 
     def test_action_delete_pushes_modal_for_valid_cursor(self) -> None:
         """action_delete pushes confirmation modal when cursor is valid."""
@@ -1769,7 +1774,7 @@ class TestResourceListScreenActionMethods:
         screen._resources = [pod]
         mock_table = MagicMock()
         mock_table.cursor_row = 0
-        screen.query_one.return_value = mock_table
+        cast(MagicMock, screen.query_one).return_value = mock_table
         mock_app = MagicMock()
 
         with (
@@ -1779,7 +1784,7 @@ class TestResourceListScreenActionMethods:
             mock_modal_cls.return_value = MagicMock()
             screen.action_delete()
 
-        mock_app.push_screen.assert_called_once()
+        cast(MagicMock, mock_app.push_screen).assert_called_once()
         assert screen._pending_delete is pod
 
     def test_handle_delete_result_delete_success(self) -> None:
@@ -1794,7 +1799,7 @@ class TestResourceListScreenActionMethods:
             restarts=0,
         )
         screen._pending_delete = pod
-        screen._load_resources = MagicMock()
+        object.__setattr__(screen, "_load_resources", MagicMock())
 
         with patch(
             "system_operations_manager.tui.apps.kubernetes.delete_helpers.delete_resource"
@@ -1802,9 +1807,9 @@ class TestResourceListScreenActionMethods:
             screen._handle_delete_result("delete")
 
         mock_delete.assert_called_once()
-        screen.notify_user.assert_called_once()
-        assert "dead-pod" in screen.notify_user.call_args[0][0]
-        screen._load_resources.assert_called_once()
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert "dead-pod" in cast(MagicMock, screen.notify_user).call_args[0][0]
+        cast(MagicMock, screen._load_resources).assert_called_once()
         assert screen._pending_delete is None
 
     def test_handle_delete_result_delete_failure_notifies_error(self) -> None:
@@ -1819,7 +1824,7 @@ class TestResourceListScreenActionMethods:
             restarts=0,
         )
         screen._pending_delete = pod
-        screen._load_resources = MagicMock()
+        object.__setattr__(screen, "_load_resources", MagicMock())
 
         with patch(
             "system_operations_manager.tui.apps.kubernetes.delete_helpers.delete_resource"
@@ -1827,8 +1832,8 @@ class TestResourceListScreenActionMethods:
             mock_delete.side_effect = RuntimeError("forbidden")
             screen._handle_delete_result("delete")
 
-        screen.notify_user.assert_called_once()
-        assert "error" in screen.notify_user.call_args[1].get("severity", "")
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert "error" in cast(MagicMock, screen.notify_user).call_args[1].get("severity", "")
         assert screen._pending_delete is None
 
     def test_handle_delete_result_cancel_clears_pending(self) -> None:
@@ -1847,7 +1852,7 @@ class TestResourceListScreenActionMethods:
         screen._handle_delete_result("cancel")
 
         assert screen._pending_delete is None
-        screen.notify_user.assert_not_called()
+        cast(MagicMock, screen.notify_user).assert_not_called()
 
     def test_action_logs_warns_when_not_pods(self) -> None:
         """action_logs warns for non-pod resource type."""
@@ -1856,8 +1861,8 @@ class TestResourceListScreenActionMethods:
 
         screen.action_logs()
 
-        screen.notify_user.assert_called_once()
-        assert "Pods" in screen.notify_user.call_args[0][0]
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert "Pods" in cast(MagicMock, screen.notify_user).call_args[0][0]
 
     def test_action_logs_no_cursor_returns_early(self) -> None:
         """action_logs returns without pushing screen when cursor is None."""
@@ -1865,13 +1870,13 @@ class TestResourceListScreenActionMethods:
         screen._current_type = ResourceType.PODS
         mock_table = MagicMock()
         mock_table.cursor_row = None
-        screen.query_one.return_value = mock_table
+        cast(MagicMock, screen.query_one).return_value = mock_table
         mock_app = MagicMock()
 
         with patch.object(type(screen), "app", new_callable=PropertyMock, return_value=mock_app):
             screen.action_logs()
 
-        mock_app.push_screen.assert_not_called()
+        cast(MagicMock, mock_app.push_screen).assert_not_called()
 
     def test_action_logs_pushes_log_viewer_for_pods(self) -> None:
         """action_logs pushes LogViewerScreen for valid pod cursor."""
@@ -1888,7 +1893,7 @@ class TestResourceListScreenActionMethods:
         screen._resources = [pod]
         mock_table = MagicMock()
         mock_table.cursor_row = 0
-        screen.query_one.return_value = mock_table
+        cast(MagicMock, screen.query_one).return_value = mock_table
         mock_app = MagicMock()
 
         with (
@@ -1900,13 +1905,13 @@ class TestResourceListScreenActionMethods:
             mock_lv_cls.return_value = MagicMock()
             screen.action_logs()
 
-        mock_app.push_screen.assert_called_once()
+        cast(MagicMock, mock_app.push_screen).assert_called_once()
 
     def test_action_cycle_namespace_calls_selector(self) -> None:
         """action_cycle_namespace calls cycle() on the namespace selector."""
         screen = _make_resource_list_screen()
         mock_selector = MagicMock()
-        screen.query_one.return_value = mock_selector
+        cast(MagicMock, screen.query_one).return_value = mock_selector
 
         screen.action_cycle_namespace()
 
@@ -1916,7 +1921,7 @@ class TestResourceListScreenActionMethods:
         """action_select_namespace calls select_from_popup() on ns selector."""
         screen = _make_resource_list_screen()
         mock_selector = MagicMock()
-        screen.query_one.return_value = mock_selector
+        cast(MagicMock, screen.query_one).return_value = mock_selector
 
         screen.action_select_namespace()
 
@@ -1926,7 +1931,7 @@ class TestResourceListScreenActionMethods:
         """action_cycle_cluster calls cycle() on the cluster selector."""
         screen = _make_resource_list_screen()
         mock_selector = MagicMock()
-        screen.query_one.return_value = mock_selector
+        cast(MagicMock, screen.query_one).return_value = mock_selector
 
         screen.action_cycle_cluster()
 
@@ -1936,7 +1941,7 @@ class TestResourceListScreenActionMethods:
         """action_select_cluster calls select_from_popup() on cluster selector."""
         screen = _make_resource_list_screen()
         mock_selector = MagicMock()
-        screen.query_one.return_value = mock_selector
+        cast(MagicMock, screen.query_one).return_value = mock_selector
 
         screen.action_select_cluster()
 
@@ -1946,7 +1951,7 @@ class TestResourceListScreenActionMethods:
         """action_cycle_filter calls cycle() on the resource type filter."""
         screen = _make_resource_list_screen()
         mock_selector = MagicMock()
-        screen.query_one.return_value = mock_selector
+        cast(MagicMock, screen.query_one).return_value = mock_selector
 
         screen.action_cycle_filter()
 
@@ -1956,7 +1961,7 @@ class TestResourceListScreenActionMethods:
         """action_select_filter calls select_from_popup() on type filter."""
         screen = _make_resource_list_screen()
         mock_selector = MagicMock()
-        screen.query_one.return_value = mock_selector
+        cast(MagicMock, screen.query_one).return_value = mock_selector
 
         screen.action_select_filter()
 
@@ -1977,70 +1982,72 @@ class TestResourceListScreenEventHandlers:
         from system_operations_manager.tui.apps.kubernetes.widgets import NamespaceSelector
 
         screen = _make_resource_list_screen()
-        screen._load_resources = MagicMock()
+        object.__setattr__(screen, "_load_resources", MagicMock())
         event = NamespaceSelector.NamespaceChanged("kube-system")
 
         screen.handle_namespace_changed(event)
 
         assert screen._current_namespace == "kube-system"
-        screen._load_resources.assert_called_once()
+        cast(MagicMock, screen._load_resources).assert_called_once()
 
     def test_handle_namespace_changed_accepts_none(self) -> None:
         """handle_namespace_changed handles None (all namespaces)."""
         from system_operations_manager.tui.apps.kubernetes.widgets import NamespaceSelector
 
         screen = _make_resource_list_screen()
-        screen._load_resources = MagicMock()
+        object.__setattr__(screen, "_load_resources", MagicMock())
         event = NamespaceSelector.NamespaceChanged(None)
 
         screen.handle_namespace_changed(event)
 
         assert screen._current_namespace is None
-        screen._load_resources.assert_called_once()
+        cast(MagicMock, screen._load_resources).assert_called_once()
 
     def test_handle_cluster_changed_success(self) -> None:
         """handle_cluster_changed switches context, loads namespaces and resources."""
         from system_operations_manager.tui.apps.kubernetes.widgets import ClusterSelector
 
         screen = _make_resource_list_screen()
-        screen._load_namespaces = MagicMock()
-        screen._load_resources = MagicMock()
-        screen._client.switch_context = MagicMock()
+        object.__setattr__(screen, "_load_namespaces", MagicMock())
+        object.__setattr__(screen, "_load_resources", MagicMock())
+        object.__setattr__(screen._client, "switch_context", MagicMock())
         event = ClusterSelector.ClusterChanged("prod-cluster")
 
         screen.handle_cluster_changed(event)
 
-        screen._client.switch_context.assert_called_once_with("prod-cluster")
-        screen._load_namespaces.assert_called_once()
-        screen._load_resources.assert_called_once()
-        screen.notify_user.assert_called_once()
-        assert "prod-cluster" in screen.notify_user.call_args[0][0]
+        cast(MagicMock, screen._client.switch_context).assert_called_once_with("prod-cluster")
+        cast(MagicMock, screen._load_namespaces).assert_called_once()
+        cast(MagicMock, screen._load_resources).assert_called_once()
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert "prod-cluster" in cast(MagicMock, screen.notify_user).call_args[0][0]
 
     def test_handle_cluster_changed_failure_notifies_error(self) -> None:
         """handle_cluster_changed notifies error when switch_context raises."""
         from system_operations_manager.tui.apps.kubernetes.widgets import ClusterSelector
 
         screen = _make_resource_list_screen()
-        screen._client.switch_context = MagicMock(side_effect=RuntimeError("unauthorized"))
+        object.__setattr__(
+            screen._client, "switch_context", MagicMock(side_effect=RuntimeError("unauthorized"))
+        )
         event = ClusterSelector.ClusterChanged("bad-cluster")
 
         screen.handle_cluster_changed(event)
 
-        screen.notify_user.assert_called_once()
-        assert "error" in screen.notify_user.call_args[1].get("severity", "")
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert "error" in cast(MagicMock, screen.notify_user).call_args[1].get("severity", "")
 
     def test_handle_resource_type_changed_updates_type_and_loads(self) -> None:
         """handle_resource_type_changed updates type and calls _load_resources."""
         from system_operations_manager.tui.apps.kubernetes.widgets import ResourceTypeFilter
 
         screen = _make_resource_list_screen()
-        screen._load_resources = MagicMock()
+        object.__setattr__(screen, "_load_resources", MagicMock())
         event = ResourceTypeFilter.ResourceTypeChanged(ResourceType.DEPLOYMENTS)
 
         screen.handle_resource_type_changed(event)
 
         assert screen._current_type == ResourceType.DEPLOYMENTS
-        screen._load_resources.assert_called_once()
+        cast(MagicMock, screen._load_resources).assert_called_once()
 
 
 # ============================================================================
@@ -2051,10 +2058,10 @@ class TestResourceListScreenEventHandlers:
 def _make_dashboard_screen() -> DashboardScreen:
     """Create a DashboardScreen bypassing __init__."""
     screen = DashboardScreen.__new__(DashboardScreen)
-    screen._client = MagicMock()
-    screen.go_back = MagicMock()
-    screen.notify_user = MagicMock()
-    screen.query_one = MagicMock()
+    object.__setattr__(screen, "_client", MagicMock())
+    object.__setattr__(screen, "go_back", MagicMock())
+    object.__setattr__(screen, "notify_user", MagicMock())
+    object.__setattr__(screen, "query_one", MagicMock())
     return screen
 
 
@@ -2107,7 +2114,7 @@ class TestDashboardScreenSetupTables:
                 return mock_node_table
             return mock_events_table
 
-        screen.query_one.side_effect = side_effect
+        cast(MagicMock, screen.query_one).side_effect = side_effect
 
         screen._setup_tables()
 
@@ -2127,17 +2134,17 @@ class TestDashboardScreenRefreshAll:
     def test_refresh_all_calls_all_four_loaders(self) -> None:
         """_refresh_all calls _load_cluster_info, _load_nodes, _load_pod_summary, _load_events."""
         screen = _make_dashboard_screen()
-        screen._load_cluster_info = MagicMock()
-        screen._load_nodes = MagicMock()
-        screen._load_pod_summary = MagicMock()
-        screen._load_events = MagicMock()
+        object.__setattr__(screen, "_load_cluster_info", MagicMock())
+        object.__setattr__(screen, "_load_nodes", MagicMock())
+        object.__setattr__(screen, "_load_pod_summary", MagicMock())
+        object.__setattr__(screen, "_load_events", MagicMock())
 
         screen._refresh_all()
 
-        screen._load_cluster_info.assert_called_once()
-        screen._load_nodes.assert_called_once()
-        screen._load_pod_summary.assert_called_once()
-        screen._load_events.assert_called_once()
+        cast(MagicMock, screen._load_cluster_info).assert_called_once()
+        cast(MagicMock, screen._load_nodes).assert_called_once()
+        cast(MagicMock, screen._load_pod_summary).assert_called_once()
+        cast(MagicMock, screen._load_events).assert_called_once()
 
 
 @pytest.mark.unit
@@ -2148,7 +2155,7 @@ class TestDashboardScreenLoadClusterInfo:
         """_load_cluster_info fetches cluster info and updates the label."""
         screen = _make_dashboard_screen()
         mock_label = MagicMock()
-        screen.query_one.return_value = mock_label
+        cast(MagicMock, screen.query_one).return_value = mock_label
 
         with patch(
             "system_operations_manager.services.kubernetes.namespace_manager.NamespaceClusterManager"
@@ -2170,7 +2177,7 @@ class TestDashboardScreenLoadClusterInfo:
         """_load_cluster_info shows error label when fetch fails."""
         screen = _make_dashboard_screen()
         mock_label = MagicMock()
-        screen.query_one.return_value = mock_label
+        cast(MagicMock, screen.query_one).return_value = mock_label
 
         with patch(
             "system_operations_manager.services.kubernetes.namespace_manager.NamespaceClusterManager"
@@ -2191,8 +2198,8 @@ class TestDashboardScreenLoadNodes:
         """_load_nodes clears table, adds rows, and calls _update_resource_bars."""
         screen = _make_dashboard_screen()
         mock_table = MagicMock()
-        screen.query_one.return_value = mock_table
-        screen._update_resource_bars = MagicMock()
+        cast(MagicMock, screen.query_one).return_value = mock_table
+        object.__setattr__(screen, "_update_resource_bars", MagicMock())
 
         node1 = NodeSummary(
             name="node-1",
@@ -2213,7 +2220,7 @@ class TestDashboardScreenLoadNodes:
 
         mock_table.clear.assert_called_once()
         mock_table.add_row.assert_called_once()
-        screen._update_resource_bars.assert_called_once()
+        cast(MagicMock, screen._update_resource_bars).assert_called_once()
 
     def test_load_nodes_failure_notifies_error(self) -> None:
         """_load_nodes notifies user on exception."""
@@ -2225,8 +2232,8 @@ class TestDashboardScreenLoadNodes:
             mock_cls.return_value.list_nodes.side_effect = RuntimeError("forbidden")
             screen._load_nodes()
 
-        screen.notify_user.assert_called_once()
-        assert "error" in screen.notify_user.call_args[1].get("severity", "")
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert "error" in cast(MagicMock, screen.notify_user).call_args[1].get("severity", "")
 
 
 @pytest.mark.unit
@@ -2240,7 +2247,7 @@ class TestDashboardScreenLoadPodSummary:
         mock_ns_label = MagicMock()
 
         call_seq = [mock_phase_label, mock_ns_label]
-        screen.query_one.side_effect = call_seq
+        cast(MagicMock, screen.query_one).side_effect = call_seq
 
         pod1 = PodSummary(
             name="pod-a",
@@ -2273,7 +2280,7 @@ class TestDashboardScreenLoadPodSummary:
         """_load_pod_summary shows error label on exception."""
         screen = _make_dashboard_screen()
         mock_label = MagicMock()
-        screen.query_one.return_value = mock_label
+        cast(MagicMock, screen.query_one).return_value = mock_label
 
         with patch(
             "system_operations_manager.services.kubernetes.workload_manager.WorkloadManager"
@@ -2294,7 +2301,7 @@ class TestDashboardScreenUpdateResourceBars:
         """_update_resource_bars mounts Label and ResourceBar widgets for each node."""
         screen = _make_dashboard_screen()
         mock_container = MagicMock()
-        screen.query_one.return_value = mock_container
+        cast(MagicMock, screen.query_one).return_value = mock_container
 
         node = NodeSummary(
             name="worker-1",
@@ -2316,7 +2323,7 @@ class TestDashboardScreenUpdateResourceBars:
         """_update_resource_bars skips ResourceBar when capacity is None."""
         screen = _make_dashboard_screen()
         mock_container = MagicMock()
-        screen.query_one.return_value = mock_container
+        cast(MagicMock, screen.query_one).return_value = mock_container
 
         node = NodeSummary(
             name="bare-node",
@@ -2344,7 +2351,7 @@ class TestDashboardScreenLoadEvents:
         """_load_events filters Warning events, sorts, and fills table."""
         screen = _make_dashboard_screen()
         mock_table = MagicMock()
-        screen.query_one.return_value = mock_table
+        cast(MagicMock, screen.query_one).return_value = mock_table
 
         normal_event = EventSummary(
             name="normal-evt",
@@ -2393,7 +2400,7 @@ class TestDashboardScreenLoadEvents:
             screen._load_events()
 
         # notify_user is NOT called for events (unlike nodes) - just logs
-        screen.notify_user.assert_not_called()
+        cast(MagicMock, screen.notify_user).assert_not_called()
 
 
 @pytest.mark.unit
@@ -2404,26 +2411,26 @@ class TestDashboardScreenActions:
         """action_back calls go_back."""
         screen = _make_dashboard_screen()
         screen.action_back()
-        screen.go_back.assert_called_once()
+        cast(MagicMock, screen.go_back).assert_called_once()
 
     def test_action_refresh_calls_refresh_all_and_notifies(self) -> None:
         """action_refresh calls _refresh_all, resets timer, notifies."""
         screen = _make_dashboard_screen()
-        screen._refresh_all = MagicMock()
+        object.__setattr__(screen, "_refresh_all", MagicMock())
         mock_timer = MagicMock()
-        screen.query_one.return_value = mock_timer
+        cast(MagicMock, screen.query_one).return_value = mock_timer
 
         screen.action_refresh()
 
-        screen._refresh_all.assert_called_once()
+        cast(MagicMock, screen._refresh_all).assert_called_once()
         mock_timer.reset.assert_called_once()
-        screen.notify_user.assert_called_once_with("Dashboard refreshed")
+        cast(MagicMock, screen.notify_user).assert_called_once_with("Dashboard refreshed")
 
     def test_action_increase_interval_calls_timer(self) -> None:
         """action_increase_interval calls increase_interval on RefreshTimer."""
         screen = _make_dashboard_screen()
         mock_timer = MagicMock()
-        screen.query_one.return_value = mock_timer
+        cast(MagicMock, screen.query_one).return_value = mock_timer
 
         screen.action_increase_interval()
 
@@ -2433,7 +2440,7 @@ class TestDashboardScreenActions:
         """action_decrease_interval calls decrease_interval on RefreshTimer."""
         screen = _make_dashboard_screen()
         mock_timer = MagicMock()
-        screen.query_one.return_value = mock_timer
+        cast(MagicMock, screen.query_one).return_value = mock_timer
 
         screen.action_decrease_interval()
 
@@ -2444,12 +2451,12 @@ class TestDashboardScreenActions:
         from system_operations_manager.tui.apps.kubernetes.widgets import RefreshTimer
 
         screen = _make_dashboard_screen()
-        screen._refresh_all = MagicMock()
+        object.__setattr__(screen, "_refresh_all", MagicMock())
         event = MagicMock(spec=RefreshTimer.RefreshTriggered)
 
         screen.handle_auto_refresh(event)
 
-        screen._refresh_all.assert_called_once()
+        cast(MagicMock, screen._refresh_all).assert_called_once()
 
     def test_handle_interval_changed_notifies_new_interval(self) -> None:
         """handle_interval_changed notifies the new interval."""
@@ -2460,8 +2467,8 @@ class TestDashboardScreenActions:
 
         screen.handle_interval_changed(event)
 
-        screen.notify_user.assert_called_once()
-        assert "30" in screen.notify_user.call_args[0][0]
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert "30" in cast(MagicMock, screen.notify_user).call_args[0][0]
 
 
 # ============================================================================
@@ -2650,7 +2657,7 @@ class TestResourceDetailScreenLoadEvents:
         screen._resource.name = "my-pod"
         screen._resource.namespace = "default"
         mock_table = MagicMock()
-        screen.query_one.return_value = mock_table
+        cast(MagicMock, screen.query_one).return_value = mock_table
 
         with patch(
             "system_operations_manager.services.kubernetes.namespace_manager.NamespaceClusterManager"
@@ -2673,7 +2680,7 @@ class TestResourceDetailScreenLoadEvents:
         )
         screen = _make_resource_detail_screen(resource=node, resource_type=ResourceType.NODES)
         mock_table = MagicMock()
-        screen.query_one.return_value = mock_table
+        cast(MagicMock, screen.query_one).return_value = mock_table
 
         with patch(
             "system_operations_manager.services.kubernetes.namespace_manager.NamespaceClusterManager"
@@ -2688,7 +2695,7 @@ class TestResourceDetailScreenLoadEvents:
         """_load_events adds rows to the events table for each event."""
         screen = _make_resource_detail_screen()
         mock_table = MagicMock()
-        screen.query_one.return_value = mock_table
+        cast(MagicMock, screen.query_one).return_value = mock_table
 
         evt = EventSummary(
             name="pod-evt",
@@ -2721,8 +2728,8 @@ class TestResourceDetailScreenLoadEvents:
             mock_cls.return_value.list_events.side_effect = RuntimeError("forbidden")
             screen._load_events()
 
-        screen.notify_user.assert_called_once()
-        assert "error" in screen.notify_user.call_args[1].get("severity", "")
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert "error" in cast(MagicMock, screen.notify_user).call_args[1].get("severity", "")
 
 
 @pytest.mark.unit
@@ -2734,8 +2741,8 @@ class TestResourceDetailScreenEditActions:
         screen = _make_resource_detail_screen(resource_type=ResourceType.PODS)
         # PODS is not in EDITABLE_TYPES
         screen.action_edit()
-        screen.notify_user.assert_called_once()
-        assert "Cannot edit" in screen.notify_user.call_args[0][0]
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert "Cannot edit" in cast(MagicMock, screen.notify_user).call_args[0][0]
 
     def test_action_edit_calls_open_yaml_editor_for_editable_type(self) -> None:
         """action_edit calls _open_yaml_editor for EDITABLE_TYPES."""
@@ -2751,11 +2758,11 @@ class TestResourceDetailScreenEditActions:
         screen = _make_resource_detail_screen(
             resource=deploy, resource_type=ResourceType.DEPLOYMENTS
         )
-        screen._open_yaml_editor = MagicMock()
+        object.__setattr__(screen, "_open_yaml_editor", MagicMock())
 
         screen.action_edit()
 
-        screen._open_yaml_editor.assert_called_once()
+        cast(MagicMock, screen._open_yaml_editor).assert_called_once()
 
     def test_open_yaml_editor_fetch_failure_notifies_error(self) -> None:
         """_open_yaml_editor notifies error when fetch_raw_resource fails."""
@@ -2778,8 +2785,8 @@ class TestResourceDetailScreenEditActions:
             mock_fetch.side_effect = RuntimeError("not found")
             screen._open_yaml_editor()
 
-        screen.notify_user.assert_called_once()
-        assert "Failed to fetch" in screen.notify_user.call_args[0][0]
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert "Failed to fetch" in cast(MagicMock, screen.notify_user).call_args[0][0]
 
     def test_open_yaml_editor_no_changes_notifies(self) -> None:
         """_open_yaml_editor notifies 'No changes' when content unchanged."""
@@ -2819,8 +2826,10 @@ class TestResourceDetailScreenEditActions:
 
             with patch("tempfile.NamedTemporaryFile") as mock_tmpfile:
                 mock_tmp_ctx = MagicMock()
-                mock_tmp_ctx.__enter__ = MagicMock(return_value=MagicMock(name=tmp_path))
-                mock_tmp_ctx.__exit__ = MagicMock(return_value=False)
+                object.__setattr__(
+                    mock_tmp_ctx, "__enter__", MagicMock(return_value=MagicMock(name=tmp_path))
+                )
+                object.__setattr__(mock_tmp_ctx, "__exit__", MagicMock(return_value=False))
                 mock_tmpfile.return_value = mock_tmp_ctx
 
                 with patch("pathlib.Path.open") as mock_open:
@@ -2832,7 +2841,7 @@ class TestResourceDetailScreenEditActions:
                         screen._open_yaml_editor()
 
         # Should notify "No changes" or similar
-        assert screen.notify_user.called
+        assert cast(MagicMock, screen.notify_user).called
 
 
 @pytest.mark.unit
@@ -2842,9 +2851,9 @@ class TestResourceDetailScreenRefreshDetail:
     def test_refresh_detail_success_updates_yaml_and_events(self) -> None:
         """_refresh_detail fetches resource, updates YAML panel, refreshes events."""
         screen = _make_resource_detail_screen()
-        screen._load_events = MagicMock()
+        object.__setattr__(screen, "_load_events", MagicMock())
         mock_yaml_widget = MagicMock()
-        screen.query_one.return_value = mock_yaml_widget
+        cast(MagicMock, screen.query_one).return_value = mock_yaml_widget
 
         with patch(
             "system_operations_manager.tui.apps.kubernetes.edit_helpers.fetch_raw_resource",
@@ -2853,7 +2862,7 @@ class TestResourceDetailScreenRefreshDetail:
             screen._refresh_detail()
 
         mock_yaml_widget.update.assert_called_once()
-        screen._load_events.assert_called_once()
+        cast(MagicMock, screen._load_events).assert_called_once()
 
     def test_refresh_detail_failure_notifies_error(self) -> None:
         """_refresh_detail notifies user on fetch failure."""
@@ -2865,8 +2874,8 @@ class TestResourceDetailScreenRefreshDetail:
             mock_fetch.side_effect = RuntimeError("not found")
             screen._refresh_detail()
 
-        screen.notify_user.assert_called_once()
-        assert "Refresh failed" in screen.notify_user.call_args[0][0]
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert "Refresh failed" in cast(MagicMock, screen.notify_user).call_args[0][0]
 
 
 @pytest.mark.unit
@@ -2887,8 +2896,8 @@ class TestResourceDetailScreenDeleteActions:
             resource=event_resource, resource_type=ResourceType.EVENTS
         )
         screen.action_delete()
-        screen.notify_user.assert_called_once()
-        assert "Cannot delete" in screen.notify_user.call_args[0][0]
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert "Cannot delete" in cast(MagicMock, screen.notify_user).call_args[0][0]
 
     def test_action_delete_pushes_modal_for_deletable_type(self) -> None:
         """action_delete pushes confirmation modal for deletable types."""
@@ -2902,7 +2911,7 @@ class TestResourceDetailScreenDeleteActions:
             mock_modal_cls.return_value = MagicMock()
             screen.action_delete()
 
-        mock_app.push_screen.assert_called_once()
+        cast(MagicMock, mock_app.push_screen).assert_called_once()
 
     def test_handle_delete_result_delete_success_calls_go_back(self) -> None:
         """_handle_delete_result calls delete_resource and go_back on 'delete'."""
@@ -2914,8 +2923,8 @@ class TestResourceDetailScreenDeleteActions:
             screen._handle_delete_result("delete")
 
         mock_delete.assert_called_once()
-        screen.notify_user.assert_called_once()
-        screen.go_back.assert_called_once()
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        cast(MagicMock, screen.go_back).assert_called_once()
 
     def test_handle_delete_result_delete_failure_notifies_error(self) -> None:
         """_handle_delete_result notifies error when delete_resource raises."""
@@ -2927,9 +2936,9 @@ class TestResourceDetailScreenDeleteActions:
             mock_delete.side_effect = RuntimeError("permission denied")
             screen._handle_delete_result("delete")
 
-        screen.notify_user.assert_called_once()
-        assert "error" in screen.notify_user.call_args[1].get("severity", "")
-        screen.go_back.assert_not_called()
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert "error" in cast(MagicMock, screen.notify_user).call_args[1].get("severity", "")
+        cast(MagicMock, screen.go_back).assert_not_called()
 
     def test_handle_delete_result_cancel_is_noop(self) -> None:
         """_handle_delete_result with non-'delete' result does nothing."""
@@ -2941,8 +2950,8 @@ class TestResourceDetailScreenDeleteActions:
             screen._handle_delete_result("cancel")
 
         mock_delete.assert_not_called()
-        screen.notify_user.assert_not_called()
-        screen.go_back.assert_not_called()
+        cast(MagicMock, screen.notify_user).assert_not_called()
+        cast(MagicMock, screen.go_back).assert_not_called()
 
 
 @pytest.mark.unit
@@ -2964,8 +2973,8 @@ class TestResourceDetailScreenLogsExec:
             resource=deploy, resource_type=ResourceType.DEPLOYMENTS
         )
         screen.action_logs()
-        screen.notify_user.assert_called_once()
-        assert "warning" in screen.notify_user.call_args[1].get("severity", "")
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert "warning" in cast(MagicMock, screen.notify_user).call_args[1].get("severity", "")
 
     def test_action_logs_pushes_log_viewer_for_pods(self) -> None:
         """action_logs pushes LogViewerScreen for PODS type."""
@@ -2981,7 +2990,7 @@ class TestResourceDetailScreenLogsExec:
             mock_lv_cls.return_value = MagicMock()
             screen.action_logs()
 
-        mock_app.push_screen.assert_called_once()
+        cast(MagicMock, mock_app.push_screen).assert_called_once()
 
     def test_action_exec_warns_for_non_pods(self) -> None:
         """action_exec warns for non-PODS resource type."""
@@ -2998,8 +3007,8 @@ class TestResourceDetailScreenLogsExec:
             resource=deploy, resource_type=ResourceType.DEPLOYMENTS
         )
         screen.action_exec()
-        screen.notify_user.assert_called_once()
-        assert "warning" in screen.notify_user.call_args[1].get("severity", "")
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert "warning" in cast(MagicMock, screen.notify_user).call_args[1].get("severity", "")
 
     def test_action_exec_with_single_container_calls_run_exec(self) -> None:
         """action_exec with single container calls _run_exec directly."""
@@ -3016,11 +3025,11 @@ class TestResourceDetailScreenLogsExec:
         pod.containers = [mock_container]
 
         screen = _make_resource_detail_screen(resource=pod, resource_type=ResourceType.PODS)
-        screen._run_exec = MagicMock()
+        object.__setattr__(screen, "_run_exec", MagicMock())
 
         screen.action_exec()
 
-        screen._run_exec.assert_called_once_with("app")
+        cast(MagicMock, screen._run_exec).assert_called_once_with("app")
 
     def test_action_exec_with_no_containers_calls_run_exec_with_none(self) -> None:
         """action_exec with no containers calls _run_exec(None)."""
@@ -3035,11 +3044,11 @@ class TestResourceDetailScreenLogsExec:
         pod.containers = []
 
         screen = _make_resource_detail_screen(resource=pod, resource_type=ResourceType.PODS)
-        screen._run_exec = MagicMock()
+        object.__setattr__(screen, "_run_exec", MagicMock())
 
         screen.action_exec()
 
-        screen._run_exec.assert_called_once_with(None)
+        cast(MagicMock, screen._run_exec).assert_called_once_with(None)
 
     def test_action_exec_with_multiple_containers_pushes_selector(self) -> None:
         """action_exec with >1 container pushes SelectorPopup."""
@@ -3069,25 +3078,25 @@ class TestResourceDetailScreenLogsExec:
             mock_popup_cls.return_value = MagicMock()
             screen.action_exec()
 
-        mock_app.push_screen.assert_called_once()
+        cast(MagicMock, mock_app.push_screen).assert_called_once()
 
     def test_handle_exec_container_selected_calls_run_exec(self) -> None:
         """_handle_exec_container_selected calls _run_exec when result is truthy."""
         screen = _make_resource_detail_screen()
-        screen._run_exec = MagicMock()
+        object.__setattr__(screen, "_run_exec", MagicMock())
 
         screen._handle_exec_container_selected("app-container")
 
-        screen._run_exec.assert_called_once_with("app-container")
+        cast(MagicMock, screen._run_exec).assert_called_once_with("app-container")
 
     def test_handle_exec_container_selected_none_is_noop(self) -> None:
         """_handle_exec_container_selected does nothing when result is None."""
         screen = _make_resource_detail_screen()
-        screen._run_exec = MagicMock()
+        object.__setattr__(screen, "_run_exec", MagicMock())
 
         screen._handle_exec_container_selected(None)
 
-        screen._run_exec.assert_not_called()
+        cast(MagicMock, screen._run_exec).assert_not_called()
 
     def test_run_exec_failure_notifies_error(self) -> None:
         """_run_exec notifies error when StreamingManager.exec_command raises."""
@@ -3099,8 +3108,8 @@ class TestResourceDetailScreenLogsExec:
             mock_cls.return_value.exec_command.side_effect = RuntimeError("exec failed")
             screen._run_exec("app")
 
-        screen.notify_user.assert_called_once()
-        assert "error" in screen.notify_user.call_args[1].get("severity", "")
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert "error" in cast(MagicMock, screen.notify_user).call_args[1].get("severity", "")
 
     def test_run_exec_import_error_notifies_unix_required(self) -> None:
         """_run_exec notifies about Unix terminal requirement on ImportError.

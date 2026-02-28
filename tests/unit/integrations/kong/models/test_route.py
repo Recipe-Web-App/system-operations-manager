@@ -235,4 +235,6 @@ class TestRouteSummary:
         assert summary.name == "api-route"
         assert summary.paths == ["/api"]
         assert summary.methods == ["GET", "POST"]
+        assert summary.service is not None
+
         assert summary.service.id == "svc-uuid-001"

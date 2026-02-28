@@ -7,7 +7,7 @@ constructor, and default state.
 from __future__ import annotations
 
 from collections.abc import Iterator
-from typing import Any
+from typing import Any, cast
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -258,15 +258,15 @@ from system_operations_manager.integrations.kubernetes.exceptions import (  # no
 def _make_ecosystem_screen() -> EcosystemScreen:
     """Create an EcosystemScreen bypassing __init__."""
     screen = EcosystemScreen.__new__(EcosystemScreen)
-    screen._client = MagicMock()
-    screen.go_back = MagicMock()
-    screen.notify_user = MagicMock()
-    screen._EcosystemScreen__argocd_mgr = None
-    screen._EcosystemScreen__flux_mgr = None
-    screen._EcosystemScreen__cert_mgr = None
-    screen._EcosystemScreen__rollouts_mgr = None
+    object.__setattr__(screen, "_client", MagicMock())
+    object.__setattr__(screen, "go_back", MagicMock())
+    object.__setattr__(screen, "notify_user", MagicMock())
+    object.__setattr__(screen, "_EcosystemScreen__argocd_mgr", None)
+    object.__setattr__(screen, "_EcosystemScreen__flux_mgr", None)
+    object.__setattr__(screen, "_EcosystemScreen__cert_mgr", None)
+    object.__setattr__(screen, "_EcosystemScreen__rollouts_mgr", None)
     mock_table = MagicMock()
-    screen.query_one = MagicMock(return_value=mock_table)
+    object.__setattr__(screen, "query_one", MagicMock(return_value=mock_table))
     return screen
 
 
@@ -307,7 +307,7 @@ class TestLazyManagerProperties:
         """_argocd_mgr returns cached on second access."""
         screen = _make_ecosystem_screen()
         cached = MagicMock()
-        screen._EcosystemScreen__argocd_mgr = cached
+        object.__setattr__(screen, "_EcosystemScreen__argocd_mgr", cached)
         assert screen._argocd_mgr is cached
 
     def test_flux_mgr_creates_on_first_access(self) -> None:
@@ -354,11 +354,13 @@ class TestAddInfoRow:
         """_add_info_row adds a dimmed message row."""
         screen = _make_ecosystem_screen()
         mock_table = MagicMock()
-        screen.query_one = MagicMock(return_value=mock_table)
+        object.__setattr__(screen, "query_one", MagicMock(return_value=mock_table))
         screen._add_info_row("argocd-table", "No data", 6)
         mock_table.add_row.assert_called_once()
         args = mock_table.add_row.call_args[0]
         assert "No data" in args[0]
+        assert args is not None
+
         assert len(args) == 6
 
 
@@ -375,20 +377,20 @@ class TestEcosystemActions:
         """action_back calls go_back."""
         screen = _make_ecosystem_screen()
         screen.action_back()
-        screen.go_back.assert_called_once()
+        cast(MagicMock, screen.go_back).assert_called_once()
 
     def test_action_refresh(self) -> None:
         """action_refresh calls _refresh_all."""
         screen = _make_ecosystem_screen()
-        screen._refresh_all = MagicMock()
+        object.__setattr__(screen, "_refresh_all", MagicMock())
         screen.action_refresh()
-        screen._refresh_all.assert_called_once()
+        cast(MagicMock, screen._refresh_all).assert_called_once()
 
     def test_action_focus_argocd(self) -> None:
         """action_focus_argocd focuses the argocd table."""
         screen = _make_ecosystem_screen()
         mock_table = MagicMock()
-        screen.query_one = MagicMock(return_value=mock_table)
+        object.__setattr__(screen, "query_one", MagicMock(return_value=mock_table))
         screen.action_focus_argocd()
         mock_table.focus.assert_called_once()
 
@@ -396,7 +398,7 @@ class TestEcosystemActions:
         """action_focus_flux focuses the flux table."""
         screen = _make_ecosystem_screen()
         mock_table = MagicMock()
-        screen.query_one = MagicMock(return_value=mock_table)
+        object.__setattr__(screen, "query_one", MagicMock(return_value=mock_table))
         screen.action_focus_flux()
         mock_table.focus.assert_called_once()
 
@@ -404,7 +406,7 @@ class TestEcosystemActions:
         """action_focus_certs focuses the cert table."""
         screen = _make_ecosystem_screen()
         mock_table = MagicMock()
-        screen.query_one = MagicMock(return_value=mock_table)
+        object.__setattr__(screen, "query_one", MagicMock(return_value=mock_table))
         screen.action_focus_certs()
         mock_table.focus.assert_called_once()
 
@@ -412,7 +414,7 @@ class TestEcosystemActions:
         """action_focus_rollouts focuses the rollouts table."""
         screen = _make_ecosystem_screen()
         mock_table = MagicMock()
-        screen.query_one = MagicMock(return_value=mock_table)
+        object.__setattr__(screen, "query_one", MagicMock(return_value=mock_table))
         screen.action_focus_rollouts()
         mock_table.focus.assert_called_once()
 
@@ -438,10 +440,10 @@ class TestLoadArgocd:
         app_obj.health_status = "Healthy"
         app_obj.repo_url = "https://git.example.com"
         mock_mgr.list_applications.return_value = [app_obj]
-        screen._EcosystemScreen__argocd_mgr = mock_mgr
+        object.__setattr__(screen, "_EcosystemScreen__argocd_mgr", mock_mgr)
         mock_table = MagicMock()
-        screen.query_one = MagicMock(return_value=mock_table)
-        EcosystemScreen._load_argocd.__wrapped__(screen)
+        object.__setattr__(screen, "query_one", MagicMock(return_value=mock_table))
+        cast(Any, EcosystemScreen._load_argocd).__wrapped__(screen)
         mock_table.add_row.assert_called_once()
 
     def test_empty_apps(self) -> None:
@@ -449,30 +451,30 @@ class TestLoadArgocd:
         screen = _make_ecosystem_screen()
         mock_mgr = MagicMock()
         mock_mgr.list_applications.return_value = []
-        screen._EcosystemScreen__argocd_mgr = mock_mgr
-        screen._add_info_row = MagicMock()
-        EcosystemScreen._load_argocd.__wrapped__(screen)
-        screen._add_info_row.assert_called_once()
+        object.__setattr__(screen, "_EcosystemScreen__argocd_mgr", mock_mgr)
+        object.__setattr__(screen, "_add_info_row", MagicMock())
+        cast(Any, EcosystemScreen._load_argocd).__wrapped__(screen)
+        cast(MagicMock, screen._add_info_row).assert_called_once()
 
     def test_not_found_error(self) -> None:
         """_load_argocd handles KubernetesNotFoundError."""
         screen = _make_ecosystem_screen()
         mock_mgr = MagicMock()
         mock_mgr.list_applications.side_effect = KubernetesNotFoundError("CRD missing")
-        screen._EcosystemScreen__argocd_mgr = mock_mgr
-        screen._add_info_row = MagicMock()
-        EcosystemScreen._load_argocd.__wrapped__(screen)
-        screen._add_info_row.assert_called_once()
+        object.__setattr__(screen, "_EcosystemScreen__argocd_mgr", mock_mgr)
+        object.__setattr__(screen, "_add_info_row", MagicMock())
+        cast(Any, EcosystemScreen._load_argocd).__wrapped__(screen)
+        cast(MagicMock, screen._add_info_row).assert_called_once()
 
     def test_generic_error(self) -> None:
         """_load_argocd handles generic exceptions."""
         screen = _make_ecosystem_screen()
         mock_mgr = MagicMock()
         mock_mgr.list_applications.side_effect = RuntimeError("boom")
-        screen._EcosystemScreen__argocd_mgr = mock_mgr
-        screen._add_info_row = MagicMock()
-        EcosystemScreen._load_argocd.__wrapped__(screen)
-        screen._add_info_row.assert_called_once()
+        object.__setattr__(screen, "_EcosystemScreen__argocd_mgr", mock_mgr)
+        object.__setattr__(screen, "_add_info_row", MagicMock())
+        cast(Any, EcosystemScreen._load_argocd).__wrapped__(screen)
+        cast(MagicMock, screen._add_info_row).assert_called_once()
 
 
 # ============================================================================
@@ -487,7 +489,7 @@ class TestLoadFlux:
     def _make_flux_screen(self) -> tuple[EcosystemScreen, MagicMock]:
         screen = _make_ecosystem_screen()
         mock_mgr = MagicMock()
-        screen._EcosystemScreen__flux_mgr = mock_mgr
+        object.__setattr__(screen, "_EcosystemScreen__flux_mgr", mock_mgr)
         return screen, mock_mgr
 
     def test_with_resources(self) -> None:
@@ -521,8 +523,8 @@ class TestLoadFlux:
         mgr.list_kustomizations.return_value = [ks]
         mgr.list_helm_releases.return_value = [hr]
         mock_table = MagicMock()
-        screen.query_one = MagicMock(return_value=mock_table)
-        EcosystemScreen._load_flux.__wrapped__(screen)
+        object.__setattr__(screen, "query_one", MagicMock(return_value=mock_table))
+        cast(Any, EcosystemScreen._load_flux).__wrapped__(screen)
         assert mock_table.add_row.call_count == 3
 
     def test_empty_resources(self) -> None:
@@ -531,25 +533,25 @@ class TestLoadFlux:
         mgr.list_git_repositories.return_value = []
         mgr.list_kustomizations.return_value = []
         mgr.list_helm_releases.return_value = []
-        screen._add_info_row = MagicMock()
-        EcosystemScreen._load_flux.__wrapped__(screen)
-        screen._add_info_row.assert_called_once()
+        object.__setattr__(screen, "_add_info_row", MagicMock())
+        cast(Any, EcosystemScreen._load_flux).__wrapped__(screen)
+        cast(MagicMock, screen._add_info_row).assert_called_once()
 
     def test_not_found_error(self) -> None:
         """_load_flux handles KubernetesNotFoundError."""
         screen, mgr = self._make_flux_screen()
         mgr.list_git_repositories.side_effect = KubernetesNotFoundError("missing")
-        screen._add_info_row = MagicMock()
-        EcosystemScreen._load_flux.__wrapped__(screen)
-        screen._add_info_row.assert_called_once()
+        object.__setattr__(screen, "_add_info_row", MagicMock())
+        cast(Any, EcosystemScreen._load_flux).__wrapped__(screen)
+        cast(MagicMock, screen._add_info_row).assert_called_once()
 
     def test_generic_error(self) -> None:
         """_load_flux handles generic exceptions."""
         screen, mgr = self._make_flux_screen()
         mgr.list_git_repositories.side_effect = RuntimeError("boom")
-        screen._add_info_row = MagicMock()
-        EcosystemScreen._load_flux.__wrapped__(screen)
-        screen._add_info_row.assert_called_once()
+        object.__setattr__(screen, "_add_info_row", MagicMock())
+        cast(Any, EcosystemScreen._load_flux).__wrapped__(screen)
+        cast(MagicMock, screen._add_info_row).assert_called_once()
 
 
 # ============================================================================
@@ -573,10 +575,10 @@ class TestLoadCerts:
         cert.issuer_name = "letsencrypt"
         cert.dns_names = ["example.com", "www.example.com"]
         mock_mgr.list_certificates.return_value = [cert]
-        screen._EcosystemScreen__cert_mgr = mock_mgr
+        object.__setattr__(screen, "_EcosystemScreen__cert_mgr", mock_mgr)
         mock_table = MagicMock()
-        screen.query_one = MagicMock(return_value=mock_table)
-        EcosystemScreen._load_certs.__wrapped__(screen)
+        object.__setattr__(screen, "query_one", MagicMock(return_value=mock_table))
+        cast(Any, EcosystemScreen._load_certs).__wrapped__(screen)
         mock_table.add_row.assert_called_once()
 
     def test_cert_with_many_dns_names(self) -> None:
@@ -591,10 +593,10 @@ class TestLoadCerts:
         cert.issuer_name = "letsencrypt"
         cert.dns_names = ["a.com", "b.com", "c.com", "d.com", "e.com"]
         mock_mgr.list_certificates.return_value = [cert]
-        screen._EcosystemScreen__cert_mgr = mock_mgr
+        object.__setattr__(screen, "_EcosystemScreen__cert_mgr", mock_mgr)
         mock_table = MagicMock()
-        screen.query_one = MagicMock(return_value=mock_table)
-        EcosystemScreen._load_certs.__wrapped__(screen)
+        object.__setattr__(screen, "query_one", MagicMock(return_value=mock_table))
+        cast(Any, EcosystemScreen._load_certs).__wrapped__(screen)
         call_args = mock_table.add_row.call_args[0]
         assert "(+2)" in call_args[5]
 
@@ -610,10 +612,10 @@ class TestLoadCerts:
         cert.issuer_name = "self-signed"
         cert.dns_names = ["internal.local"]
         mock_mgr.list_certificates.return_value = [cert]
-        screen._EcosystemScreen__cert_mgr = mock_mgr
+        object.__setattr__(screen, "_EcosystemScreen__cert_mgr", mock_mgr)
         mock_table = MagicMock()
-        screen.query_one = MagicMock(return_value=mock_table)
-        EcosystemScreen._load_certs.__wrapped__(screen)
+        object.__setattr__(screen, "query_one", MagicMock(return_value=mock_table))
+        cast(Any, EcosystemScreen._load_certs).__wrapped__(screen)
         call_args = mock_table.add_row.call_args[0]
         assert call_args[3] == "N/A"
 
@@ -622,20 +624,20 @@ class TestLoadCerts:
         screen = _make_ecosystem_screen()
         mock_mgr = MagicMock()
         mock_mgr.list_certificates.return_value = []
-        screen._EcosystemScreen__cert_mgr = mock_mgr
-        screen._add_info_row = MagicMock()
-        EcosystemScreen._load_certs.__wrapped__(screen)
-        screen._add_info_row.assert_called_once()
+        object.__setattr__(screen, "_EcosystemScreen__cert_mgr", mock_mgr)
+        object.__setattr__(screen, "_add_info_row", MagicMock())
+        cast(Any, EcosystemScreen._load_certs).__wrapped__(screen)
+        cast(MagicMock, screen._add_info_row).assert_called_once()
 
     def test_not_found_error(self) -> None:
         """_load_certs handles KubernetesNotFoundError."""
         screen = _make_ecosystem_screen()
         mock_mgr = MagicMock()
         mock_mgr.list_certificates.side_effect = KubernetesNotFoundError("missing")
-        screen._EcosystemScreen__cert_mgr = mock_mgr
-        screen._add_info_row = MagicMock()
-        EcosystemScreen._load_certs.__wrapped__(screen)
-        screen._add_info_row.assert_called_once()
+        object.__setattr__(screen, "_EcosystemScreen__cert_mgr", mock_mgr)
+        object.__setattr__(screen, "_add_info_row", MagicMock())
+        cast(Any, EcosystemScreen._load_certs).__wrapped__(screen)
+        cast(MagicMock, screen._add_info_row).assert_called_once()
 
 
 # ============================================================================
@@ -660,10 +662,10 @@ class TestLoadRollouts:
         ro.replicas = 3
         ro.canary_weight = 50
         mock_mgr.list_rollouts.return_value = [ro]
-        screen._EcosystemScreen__rollouts_mgr = mock_mgr
+        object.__setattr__(screen, "_EcosystemScreen__rollouts_mgr", mock_mgr)
         mock_table = MagicMock()
-        screen.query_one = MagicMock(return_value=mock_table)
-        EcosystemScreen._load_rollouts.__wrapped__(screen)
+        object.__setattr__(screen, "query_one", MagicMock(return_value=mock_table))
+        cast(Any, EcosystemScreen._load_rollouts).__wrapped__(screen)
         call_args = mock_table.add_row.call_args[0]
         assert "50%" in call_args[5]
 
@@ -680,10 +682,10 @@ class TestLoadRollouts:
         ro.replicas = 2
         ro.canary_weight = 0
         mock_mgr.list_rollouts.return_value = [ro]
-        screen._EcosystemScreen__rollouts_mgr = mock_mgr
+        object.__setattr__(screen, "_EcosystemScreen__rollouts_mgr", mock_mgr)
         mock_table = MagicMock()
-        screen.query_one = MagicMock(return_value=mock_table)
-        EcosystemScreen._load_rollouts.__wrapped__(screen)
+        object.__setattr__(screen, "query_one", MagicMock(return_value=mock_table))
+        cast(Any, EcosystemScreen._load_rollouts).__wrapped__(screen)
         call_args = mock_table.add_row.call_args[0]
         assert call_args[5] == "-"
 
@@ -692,31 +694,31 @@ class TestLoadRollouts:
         screen = _make_ecosystem_screen()
         mock_mgr = MagicMock()
         mock_mgr.list_rollouts.return_value = []
-        screen._EcosystemScreen__rollouts_mgr = mock_mgr
-        screen._add_info_row = MagicMock()
-        EcosystemScreen._load_rollouts.__wrapped__(screen)
-        screen._add_info_row.assert_called_once()
+        object.__setattr__(screen, "_EcosystemScreen__rollouts_mgr", mock_mgr)
+        object.__setattr__(screen, "_add_info_row", MagicMock())
+        cast(Any, EcosystemScreen._load_rollouts).__wrapped__(screen)
+        cast(MagicMock, screen._add_info_row).assert_called_once()
 
     def test_not_found_error(self) -> None:
         """_load_rollouts handles KubernetesNotFoundError."""
         screen = _make_ecosystem_screen()
         mock_mgr = MagicMock()
         mock_mgr.list_rollouts.side_effect = KubernetesNotFoundError("missing")
-        screen._EcosystemScreen__rollouts_mgr = mock_mgr
-        screen._add_info_row = MagicMock()
-        EcosystemScreen._load_rollouts.__wrapped__(screen)
-        screen._add_info_row.assert_called_once()
+        object.__setattr__(screen, "_EcosystemScreen__rollouts_mgr", mock_mgr)
+        object.__setattr__(screen, "_add_info_row", MagicMock())
+        cast(Any, EcosystemScreen._load_rollouts).__wrapped__(screen)
+        cast(MagicMock, screen._add_info_row).assert_called_once()
 
     def test_generic_error(self) -> None:
         """_load_rollouts handles generic exceptions."""
         screen = _make_ecosystem_screen()
         mock_mgr = MagicMock()
         mock_mgr.list_rollouts.side_effect = RuntimeError("connection failed")
-        screen._EcosystemScreen__rollouts_mgr = mock_mgr
-        screen._add_info_row = MagicMock()
-        EcosystemScreen._load_rollouts.__wrapped__(screen)
-        screen._add_info_row.assert_called_once()
-        assert "Error" in screen._add_info_row.call_args[0][1]
+        object.__setattr__(screen, "_EcosystemScreen__rollouts_mgr", mock_mgr)
+        object.__setattr__(screen, "_add_info_row", MagicMock())
+        cast(Any, EcosystemScreen._load_rollouts).__wrapped__(screen)
+        cast(MagicMock, screen._add_info_row).assert_called_once()
+        assert "Error" in cast(MagicMock, screen._add_info_row).call_args[0][1]
 
 
 # ============================================================================
@@ -733,11 +735,11 @@ class TestLoadCertsGenericError:
         screen = _make_ecosystem_screen()
         mock_mgr = MagicMock()
         mock_mgr.list_certificates.side_effect = RuntimeError("timeout")
-        screen._EcosystemScreen__cert_mgr = mock_mgr
-        screen._add_info_row = MagicMock()
-        EcosystemScreen._load_certs.__wrapped__(screen)
-        screen._add_info_row.assert_called_once()
-        assert "Error" in screen._add_info_row.call_args[0][1]
+        object.__setattr__(screen, "_EcosystemScreen__cert_mgr", mock_mgr)
+        object.__setattr__(screen, "_add_info_row", MagicMock())
+        cast(Any, EcosystemScreen._load_certs).__wrapped__(screen)
+        cast(MagicMock, screen._add_info_row).assert_called_once()
+        assert "Error" in cast(MagicMock, screen._add_info_row).call_args[0][1]
 
 
 # ============================================================================
@@ -760,7 +762,7 @@ class TestSetupTables:
                 tables[tid] = MagicMock()
             return tables[tid]
 
-        screen.query_one = MagicMock(side_effect=_query)
+        object.__setattr__(screen, "query_one", MagicMock(side_effect=_query))
         screen._setup_tables()
 
         for tid in ("argocd-table", "flux-table", "cert-table", "rollouts-table"):
@@ -777,15 +779,15 @@ class TestRefreshAll:
     def test_refresh_all_calls_all_loaders(self) -> None:
         """_refresh_all triggers all four load methods."""
         screen = _make_ecosystem_screen()
-        screen._load_argocd = MagicMock()
-        screen._load_flux = MagicMock()
-        screen._load_certs = MagicMock()
-        screen._load_rollouts = MagicMock()
+        object.__setattr__(screen, "_load_argocd", MagicMock())
+        object.__setattr__(screen, "_load_flux", MagicMock())
+        object.__setattr__(screen, "_load_certs", MagicMock())
+        object.__setattr__(screen, "_load_rollouts", MagicMock())
         screen._refresh_all()
-        screen._load_argocd.assert_called_once()
-        screen._load_flux.assert_called_once()
-        screen._load_certs.assert_called_once()
-        screen._load_rollouts.assert_called_once()
+        cast(MagicMock, screen._load_argocd).assert_called_once()
+        cast(MagicMock, screen._load_flux).assert_called_once()
+        cast(MagicMock, screen._load_certs).assert_called_once()
+        cast(MagicMock, screen._load_rollouts).assert_called_once()
 
 
 @pytest.mark.unit
@@ -795,10 +797,10 @@ class TestEcosystemEventHandlers:
     def test_handle_auto_refresh_calls_refresh_all(self) -> None:
         """handle_auto_refresh delegates to _refresh_all."""
         screen = _make_ecosystem_screen()
-        screen._refresh_all = MagicMock()
+        object.__setattr__(screen, "_refresh_all", MagicMock())
         event = MagicMock()
         screen.handle_auto_refresh(event)
-        screen._refresh_all.assert_called_once()
+        cast(MagicMock, screen._refresh_all).assert_called_once()
 
     def test_handle_interval_changed_notifies(self) -> None:
         """handle_interval_changed notifies user with interval."""
@@ -806,5 +808,5 @@ class TestEcosystemEventHandlers:
         event = MagicMock()
         event.interval = 45
         screen.handle_interval_changed(event)
-        screen.notify_user.assert_called_once()
-        assert "45" in screen.notify_user.call_args[0][0]
+        cast(MagicMock, screen.notify_user).assert_called_once()
+        assert "45" in cast(MagicMock, screen.notify_user).call_args[0][0]

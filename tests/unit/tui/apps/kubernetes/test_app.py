@@ -5,6 +5,7 @@ Tests the main TUI application for Kubernetes resource browsing.
 
 from __future__ import annotations
 
+from typing import cast
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -87,6 +88,8 @@ class TestResourceType:
     @pytest.mark.unit
     def test_resource_type_total_count(self) -> None:
         """ResourceType has exactly 13 resource types."""
+        assert ResourceType is not None
+
         assert len(ResourceType) == 13
 
     @pytest.mark.unit
@@ -108,6 +111,8 @@ class TestResourceType:
     def test_resource_type_order_contains_all_types(self) -> None:
         """RESOURCE_TYPE_ORDER contains all ResourceType members."""
         assert set(RESOURCE_TYPE_ORDER) == set(ResourceType)
+        assert RESOURCE_TYPE_ORDER is not None
+
         assert len(RESOURCE_TYPE_ORDER) == len(ResourceType)
 
 
@@ -211,10 +216,10 @@ class TestKubernetesAppAsync:
 def _make_app() -> KubernetesApp:
     """Create a KubernetesApp bypassing __init__ for sync testing."""
     app = KubernetesApp.__new__(KubernetesApp)
-    app._client = MagicMock()
-    app.push_screen = MagicMock()
-    app.pop_screen = MagicMock()
-    app.notify = MagicMock()
+    object.__setattr__(app, "_client", MagicMock())
+    object.__setattr__(app, "push_screen", MagicMock())
+    object.__setattr__(app, "pop_screen", MagicMock())
+    object.__setattr__(app, "notify", MagicMock())
     return app
 
 
@@ -233,7 +238,7 @@ class TestKubernetesAppActionBack:
         app = _make_app()
         type(app).screen_stack = PropertyMock(return_value=[MagicMock(), MagicMock()])
         await app.action_back()
-        app.pop_screen.assert_called_once()
+        cast(MagicMock, app.pop_screen).assert_called_once()
 
     @pytest.mark.asyncio
     async def test_action_back_does_not_pop_when_single_screen(self) -> None:
@@ -241,7 +246,7 @@ class TestKubernetesAppActionBack:
         app = _make_app()
         type(app).screen_stack = PropertyMock(return_value=[MagicMock()])
         await app.action_back()
-        app.pop_screen.assert_not_called()
+        cast(MagicMock, app.pop_screen).assert_not_called()
 
     @pytest.mark.asyncio
     async def test_action_back_does_not_pop_when_empty(self) -> None:
@@ -249,7 +254,7 @@ class TestKubernetesAppActionBack:
         app = _make_app()
         type(app).screen_stack = PropertyMock(return_value=[])
         await app.action_back()
-        app.pop_screen.assert_not_called()
+        cast(MagicMock, app.pop_screen).assert_not_called()
 
 
 @pytest.mark.unit
@@ -262,8 +267,8 @@ class TestKubernetesAppSyncActions:
 
         app = _make_app()
         app.action_dashboard()
-        app.push_screen.assert_called_once()
-        pushed = app.push_screen.call_args[0][0]
+        cast(MagicMock, app.push_screen).assert_called_once()
+        pushed = cast(MagicMock, app.push_screen).call_args[0][0]
         assert isinstance(pushed, DashboardScreen)
 
     def test_action_ecosystem_pushes_ecosystem_screen(self) -> None:
@@ -274,16 +279,16 @@ class TestKubernetesAppSyncActions:
 
         app = _make_app()
         app.action_ecosystem()
-        app.push_screen.assert_called_once()
-        pushed = app.push_screen.call_args[0][0]
+        cast(MagicMock, app.push_screen).assert_called_once()
+        pushed = cast(MagicMock, app.push_screen).call_args[0][0]
         assert isinstance(pushed, EcosystemScreen)
 
     def test_action_help_notifies_shortcut_info(self) -> None:
         """action_help calls notify with shortcut information."""
         app = _make_app()
         app.action_help()
-        app.notify.assert_called_once()
-        msg = app.notify.call_args[0][0]
+        cast(MagicMock, app.notify).assert_called_once()
+        msg = cast(MagicMock, app.notify).call_args[0][0]
         assert "j/k" in msg
         assert "q" in msg
 
@@ -304,6 +309,6 @@ class TestKubernetesAppHandleResourceSelected:
         mock_resource.name = "test-pod"
         event = ResourceListScreen.ResourceSelected(mock_resource, ResourceType.PODS)
         app.handle_resource_selected(event)
-        app.push_screen.assert_called_once()
-        pushed = app.push_screen.call_args[0][0]
+        cast(MagicMock, app.push_screen).assert_called_once()
+        pushed = cast(MagicMock, app.push_screen).call_args[0][0]
         assert isinstance(pushed, ResourceDetailScreen)

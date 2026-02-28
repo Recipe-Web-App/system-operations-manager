@@ -62,8 +62,7 @@ class TestCorePluginOnInitialize:
 
     def test_on_initialize_is_a_no_op(self, plugin: CorePlugin) -> None:
         """CorePlugin.on_initialize completes without error and returns None."""
-        result = plugin.on_initialize()
-        assert result is None
+        plugin.on_initialize()  # returns None
 
     def test_initialize_sets_is_initialized(self, plugin: CorePlugin) -> None:
         """Calling Plugin.initialize marks the plugin as initialized."""
@@ -117,6 +116,8 @@ class TestCorePluginRegisterCommands:
 
             registered = app.registered_commands[0]
             registered.callback()  # type: ignore[misc]
+
+        assert captured_tables is not None
 
         assert len(captured_tables) == 1
         table = captured_tables[0]

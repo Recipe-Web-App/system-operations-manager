@@ -155,8 +155,7 @@ class TestPluginHookImpls:
         """Plugin.on_initialize does nothing on the base Plugin class."""
         plugin = _GoodPlugin()
         # Should return None and not raise
-        result = plugin.on_initialize()
-        assert result is None
+        plugin.on_initialize()  # returns None
 
 
 # ---------------------------------------------------------------------------

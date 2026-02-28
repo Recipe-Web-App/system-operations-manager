@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -224,16 +225,18 @@ class TestRegisterCommands:
         """register_commands calls the pluggy hook."""
         manager = PluginManager()
         mock_app = MagicMock()
-        manager._pm.hook.register_commands = MagicMock()
+        object.__setattr__(manager._pm.hook, "register_commands", MagicMock())
 
         manager.register_commands(mock_app)
 
-        manager._pm.hook.register_commands.assert_called_once_with(app=mock_app)
+        cast(MagicMock, manager._pm.hook.register_commands).assert_called_once_with(app=mock_app)
 
     def test_swallows_hook_exception(self) -> None:
         """register_commands catches exceptions from the pluggy hook."""
         manager = PluginManager()
-        manager._pm.hook.register_commands = MagicMock(side_effect=RuntimeError("hook error"))
+        object.__setattr__(
+            manager._pm.hook, "register_commands", MagicMock(side_effect=RuntimeError("hook error"))
+        )
         mock_app = MagicMock()
 
         # Should not raise
@@ -261,7 +264,9 @@ class TestCleanupAll:
     def test_swallows_hook_exception(self) -> None:
         """cleanup_all catches exceptions from the cleanup hook."""
         manager = PluginManager()
-        manager._pm.hook.cleanup = MagicMock(side_effect=RuntimeError("cleanup error"))
+        object.__setattr__(
+            manager._pm.hook, "cleanup", MagicMock(side_effect=RuntimeError("cleanup error"))
+        )
 
         # Should not raise
         manager.cleanup_all()
@@ -319,6 +324,8 @@ class TestListPlugins:
         manager._plugins["my_plugin"] = plugin
 
         result = manager.list_plugins()
+
+        assert result is not None
 
         assert len(result) == 1
         info = result[0]

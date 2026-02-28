@@ -210,6 +210,8 @@ class TestPluginSchema:
         )
 
         assert schema.name == "rate-limiting"
+        assert schema.fields is not None
+
         assert len(schema.fields) == 2
 
     def test_create_empty_schema(self) -> None:
