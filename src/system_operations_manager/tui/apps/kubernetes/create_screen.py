@@ -419,14 +419,14 @@ class ResourceCreateScreen(BaseScreen[None]):
             widget_id = f"#field-{spec.name}"
 
             if spec.field_type == "select":
-                widget = self.query_one(widget_id, Select)
-                raw = str(widget.value) if widget.value != Select.BLANK else spec.default
+                sel_widget = self.query_one(widget_id, Select)
+                raw = str(sel_widget.value) if sel_widget.value != Select.BLANK else spec.default
             elif spec.field_type == "textarea":
-                widget = self.query_one(widget_id, TextArea)
-                raw = widget.text.strip()
+                ta_widget = self.query_one(widget_id, TextArea)
+                raw = ta_widget.text.strip()
             else:
-                widget = self.query_one(widget_id, Input)
-                raw = widget.value.strip()
+                in_widget = self.query_one(widget_id, Input)
+                raw = in_widget.value.strip()
 
             if spec.required and not raw:
                 self.notify_user(f"{spec.label} is required", severity="error")
@@ -449,7 +449,7 @@ class ResourceCreateScreen(BaseScreen[None]):
         Returns:
             The name of the created resource.
         """
-        name = values["name"]
+        name: str = values["name"]
         namespace = values.get("namespace")
         labels = _parse_key_value_lines(values.get("labels", "")) or None
 
@@ -506,7 +506,7 @@ class ResourceCreateScreen(BaseScreen[None]):
                 NetworkingManager,
             )
 
-            mgr = NetworkingManager(self._client)
+            net_mgr = NetworkingManager(self._client)
             kwargs = {}
             if values.get("type"):
                 kwargs["type"] = values["type"]
@@ -518,14 +518,14 @@ class ResourceCreateScreen(BaseScreen[None]):
                 kwargs["ports"] = ports
             if labels:
                 kwargs["labels"] = labels
-            mgr.create_service(name, namespace, **kwargs)
+            net_mgr.create_service(name, namespace, **kwargs)
 
         elif rt == ResourceType.INGRESSES:
             from system_operations_manager.services.kubernetes.networking_manager import (
                 NetworkingManager,
             )
 
-            mgr = NetworkingManager(self._client)
+            net_mgr = NetworkingManager(self._client)
             kwargs = {}
             if values.get("class_name"):
                 kwargs["class_name"] = values["class_name"]
@@ -543,14 +543,14 @@ class ResourceCreateScreen(BaseScreen[None]):
                     kwargs["tls"] = tls
             if labels:
                 kwargs["labels"] = labels
-            mgr.create_ingress(name, namespace, **kwargs)
+            net_mgr.create_ingress(name, namespace, **kwargs)
 
         elif rt == ResourceType.NETWORK_POLICIES:
             from system_operations_manager.services.kubernetes.networking_manager import (
                 NetworkingManager,
             )
 
-            mgr = NetworkingManager(self._client)
+            net_mgr = NetworkingManager(self._client)
             kwargs = {}
             pod_selector = _parse_key_value_lines(values.get("pod_selector", ""))
             if pod_selector:
@@ -561,34 +561,36 @@ class ResourceCreateScreen(BaseScreen[None]):
                 ]
             if labels:
                 kwargs["labels"] = labels
-            mgr.create_network_policy(name, namespace, **kwargs)
+            net_mgr.create_network_policy(name, namespace, **kwargs)
 
         elif rt == ResourceType.CONFIGMAPS:
             from system_operations_manager.services.kubernetes.configuration_manager import (
                 ConfigurationManager,
             )
 
-            mgr = ConfigurationManager(self._client)
+            cfg_mgr = ConfigurationManager(self._client)
             data = _parse_key_value_lines(values.get("data", "")) or None
-            mgr.create_config_map(name, namespace, data=data, labels=labels)
+            cfg_mgr.create_config_map(name, namespace, data=data, labels=labels)
 
         elif rt == ResourceType.SECRETS:
             from system_operations_manager.services.kubernetes.configuration_manager import (
                 ConfigurationManager,
             )
 
-            mgr = ConfigurationManager(self._client)
+            cfg_mgr = ConfigurationManager(self._client)
             data = _parse_key_value_lines(values.get("data", "")) or None
             secret_type = values.get("secret_type", "Opaque")
-            mgr.create_secret(name, namespace, data=data, secret_type=secret_type, labels=labels)
+            cfg_mgr.create_secret(
+                name, namespace, data=data, secret_type=secret_type, labels=labels
+            )
 
         elif rt == ResourceType.NAMESPACES:
             from system_operations_manager.services.kubernetes.namespace_manager import (
                 NamespaceClusterManager,
             )
 
-            mgr = NamespaceClusterManager(self._client)
-            mgr.create_namespace(name, labels=labels)
+            ns_mgr = NamespaceClusterManager(self._client)
+            ns_mgr.create_namespace(name, labels=labels)
 
         else:
             msg = f"Create not supported for {rt.value}"

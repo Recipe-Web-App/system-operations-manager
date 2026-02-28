@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 import typer
 from typer.testing import CliRunner
 
 from system_operations_manager.integrations.kubernetes.exceptions import (
+    KubernetesError,
     KubernetesNotFoundError,
 )
 from system_operations_manager.plugins.kubernetes.commands.argocd import (
@@ -124,3 +125,74 @@ class TestProjectCommands:
 
         assert result.exit_code == 1
         assert "not found" in result.stdout.lower()
+
+
+@pytest.mark.unit
+@pytest.mark.kubernetes
+class TestProjectCommandErrorPaths:
+    """Tests for ArgoCD Project command error handling paths."""
+
+    @pytest.fixture
+    def app(self, get_argocd_manager: Callable[[], MagicMock]) -> typer.Typer:
+        """Create a test app with argocd commands."""
+        app = typer.Typer()
+        register_argocd_commands(app, get_argocd_manager)
+        return app
+
+    def test_list_projects_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_argocd_manager: MagicMock,
+    ) -> None:
+        """list projects should handle KubernetesError and exit with code 1."""
+        mock_argocd_manager.list_projects.side_effect = KubernetesError("Failed to list projects")
+
+        result = cli_runner.invoke(app, ["argocd", "project", "list"])
+
+        assert result.exit_code == 1
+
+    def test_create_project_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_argocd_manager: MagicMock,
+    ) -> None:
+        """create project should handle KubernetesError and exit with code 1."""
+        mock_argocd_manager.create_project.side_effect = KubernetesError("Failed to create project")
+
+        result = cli_runner.invoke(
+            app,
+            ["argocd", "project", "create", "my-project", "--description", "Test"],
+        )
+
+        assert result.exit_code == 1
+
+    def test_delete_project_cancelled(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_argocd_manager: MagicMock,
+    ) -> None:
+        """delete project without --force should exit when confirmation is declined."""
+        with patch(
+            "system_operations_manager.plugins.kubernetes.commands.argocd.confirm_delete",
+            return_value=False,
+        ):
+            result = cli_runner.invoke(app, ["argocd", "project", "delete", "my-project"])
+
+        assert result.exit_code == 0
+        mock_argocd_manager.delete_project.assert_not_called()
+
+    def test_delete_project_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_argocd_manager: MagicMock,
+    ) -> None:
+        """delete project should handle KubernetesError and exit with code 1."""
+        mock_argocd_manager.delete_project.side_effect = KubernetesError("Failed to delete project")
+
+        result = cli_runner.invoke(app, ["argocd", "project", "delete", "my-project", "--force"])
+
+        assert result.exit_code == 1

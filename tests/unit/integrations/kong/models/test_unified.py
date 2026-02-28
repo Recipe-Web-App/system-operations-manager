@@ -35,7 +35,7 @@ class TestEntitySource:
     @pytest.mark.unit
     def test_string_conversion(self) -> None:
         """EntitySource should be usable as string."""
-        assert str(EntitySource.GATEWAY) == "EntitySource.GATEWAY"
+        assert str(EntitySource.GATEWAY) == "gateway"
         assert EntitySource.GATEWAY.value == "gateway"
 
 

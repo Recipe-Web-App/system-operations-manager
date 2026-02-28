@@ -761,3 +761,1009 @@ class TestConfigManagerDeleteEntity:
         assert result.result == "failed"
         assert result.error is not None
         assert "Delete failed" in result.error
+
+
+class TestFlattenConfigNestedRoutes:
+    """Tests for _flatten_config nested route extraction (lines 130-135)."""
+
+    @pytest.mark.unit
+    def test_flatten_config_extracts_routes_from_services(self, manager: ConfigManager) -> None:
+        """Routes nested inside a service should be extracted to top level with service ref."""
+        config = DeclarativeConfig(
+            services=[
+                {
+                    "name": "my-service",
+                    "host": "api.local",
+                    "routes": [{"name": "route-a", "paths": ["/a"]}],
+                }
+            ]
+        )
+
+        flattened = manager._flatten_config(config)
+
+        assert len(flattened.services) == 1
+        assert "routes" not in flattened.services[0]
+        assert len(flattened.routes) == 1
+        assert flattened.routes[0]["name"] == "route-a"
+        assert flattened.routes[0]["service"] == {"name": "my-service"}
+
+    @pytest.mark.unit
+    def test_flatten_config_route_keeps_existing_service_ref(self, manager: ConfigManager) -> None:
+        """A nested route that already has a service ref should not be overwritten."""
+        config = DeclarativeConfig(
+            services=[
+                {
+                    "name": "my-service",
+                    "host": "api.local",
+                    "routes": [
+                        {
+                            "name": "route-a",
+                            "paths": ["/a"],
+                            "service": {"name": "other-service"},
+                        }
+                    ],
+                }
+            ]
+        )
+
+        flattened = manager._flatten_config(config)
+
+        assert flattened.routes[0]["service"] == {"name": "other-service"}
+
+    @pytest.mark.unit
+    def test_flatten_config_service_without_name_skips_ref(self, manager: ConfigManager) -> None:
+        """A service with no name or id should not inject a service ref into routes."""
+        config = DeclarativeConfig(
+            services=[
+                {
+                    "host": "api.local",
+                    "routes": [{"name": "route-a", "paths": ["/a"]}],
+                }
+            ]
+        )
+
+        flattened = manager._flatten_config(config)
+
+        assert "service" not in flattened.routes[0]
+
+
+class TestFlattenConfigNestedServicePlugins:
+    """Tests for _flatten_config nested plugin extraction from services (lines 139-144)."""
+
+    @pytest.mark.unit
+    def test_flatten_config_extracts_plugins_from_services(self, manager: ConfigManager) -> None:
+        """Plugins nested inside a service should be extracted to top level with service ref."""
+        config = DeclarativeConfig(
+            services=[
+                {
+                    "name": "my-service",
+                    "host": "api.local",
+                    "plugins": [{"name": "rate-limiting", "config": {"minute": 10}}],
+                }
+            ]
+        )
+
+        flattened = manager._flatten_config(config)
+
+        assert "plugins" not in flattened.services[0]
+        assert len(flattened.plugins) == 1
+        assert flattened.plugins[0]["service"] == {"name": "my-service"}
+
+    @pytest.mark.unit
+    def test_flatten_config_service_plugin_keeps_existing_service_ref(
+        self, manager: ConfigManager
+    ) -> None:
+        """A nested plugin that already has a service ref should not be overwritten."""
+        config = DeclarativeConfig(
+            services=[
+                {
+                    "name": "my-service",
+                    "host": "api.local",
+                    "plugins": [
+                        {
+                            "name": "rate-limiting",
+                            "service": {"name": "explicit-service"},
+                        }
+                    ],
+                }
+            ]
+        )
+
+        flattened = manager._flatten_config(config)
+
+        assert flattened.plugins[0]["service"] == {"name": "explicit-service"}
+
+
+class TestFlattenConfigUpstreams:
+    """Tests for _flatten_config upstream processing (lines 150-153)."""
+
+    @pytest.mark.unit
+    def test_flatten_config_upstreams_kept_with_targets(self, manager: ConfigManager) -> None:
+        """Upstreams with nested targets should be kept as-is (targets handled elsewhere)."""
+        config = DeclarativeConfig(
+            upstreams=[
+                {
+                    "name": "my-upstream",
+                    "targets": [{"target": "10.0.0.1:80", "weight": 100}],
+                }
+            ]
+        )
+
+        flattened = manager._flatten_config(config)
+
+        assert len(flattened.upstreams) == 1
+        assert "targets" in flattened.upstreams[0]
+        assert flattened.upstreams[0]["name"] == "my-upstream"
+
+    @pytest.mark.unit
+    def test_flatten_config_upstream_without_targets(self, manager: ConfigManager) -> None:
+        """Upstreams without targets should be copied through unchanged."""
+        config = DeclarativeConfig(upstreams=[{"name": "my-upstream", "algorithm": "round-robin"}])
+
+        flattened = manager._flatten_config(config)
+
+        assert len(flattened.upstreams) == 1
+        assert flattened.upstreams[0]["algorithm"] == "round-robin"
+
+
+class TestFlattenConfigNestedRoutePlugins:
+    """Tests for _flatten_config nested plugin extraction from routes (lines 162-166)."""
+
+    @pytest.mark.unit
+    def test_flatten_config_extracts_plugins_from_routes(self, manager: ConfigManager) -> None:
+        """Plugins nested inside a route should be extracted to top level with route ref."""
+        config = DeclarativeConfig(
+            routes=[
+                {
+                    "name": "my-route",
+                    "paths": ["/api"],
+                    "plugins": [{"name": "cors", "config": {}}],
+                }
+            ]
+        )
+
+        flattened = manager._flatten_config(config)
+
+        assert "plugins" not in flattened.routes[0]
+        assert len(flattened.plugins) == 1
+        assert flattened.plugins[0]["route"] == {"name": "my-route"}
+
+    @pytest.mark.unit
+    def test_flatten_config_route_plugin_keeps_existing_route_ref(
+        self, manager: ConfigManager
+    ) -> None:
+        """A nested route plugin that already has a route ref should not be overwritten."""
+        config = DeclarativeConfig(
+            routes=[
+                {
+                    "name": "my-route",
+                    "paths": ["/api"],
+                    "plugins": [
+                        {
+                            "name": "cors",
+                            "route": {"name": "other-route"},
+                        }
+                    ],
+                }
+            ]
+        )
+
+        flattened = manager._flatten_config(config)
+
+        assert flattened.plugins[0]["route"] == {"name": "other-route"}
+
+    @pytest.mark.unit
+    def test_flatten_config_route_without_name_skips_ref(self, manager: ConfigManager) -> None:
+        """A route with no name or id should not inject a route ref into extracted plugins."""
+        config = DeclarativeConfig(
+            routes=[
+                {
+                    "paths": ["/api"],
+                    "plugins": [{"name": "cors"}],
+                }
+            ]
+        )
+
+        flattened = manager._flatten_config(config)
+
+        assert "route" not in flattened.plugins[0]
+
+
+class TestFlattenConfigNestedConsumerPlugins:
+    """Tests for _flatten_config nested plugin/credential extraction from consumers (173-184)."""
+
+    @pytest.mark.unit
+    def test_flatten_config_extracts_plugins_from_consumers(self, manager: ConfigManager) -> None:
+        """Plugins nested inside a consumer should be extracted with a consumer ref."""
+        config = DeclarativeConfig(
+            consumers=[
+                {
+                    "username": "alice",
+                    "plugins": [{"name": "rate-limiting", "config": {}}],
+                }
+            ]
+        )
+
+        flattened = manager._flatten_config(config)
+
+        assert "plugins" not in flattened.consumers[0]
+        assert len(flattened.plugins) == 1
+        assert flattened.plugins[0]["consumer"] == {"username": "alice"}
+
+    @pytest.mark.unit
+    def test_flatten_config_consumer_plugin_keeps_existing_consumer_ref(
+        self, manager: ConfigManager
+    ) -> None:
+        """A consumer-nested plugin that already has a consumer ref is not overwritten."""
+        config = DeclarativeConfig(
+            consumers=[
+                {
+                    "username": "alice",
+                    "plugins": [
+                        {
+                            "name": "rate-limiting",
+                            "consumer": {"username": "explicit-consumer"},
+                        }
+                    ],
+                }
+            ]
+        )
+
+        flattened = manager._flatten_config(config)
+
+        assert flattened.plugins[0]["consumer"] == {"username": "explicit-consumer"}
+
+    @pytest.mark.unit
+    def test_flatten_config_credentials_stay_nested_in_consumers(
+        self, manager: ConfigManager
+    ) -> None:
+        """Credential fields inside a consumer should remain nested (handled in _apply_entity)."""
+        config = DeclarativeConfig(
+            consumers=[
+                {
+                    "username": "alice",
+                    "keyauth_credentials": [{"key": "secret-key"}],
+                }
+            ]
+        )
+
+        flattened = manager._flatten_config(config)
+
+        assert "keyauth_credentials" in flattened.consumers[0]
+
+    @pytest.mark.unit
+    def test_flatten_config_consumer_without_username_skips_ref(
+        self, manager: ConfigManager
+    ) -> None:
+        """A consumer with no username or id should not inject a consumer ref."""
+        config = DeclarativeConfig(
+            consumers=[
+                {
+                    "custom_id": "ext-1",
+                    "plugins": [{"name": "rate-limiting"}],
+                }
+            ]
+        )
+
+        flattened = manager._flatten_config(config)
+
+        assert "consumer" not in flattened.plugins[0]
+
+
+class TestExportConsumersSkipAndException:
+    """Tests for _export_consumers edge cases (lines 314, 324-326)."""
+
+    @pytest.mark.unit
+    def test_export_consumers_skips_consumer_without_id_or_username(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """A consumer lacking both id and username should be skipped when fetching credentials."""
+        mock_client.get.return_value = {
+            "data": [{"custom_id": "ext-1"}]  # no id, no username
+        }
+
+        consumers = manager._export_consumers(include_credentials=True)
+
+        assert len(consumers) == 1
+        # Only the initial consumers GET is made; no credential fetches happen
+        assert mock_client.get.call_count == 1
+
+    @pytest.mark.unit
+    def test_export_consumers_silently_ignores_credential_exception(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """Credential fetch exceptions should be silently caught (plugin not enabled)."""
+        mock_client.get.side_effect = [
+            {"data": [{"id": "con-1", "username": "user1"}]},
+            Exception("plugin not enabled"),  # key-auth fails
+            {"data": []},  # basic-auth
+            {"data": []},  # jwt
+            {"data": []},  # oauth2
+            {"data": []},  # acls
+        ]
+
+        consumers = manager._export_consumers(include_credentials=True)
+
+        assert len(consumers) == 1
+        assert "key_auth" not in consumers[0]
+
+
+class TestEntityKeyPluginCompoundKey:
+    """Tests for _entity_key plugin compound key generation (lines 648-676)."""
+
+    @pytest.mark.unit
+    def test_entity_key_plugin_with_service_ref_dict(self, manager: ConfigManager) -> None:
+        """Plugin scoped to a service via dict ref should produce a compound key."""
+        entity = {"name": "rate-limiting", "service": {"name": "my-service"}}
+
+        key = manager._entity_key(entity, "plugins")
+
+        assert key == "rate-limiting@service:my-service"
+
+    @pytest.mark.unit
+    def test_entity_key_plugin_with_route_ref_dict(self, manager: ConfigManager) -> None:
+        """Plugin scoped to a route via dict ref should produce a compound key."""
+        entity = {"name": "cors", "route": {"name": "my-route"}}
+
+        key = manager._entity_key(entity, "plugins")
+
+        assert key == "cors@route:my-route"
+
+    @pytest.mark.unit
+    def test_entity_key_plugin_with_consumer_ref_dict(self, manager: ConfigManager) -> None:
+        """Plugin scoped to a consumer via dict ref should produce a compound key."""
+        entity = {"name": "rate-limiting", "consumer": {"username": "alice"}}
+
+        key = manager._entity_key(entity, "plugins")
+
+        assert key == "rate-limiting@consumer:alice"
+
+    @pytest.mark.unit
+    def test_entity_key_plugin_with_multiple_scopes(self, manager: ConfigManager) -> None:
+        """Plugin scoped to both service and consumer should include both in the key."""
+        entity = {
+            "name": "rate-limiting",
+            "service": {"name": "svc-a"},
+            "consumer": {"username": "alice"},
+        }
+
+        key = manager._entity_key(entity, "plugins")
+
+        assert "service:svc-a" in key
+        assert "consumer:alice" in key
+        assert key.startswith("rate-limiting@")
+
+    @pytest.mark.unit
+    def test_entity_key_global_plugin_with_id(self, manager: ConfigManager) -> None:
+        """A global plugin (no scope) with an id should use the id as key."""
+        entity = {"name": "prometheus", "id": "pl-uuid-1"}
+
+        key = manager._entity_key(entity, "plugins")
+
+        assert key == "pl-uuid-1"
+
+    @pytest.mark.unit
+    def test_entity_key_global_plugin_without_id(self, manager: ConfigManager) -> None:
+        """A global plugin without an id should fall back to name@global."""
+        entity = {"name": "prometheus"}
+
+        key = manager._entity_key(entity, "plugins")
+
+        assert key == "prometheus@global"
+
+    @pytest.mark.unit
+    def test_entity_key_plugin_with_service_ref_string(self, manager: ConfigManager) -> None:
+        """Plugin with service ref as a plain string should still produce a compound key."""
+        entity = {"name": "rate-limiting", "service": "my-service"}
+
+        key = manager._entity_key(entity, "plugins")
+
+        assert key == "rate-limiting@service:my-service"
+
+    @pytest.mark.unit
+    def test_entity_key_plugin_detected_by_known_name(self, manager: ConfigManager) -> None:
+        """A known plugin name should trigger compound-key logic even without entity_type."""
+        entity = {"name": "key-auth", "service": {"name": "svc"}}
+
+        key = manager._entity_key(entity)
+
+        assert key == "key-auth@service:svc"
+
+
+class TestApplyEntityNestedHandling:
+    """Tests for _apply_entity nested upstream targets and consumer credentials (lines 832, 836)."""
+
+    @pytest.mark.unit
+    def test_apply_entity_upstream_triggers_nested_targets(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """Creating an upstream with nested targets should call _apply_nested_targets."""
+        from unittest.mock import patch
+
+        from system_operations_manager.integrations.kong.models.config import ConfigDiff
+
+        mock_client.post.return_value = {"id": "up-1"}
+
+        diff = ConfigDiff(
+            entity_type="upstreams",
+            operation="create",
+            id_or_name="my-upstream",
+            desired={
+                "name": "my-upstream",
+                "targets": [{"target": "10.0.0.1:80", "weight": 100}],
+            },
+        )
+
+        with patch.object(manager, "_apply_nested_targets") as mock_nested:
+            result = manager._apply_entity("upstreams", diff)
+
+        assert result.result == "success"
+        mock_nested.assert_called_once_with(
+            "my-upstream",
+            diff.desired,
+        )
+
+    @pytest.mark.unit
+    def test_apply_entity_consumer_triggers_credential_application(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """Creating a consumer with credentials should call _apply_consumer_credentials."""
+        from unittest.mock import patch
+
+        from system_operations_manager.integrations.kong.models.config import ConfigDiff
+
+        mock_client.post.return_value = {"id": "con-1"}
+
+        diff = ConfigDiff(
+            entity_type="consumers",
+            operation="create",
+            id_or_name="alice",
+            desired={
+                "username": "alice",
+                "keyauth_credentials": [{"key": "secret"}],
+            },
+        )
+
+        with patch.object(manager, "_apply_consumer_credentials") as mock_creds:
+            result = manager._apply_entity("consumers", diff)
+
+        assert result.result == "success"
+        mock_creds.assert_called_once_with("alice", diff.desired)
+
+
+class TestGetEntityEndpointPlugins:
+    """Tests for _get_entity_endpoint plugin scoping (lines 895-913, 918-921)."""
+
+    @pytest.mark.unit
+    def test_get_entity_endpoint_plugin_with_service_ref(self, manager: ConfigManager) -> None:
+        """Plugin with service ref should use nested service endpoint."""
+        entity_data: dict[str, Any] = {
+            "name": "rate-limiting",
+            "service": {"name": "my-service"},
+        }
+
+        endpoint = manager._get_entity_endpoint("plugins", entity_data)
+
+        assert endpoint == "services/my-service/plugins"
+        assert "service" not in entity_data
+
+    @pytest.mark.unit
+    def test_get_entity_endpoint_plugin_with_route_ref(self, manager: ConfigManager) -> None:
+        """Plugin with route ref should use nested route endpoint."""
+        entity_data: dict[str, Any] = {
+            "name": "cors",
+            "route": {"name": "my-route"},
+        }
+
+        endpoint = manager._get_entity_endpoint("plugins", entity_data)
+
+        assert endpoint == "routes/my-route/plugins"
+        assert "route" not in entity_data
+
+    @pytest.mark.unit
+    def test_get_entity_endpoint_plugin_with_consumer_ref(self, manager: ConfigManager) -> None:
+        """Plugin with consumer ref should use nested consumer endpoint."""
+        entity_data: dict[str, Any] = {
+            "name": "rate-limiting",
+            "consumer": {"username": "alice"},
+        }
+
+        endpoint = manager._get_entity_endpoint("plugins", entity_data)
+
+        assert endpoint == "consumers/alice/plugins"
+        assert "consumer" not in entity_data
+
+    @pytest.mark.unit
+    def test_get_entity_endpoint_plugin_service_ref_priority_over_route(
+        self, manager: ConfigManager
+    ) -> None:
+        """When plugin has both service and route refs, service takes priority."""
+        entity_data: dict[str, Any] = {
+            "name": "rate-limiting",
+            "service": {"name": "svc"},
+            "route": {"name": "rt"},
+        }
+
+        endpoint = manager._get_entity_endpoint("plugins", entity_data)
+
+        assert endpoint == "services/svc/plugins"
+
+    @pytest.mark.unit
+    def test_get_entity_endpoint_plugin_unresolvable_service_ref_falls_through(
+        self, manager: ConfigManager
+    ) -> None:
+        """Plugin with a service ref that resolves to None falls through to global endpoint."""
+        entity_data: dict[str, Any] = {
+            "name": "rate-limiting",
+            "service": {},  # empty dict, no name/id
+        }
+
+        endpoint = manager._get_entity_endpoint("plugins", entity_data)
+
+        assert endpoint == "plugins"
+
+    @pytest.mark.unit
+    def test_get_entity_endpoint_global_plugin(self, manager: ConfigManager) -> None:
+        """Plugin without any parent ref should use plain 'plugins' endpoint."""
+        entity_data: dict[str, Any] = {"name": "prometheus"}
+
+        endpoint = manager._get_entity_endpoint("plugins", entity_data)
+
+        assert endpoint == "plugins"
+
+    @pytest.mark.unit
+    def test_get_entity_endpoint_route_with_service_ref(self, manager: ConfigManager) -> None:
+        """Route with service ref should use nested service endpoint."""
+        entity_data: dict[str, Any] = {
+            "name": "my-route",
+            "service": {"name": "my-service"},
+        }
+
+        endpoint = manager._get_entity_endpoint("routes", entity_data)
+
+        assert endpoint == "services/my-service/routes"
+        assert "service" not in entity_data
+
+    @pytest.mark.unit
+    def test_get_entity_endpoint_route_without_service_ref(self, manager: ConfigManager) -> None:
+        """Route without service ref should use plain 'routes' endpoint."""
+        entity_data: dict[str, Any] = {"name": "my-route", "paths": ["/api"]}
+
+        endpoint = manager._get_entity_endpoint("routes", entity_data)
+
+        assert endpoint == "routes"
+
+    @pytest.mark.unit
+    def test_get_entity_endpoint_non_plugin_non_route(self, manager: ConfigManager) -> None:
+        """Non-plugin, non-route entities should always use their entity type."""
+        entity_data: dict[str, Any] = {"name": "my-consumer"}
+
+        endpoint = manager._get_entity_endpoint("consumers", entity_data)
+
+        assert endpoint == "consumers"
+
+
+class TestExtractRefName:
+    """Tests for _extract_ref_name (lines 944-955)."""
+
+    @pytest.mark.unit
+    def test_extract_ref_name_none_returns_none(self, manager: ConfigManager) -> None:
+        """None ref should return None."""
+        assert manager._extract_ref_name(None) is None
+
+    @pytest.mark.unit
+    def test_extract_ref_name_string_returns_string(self, manager: ConfigManager) -> None:
+        """A plain string ref should be returned directly."""
+        assert manager._extract_ref_name("my-service") == "my-service"
+
+    @pytest.mark.unit
+    def test_extract_ref_name_dict_returns_name(self, manager: ConfigManager) -> None:
+        """Dict ref should return the 'name' field by default."""
+        assert manager._extract_ref_name({"name": "svc", "id": "uuid-1"}) == "svc"
+
+    @pytest.mark.unit
+    def test_extract_ref_name_dict_falls_back_to_id(self, manager: ConfigManager) -> None:
+        """Dict ref without 'name' should fall back to 'id'."""
+        assert manager._extract_ref_name({"id": "uuid-1"}) == "uuid-1"
+
+    @pytest.mark.unit
+    def test_extract_ref_name_dict_prefer_username(self, manager: ConfigManager) -> None:
+        """With prefer_username=True, 'username' should be returned before 'name'."""
+        ref = {"username": "alice", "name": "ALICE", "id": "uuid-1"}
+
+        result = manager._extract_ref_name(ref, prefer_username=True)
+
+        assert result == "alice"
+
+    @pytest.mark.unit
+    def test_extract_ref_name_dict_prefer_username_falls_back_to_name(
+        self, manager: ConfigManager
+    ) -> None:
+        """With prefer_username=True and no username, should fall back to 'name'."""
+        ref = {"name": "ALICE", "id": "uuid-1"}
+
+        result = manager._extract_ref_name(ref, prefer_username=True)
+
+        assert result == "ALICE"
+
+    @pytest.mark.unit
+    def test_extract_ref_name_dict_prefer_username_falls_back_to_id(
+        self, manager: ConfigManager
+    ) -> None:
+        """With prefer_username=True and no username/name, should fall back to 'id'."""
+        ref: dict[str, Any] = {"id": "uuid-1"}
+
+        result = manager._extract_ref_name(ref, prefer_username=True)
+
+        assert result == "uuid-1"
+
+    @pytest.mark.unit
+    def test_extract_ref_name_unsupported_type_returns_none(self, manager: ConfigManager) -> None:
+        """An unsupported ref type (e.g. list) should return None."""
+        bad_ref: Any = ["svc"]
+        assert manager._extract_ref_name(bad_ref) is None
+
+
+class TestPrepareEntityForApi:
+    """Tests for _prepare_entity_for_api (line 976)."""
+
+    @pytest.mark.unit
+    def test_prepare_entity_for_api_none_returns_empty_dict(self, manager: ConfigManager) -> None:
+        """None entity should return an empty dict."""
+        result = manager._prepare_entity_for_api("services", None)
+
+        assert result == {}
+
+    @pytest.mark.unit
+    def test_prepare_entity_for_api_strips_nested_service_fields(
+        self, manager: ConfigManager
+    ) -> None:
+        """Routes nested inside a service entity dict should be stripped."""
+        entity = {
+            "name": "my-service",
+            "host": "api.local",
+            "routes": [{"name": "r"}],
+            "plugins": [{"name": "p"}],
+        }
+
+        result = manager._prepare_entity_for_api("services", entity)
+
+        assert "routes" not in result
+        assert "plugins" not in result
+        assert result["name"] == "my-service"
+
+    @pytest.mark.unit
+    def test_prepare_entity_for_api_no_nested_fields_unchanged(
+        self, manager: ConfigManager
+    ) -> None:
+        """Entity without nested fields should be returned unchanged."""
+        entity = {"name": "my-service", "host": "api.local"}
+
+        result = manager._prepare_entity_for_api("services", entity)
+
+        assert result == entity
+
+
+class TestApplyNestedTargets:
+    """Tests for _apply_nested_targets (lines 1000-1014)."""
+
+    @pytest.mark.unit
+    def test_apply_nested_targets_posts_each_target(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """Each target in upstream_data should be POSTed to the targets endpoint."""
+        upstream_data = {
+            "targets": [
+                {"target": "10.0.0.1:80", "weight": 100},
+                {"target": "10.0.0.2:80", "weight": 50},
+            ]
+        }
+
+        manager._apply_nested_targets("my-upstream", upstream_data)
+
+        assert mock_client.post.call_count == 2
+        calls = [call[0][0] for call in mock_client.post.call_args_list]
+        assert all(c == "upstreams/my-upstream/targets" for c in calls)
+
+    @pytest.mark.unit
+    def test_apply_nested_targets_strips_id_and_created_at(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """id and created_at fields should be stripped from each target before posting."""
+        upstream_data = {
+            "targets": [
+                {
+                    "id": "t-uuid",
+                    "created_at": 1234567890,
+                    "target": "10.0.0.1:80",
+                    "weight": 100,
+                }
+            ]
+        }
+
+        manager._apply_nested_targets("my-upstream", upstream_data)
+
+        posted_json = mock_client.post.call_args[1]["json"]
+        assert "id" not in posted_json
+        assert "created_at" not in posted_json
+        assert posted_json["target"] == "10.0.0.1:80"
+
+    @pytest.mark.unit
+    def test_apply_nested_targets_no_targets_does_nothing(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """Upstream with no targets list should make no POST calls."""
+        manager._apply_nested_targets("my-upstream", {})
+
+        mock_client.post.assert_not_called()
+
+    @pytest.mark.unit
+    def test_apply_nested_targets_empty_targets_does_nothing(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """Upstream with empty targets list should make no POST calls."""
+        manager._apply_nested_targets("my-upstream", {"targets": []})
+
+        mock_client.post.assert_not_called()
+
+    @pytest.mark.unit
+    def test_apply_nested_targets_logs_warning_on_error(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """A POST failure for a target should be caught and logged as a warning."""
+        mock_client.post.side_effect = Exception("target creation failed")
+
+        upstream_data = {"targets": [{"target": "10.0.0.1:80", "weight": 100}]}
+
+        # Should not raise - exception is swallowed with a warning
+        manager._apply_nested_targets("my-upstream", upstream_data)
+
+        mock_client.post.assert_called_once()
+
+
+class TestApplyConsumerCredentials:
+    """Tests for _apply_consumer_credentials (lines 1036-1065)."""
+
+    @pytest.mark.unit
+    def test_apply_consumer_credentials_posts_keyauth(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """keyauth_credentials should be posted to consumers/{name}/key-auth."""
+        consumer_data = {"keyauth_credentials": [{"key": "my-api-key"}]}
+
+        manager._apply_consumer_credentials("alice", consumer_data)
+
+        mock_client.post.assert_called_once_with(
+            "consumers/alice/key-auth",
+            json={"key": "my-api-key"},
+        )
+
+    @pytest.mark.unit
+    def test_apply_consumer_credentials_posts_basic_auth(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """basicauth_credentials should be posted to consumers/{name}/basic-auth."""
+        consumer_data = {"basicauth_credentials": [{"username": "alice", "password": "secret"}]}
+
+        manager._apply_consumer_credentials("alice", consumer_data)
+
+        mock_client.post.assert_called_once_with(
+            "consumers/alice/basic-auth",
+            json={"username": "alice", "password": "secret"},
+        )
+
+    @pytest.mark.unit
+    def test_apply_consumer_credentials_strips_id_created_at_consumer(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """id, created_at, and consumer fields should be stripped from credentials."""
+        consumer_data = {
+            "keyauth_credentials": [
+                {
+                    "id": "cred-uuid",
+                    "created_at": 1234567890,
+                    "consumer": {"id": "con-uuid"},
+                    "key": "my-api-key",
+                }
+            ]
+        }
+
+        manager._apply_consumer_credentials("alice", consumer_data)
+
+        posted_json = mock_client.post.call_args[1]["json"]
+        assert "id" not in posted_json
+        assert "created_at" not in posted_json
+        assert "consumer" not in posted_json
+        assert posted_json["key"] == "my-api-key"
+
+    @pytest.mark.unit
+    def test_apply_consumer_credentials_multiple_types(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """Multiple credential types in the same consumer should each be posted."""
+        consumer_data = {
+            "keyauth_credentials": [{"key": "k1"}],
+            "jwt_secrets": [{"secret": "s1"}],
+        }
+
+        manager._apply_consumer_credentials("alice", consumer_data)
+
+        assert mock_client.post.call_count == 2
+        endpoints = {call[0][0] for call in mock_client.post.call_args_list}
+        assert "consumers/alice/key-auth" in endpoints
+        assert "consumers/alice/jwt" in endpoints
+
+    @pytest.mark.unit
+    def test_apply_consumer_credentials_skips_empty_type(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """Credential types with empty lists should not trigger any POST calls."""
+        consumer_data: dict[str, list[dict[str, str]]] = {"keyauth_credentials": []}
+
+        manager._apply_consumer_credentials("alice", consumer_data)
+
+        mock_client.post.assert_not_called()
+
+    @pytest.mark.unit
+    def test_apply_consumer_credentials_logs_warning_on_error(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """A POST failure for a credential should be caught and logged as a warning."""
+        mock_client.post.side_effect = Exception("cred creation failed")
+
+        consumer_data = {"keyauth_credentials": [{"key": "my-api-key"}]}
+
+        # Should not raise - exception is swallowed with a warning
+        manager._apply_consumer_credentials("alice", consumer_data)
+
+        mock_client.post.assert_called_once()
+
+    @pytest.mark.unit
+    def test_apply_consumer_credentials_all_types_mapped(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """All six credential types should map to their correct endpoint suffixes."""
+        consumer_data = {
+            "keyauth_credentials": [{"key": "k"}],
+            "basicauth_credentials": [{"username": "u", "password": "p"}],
+            "jwt_secrets": [{"secret": "s"}],
+            "oauth2_credentials": [{"name": "app"}],
+            "acls": [{"group": "admins"}],
+            "hmacauth_credentials": [{"username": "u", "secret": "s"}],
+        }
+
+        manager._apply_consumer_credentials("alice", consumer_data)
+
+        assert mock_client.post.call_count == 6
+        endpoints = {call[0][0] for call in mock_client.post.call_args_list}
+        assert endpoints == {
+            "consumers/alice/key-auth",
+            "consumers/alice/basic-auth",
+            "consumers/alice/jwt",
+            "consumers/alice/oauth2",
+            "consumers/alice/acls",
+            "consumers/alice/hmac-auth",
+        }
+
+
+class TestSyncConfig:
+    """Tests for sync_config DB-less mode method (lines 1152-1174)."""
+
+    @pytest.mark.unit
+    def test_sync_config_posts_to_config_endpoint(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """sync_config should POST the config dump to the /config endpoint."""
+        mock_client.post.return_value = {"message": "OK"}
+
+        config = DeclarativeConfig(services=[{"name": "api", "host": "api.local"}])
+
+        result = manager.sync_config(config)
+
+        mock_client.post.assert_called_once()
+        call_args = mock_client.post.call_args
+        assert call_args[0][0] == "config"
+        assert result == {"message": "OK"}
+
+    @pytest.mark.unit
+    def test_sync_config_removes_internal_metadata_fields(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """Internal fields like _metadata and _info should be stripped before posting."""
+        mock_client.post.return_value = {}
+
+        config = DeclarativeConfig()
+
+        manager.sync_config(config)
+
+        posted_json = mock_client.post.call_args[1]["json"]
+        assert "_metadata" not in posted_json
+        assert "_info" not in posted_json
+        assert "_comment" not in posted_json
+
+    @pytest.mark.unit
+    def test_sync_config_uses_by_alias_serialization(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """sync_config should serialize config with by_alias=True so _format_version is present."""
+        mock_client.post.return_value = {}
+
+        config = DeclarativeConfig()
+
+        manager.sync_config(config)
+
+        posted_json = mock_client.post.call_args[1]["json"]
+        assert "_format_version" in posted_json
+
+    @pytest.mark.unit
+    def test_sync_config_returns_api_response(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """sync_config should return the raw response dict from the client."""
+        expected = {"flattened": True, "entities": 5}
+        mock_client.post.return_value = expected
+
+        config = DeclarativeConfig()
+
+        result = manager.sync_config(config)
+
+        assert result is expected
+
+    @pytest.mark.unit
+    def test_sync_config_empty_config(self, manager: ConfigManager, mock_client: MagicMock) -> None:
+        """sync_config with an empty config should still post successfully."""
+        mock_client.post.return_value = {}
+
+        result = manager.sync_config(DeclarativeConfig())
+
+        mock_client.post.assert_called_once()
+        assert result == {}
+
+
+class TestIsDblessMode:
+    """Tests for is_dbless_mode (lines 1187-1189)."""
+
+    @pytest.mark.unit
+    def test_is_dbless_mode_returns_true_when_database_off(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """is_dbless_mode should return True when database config is 'off'."""
+        mock_client.get.return_value = {"configuration": {"database": "off"}}
+
+        assert manager.is_dbless_mode() is True
+
+    @pytest.mark.unit
+    def test_is_dbless_mode_returns_false_when_database_postgres(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """is_dbless_mode should return False when database is 'postgres'."""
+        mock_client.get.return_value = {"configuration": {"database": "postgres"}}
+
+        assert manager.is_dbless_mode() is False
+
+    @pytest.mark.unit
+    def test_is_dbless_mode_returns_false_on_exception(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """is_dbless_mode should return False when the API call raises an exception."""
+        mock_client.get.side_effect = Exception("connection refused")
+
+        assert manager.is_dbless_mode() is False
+
+    @pytest.mark.unit
+    def test_is_dbless_mode_returns_false_when_configuration_missing(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """is_dbless_mode should return False when response has no configuration key."""
+        mock_client.get.return_value = {}
+
+        assert manager.is_dbless_mode() is False
+
+    @pytest.mark.unit
+    def test_is_dbless_mode_returns_false_when_database_key_absent(
+        self, manager: ConfigManager, mock_client: MagicMock
+    ) -> None:
+        """is_dbless_mode should return False when database key is absent (defaults to postgres)."""
+        mock_client.get.return_value = {"configuration": {}}
+
+        assert manager.is_dbless_mode() is False

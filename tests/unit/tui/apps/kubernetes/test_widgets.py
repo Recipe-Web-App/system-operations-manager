@@ -5,6 +5,9 @@ Tests NamespaceSelector, ClusterSelector, ResourceTypeFilter, and SelectorPopup.
 
 from __future__ import annotations
 
+from typing import cast
+from unittest.mock import MagicMock, PropertyMock, patch
+
 import pytest
 from textual.app import App, ComposeResult
 from textual.containers import Container
@@ -12,9 +15,16 @@ from textual.containers import Container
 from system_operations_manager.tui.apps.kubernetes.app import ResourceType
 from system_operations_manager.tui.apps.kubernetes.widgets import (
     ALL_NAMESPACES_LABEL,
+    REFRESH_DEFAULT_INTERVAL,
+    REFRESH_MAX_INTERVAL,
+    REFRESH_MIN_INTERVAL,
+    REFRESH_STEP,
     ClusterSelector,
     NamespaceSelector,
+    RefreshTimer,
+    ResourceBar,
     ResourceTypeFilter,
+    SelectorPopup,
 )
 
 # ============================================================================
@@ -387,3 +397,389 @@ class TestResourceTypeFilterAsync:
             await pilot.pause()
 
         assert app.changed_type == ResourceType.PODS
+
+
+# ============================================================================
+# SelectorPopup Tests (sync via __new__)
+# ============================================================================
+
+
+@pytest.mark.unit
+class TestSelectorPopupInit:
+    """Tests for SelectorPopup initialization."""
+
+    def test_stores_title(self) -> None:
+        """SelectorPopup stores the title."""
+        popup = SelectorPopup.__new__(SelectorPopup)
+        popup._title = "Pick Namespace"
+        popup._options = ["a", "b"]
+        popup._current = "a"
+        assert popup._title == "Pick Namespace"
+
+    def test_stores_options(self) -> None:
+        """SelectorPopup stores options list."""
+        popup = SelectorPopup.__new__(SelectorPopup)
+        popup._title = "T"
+        popup._options = ["opt1", "opt2", "opt3"]
+        popup._current = None
+        assert popup._options == ["opt1", "opt2", "opt3"]
+
+    def test_action_dismiss_popup_calls_dismiss(self) -> None:
+        """action_dismiss_popup calls dismiss(None)."""
+        popup = SelectorPopup.__new__(SelectorPopup)
+        object.__setattr__(popup, "dismiss", MagicMock())
+        popup.action_dismiss_popup()
+        cast(MagicMock, popup.dismiss).assert_called_once_with(None)
+
+    def test_on_option_list_option_selected(self) -> None:
+        """on_option_list_option_selected dismisses with value."""
+        popup = SelectorPopup.__new__(SelectorPopup)
+        object.__setattr__(popup, "dismiss", MagicMock())
+        mock_event = MagicMock()
+        mock_event.option.prompt = "default"
+        popup.on_option_list_option_selected(mock_event)
+        cast(MagicMock, popup.dismiss).assert_called_once_with("default")
+
+
+# ============================================================================
+# Namespace/Cluster/ResourceType popup callback tests
+# ============================================================================
+
+
+@pytest.mark.unit
+class TestNamespaceSelectorPopupCallback:
+    """Tests for NamespaceSelector._handle_popup_result."""
+
+    def test_handle_popup_result_none_does_nothing(self) -> None:
+        """_handle_popup_result with None result does nothing."""
+        ns = NamespaceSelector.__new__(NamespaceSelector)
+        ns._namespaces = ["default"]
+        ns._current = "default"
+        ns._index = 1
+        object.__setattr__(ns, "post_message", MagicMock())
+        ns._handle_popup_result(None)
+        cast(MagicMock, ns.post_message).assert_not_called()
+
+    def test_handle_popup_result_all_namespaces(self) -> None:
+        """_handle_popup_result with ALL_NAMESPACES_LABEL sets None."""
+        ns = NamespaceSelector.__new__(NamespaceSelector)
+        ns._namespaces = ["default", "kube-system"]
+        ns._current = "default"
+        ns._index = 1
+        object.__setattr__(ns, "query_one", MagicMock())
+        object.__setattr__(ns, "post_message", MagicMock())
+        ns._handle_popup_result(ALL_NAMESPACES_LABEL)
+        assert ns._current is None
+
+    def test_handle_popup_result_specific_namespace(self) -> None:
+        """_handle_popup_result with specific namespace sets it."""
+        ns = NamespaceSelector.__new__(NamespaceSelector)
+        ns._namespaces = ["default", "kube-system"]
+        ns._current = None
+        ns._index = 0
+        object.__setattr__(ns, "query_one", MagicMock())
+        object.__setattr__(ns, "post_message", MagicMock())
+        ns._handle_popup_result("kube-system")
+        assert ns._current == "kube-system"
+
+
+@pytest.mark.unit
+class TestClusterSelectorPopupCallback:
+    """Tests for ClusterSelector._handle_popup_result."""
+
+    def test_handle_popup_result_none_does_nothing(self) -> None:
+        """_handle_popup_result with None result does nothing."""
+        cs = ClusterSelector.__new__(ClusterSelector)
+        cs._contexts = ["minikube", "prod"]
+        cs._current = "minikube"
+        cs._index = 0
+        object.__setattr__(cs, "post_message", MagicMock())
+        cs._handle_popup_result(None)
+        cast(MagicMock, cs.post_message).assert_not_called()
+
+    def test_handle_popup_result_selects_context(self) -> None:
+        """_handle_popup_result sets the selected context."""
+        cs = ClusterSelector.__new__(ClusterSelector)
+        cs._contexts = ["minikube", "prod"]
+        cs._current = "minikube"
+        cs._index = 0
+        object.__setattr__(cs, "query_one", MagicMock())
+        object.__setattr__(cs, "post_message", MagicMock())
+        cs._handle_popup_result("prod")
+        assert cs._current == "prod"
+        assert cs._index == 1
+
+
+@pytest.mark.unit
+class TestResourceTypeFilterPopupCallback:
+    """Tests for ResourceTypeFilter._handle_popup_result."""
+
+    def test_handle_popup_result_none_does_nothing(self) -> None:
+        """_handle_popup_result with None result does nothing."""
+        rtf = ResourceTypeFilter.__new__(ResourceTypeFilter)
+        rtf._resource_types = [ResourceType.PODS, ResourceType.DEPLOYMENTS]
+        rtf._current = ResourceType.PODS
+        rtf._index = 0
+        object.__setattr__(rtf, "post_message", MagicMock())
+        rtf._handle_popup_result(None)
+        cast(MagicMock, rtf.post_message).assert_not_called()
+
+    def test_handle_popup_result_selects_type(self) -> None:
+        """_handle_popup_result sets the selected type."""
+        rtf = ResourceTypeFilter.__new__(ResourceTypeFilter)
+        rtf._resource_types = [ResourceType.PODS, ResourceType.DEPLOYMENTS]
+        rtf._current = ResourceType.PODS
+        rtf._index = 0
+        object.__setattr__(rtf, "query_one", MagicMock())
+        object.__setattr__(rtf, "post_message", MagicMock())
+        rtf._handle_popup_result("Deployments")
+        assert rtf._current == ResourceType.DEPLOYMENTS
+        assert rtf._index == 1
+
+
+# ============================================================================
+# select_from_popup tests
+# ============================================================================
+
+
+@pytest.mark.unit
+class TestSelectFromPopup:
+    """Tests for select_from_popup methods on widgets."""
+
+    def test_namespace_select_from_popup(self) -> None:
+        """NamespaceSelector.select_from_popup pushes a popup."""
+        ns = NamespaceSelector.__new__(NamespaceSelector)
+        ns._namespaces = ["default"]
+        ns._current = "default"
+        ns._index = 1
+        mock_app = MagicMock()
+        with patch.object(type(ns), "app", new_callable=PropertyMock, return_value=mock_app):
+            ns.select_from_popup()
+        cast(MagicMock, mock_app.push_screen).assert_called_once()
+        pushed = cast(MagicMock, mock_app.push_screen).call_args[0][0]
+        assert isinstance(pushed, SelectorPopup)
+
+    def test_cluster_select_from_popup(self) -> None:
+        """ClusterSelector.select_from_popup pushes a popup."""
+        cs = ClusterSelector.__new__(ClusterSelector)
+        cs._contexts = ["minikube", "prod"]
+        cs._current = "minikube"
+        cs._index = 0
+        mock_app = MagicMock()
+        with patch.object(type(cs), "app", new_callable=PropertyMock, return_value=mock_app):
+            cs.select_from_popup()
+        cast(MagicMock, mock_app.push_screen).assert_called_once()
+
+    def test_resource_type_select_from_popup(self) -> None:
+        """ResourceTypeFilter.select_from_popup pushes a popup."""
+        rtf = ResourceTypeFilter.__new__(ResourceTypeFilter)
+        rtf._resource_types = [ResourceType.PODS, ResourceType.SERVICES]
+        rtf._current = ResourceType.PODS
+        rtf._index = 0
+        mock_app = MagicMock()
+        with patch.object(type(rtf), "app", new_callable=PropertyMock, return_value=mock_app):
+            rtf.select_from_popup()
+        cast(MagicMock, mock_app.push_screen).assert_called_once()
+
+
+# ============================================================================
+# ResourceBar Tests
+# ============================================================================
+
+
+@pytest.mark.unit
+class TestResourceBar:
+    """Tests for ResourceBar widget."""
+
+    def test_render_bar_unknown_usage(self) -> None:
+        """_render_bar with used=None shows question marks."""
+        bar = ResourceBar.__new__(ResourceBar)
+        bar._label = "CPU"
+        bar._capacity = 8
+        bar._used = None
+        bar._unit = " cores"
+        bar._bar_width = 20
+        result = bar._render_bar()
+        assert "?" in result
+        assert "N/A" in result
+        assert "8 cores" in result
+
+    def test_render_bar_green_low_usage(self) -> None:
+        """_render_bar with low usage shows green color."""
+        bar = ResourceBar.__new__(ResourceBar)
+        bar._label = "CPU"
+        bar._capacity = 10
+        bar._used = 3
+        bar._unit = " cores"
+        bar._bar_width = 20
+        result = bar._render_bar()
+        assert "[green]" in result
+        assert "3/10 cores" in result
+
+    def test_render_bar_yellow_medium_usage(self) -> None:
+        """_render_bar at 70-90% shows yellow color."""
+        bar = ResourceBar.__new__(ResourceBar)
+        bar._label = "Mem"
+        bar._capacity = 10
+        bar._used = 8
+        bar._unit = " Gi"
+        bar._bar_width = 20
+        result = bar._render_bar()
+        assert "[yellow]" in result
+
+    def test_render_bar_red_high_usage(self) -> None:
+        """_render_bar at >=90% shows red color."""
+        bar = ResourceBar.__new__(ResourceBar)
+        bar._label = "Pods"
+        bar._capacity = 100
+        bar._used = 95
+        bar._unit = ""
+        bar._bar_width = 20
+        result = bar._render_bar()
+        assert "[red]" in result
+
+    def test_render_bar_zero_capacity(self) -> None:
+        """_render_bar with zero capacity does not divide by zero."""
+        bar = ResourceBar.__new__(ResourceBar)
+        bar._label = "CPU"
+        bar._capacity = 0
+        bar._used = 0
+        bar._unit = ""
+        bar._bar_width = 10
+        result = bar._render_bar()
+        assert "[green]" in result
+
+    def test_update_values(self) -> None:
+        """update_values changes capacity and used and re-renders."""
+        bar = ResourceBar.__new__(ResourceBar)
+        bar._label = "cpu"
+        bar._capacity = 4
+        bar._used = 2
+        bar._unit = " cores"
+        bar._bar_width = 10
+        mock_label = MagicMock()
+        object.__setattr__(bar, "query_one", MagicMock(return_value=mock_label))
+        bar.update_values(8, 6)
+        assert bar._capacity == 8
+        assert bar._used == 6
+        mock_label.update.assert_called_once()
+
+
+# ============================================================================
+# RefreshTimer Tests
+# ============================================================================
+
+
+@pytest.mark.unit
+class TestRefreshTimerSync:
+    """Sync tests for RefreshTimer."""
+
+    def test_init_defaults(self) -> None:
+        """RefreshTimer uses default interval."""
+        timer = RefreshTimer.__new__(RefreshTimer)
+        timer._interval = REFRESH_DEFAULT_INTERVAL
+        timer._remaining = REFRESH_DEFAULT_INTERVAL
+        timer._paused = False
+        assert timer._interval == 30
+        assert timer._remaining == 30
+
+    def test_tick_decrements(self) -> None:
+        """_tick decrements remaining."""
+        timer = RefreshTimer.__new__(RefreshTimer)
+        timer._interval = 30
+        timer._remaining = 10
+        timer._paused = False
+        object.__setattr__(timer, "query_one", MagicMock())
+        object.__setattr__(timer, "post_message", MagicMock())
+        timer._tick()
+        assert timer._remaining == 9
+
+    def test_tick_paused_does_nothing(self) -> None:
+        """_tick does nothing when paused."""
+        timer = RefreshTimer.__new__(RefreshTimer)
+        timer._interval = 30
+        timer._remaining = 10
+        timer._paused = True
+        timer._tick()
+        assert timer._remaining == 10
+
+    def test_tick_fires_at_zero(self) -> None:
+        """_tick fires RefreshTriggered when remaining hits 0."""
+        timer = RefreshTimer.__new__(RefreshTimer)
+        timer._interval = 30
+        timer._remaining = 1
+        timer._paused = False
+        object.__setattr__(timer, "query_one", MagicMock())
+        object.__setattr__(timer, "post_message", MagicMock())
+        timer._tick()
+        assert timer._remaining == 30  # reset
+        cast(MagicMock, timer.post_message).assert_called_once()
+
+    def test_increase_interval(self) -> None:
+        """increase_interval adds REFRESH_STEP."""
+        timer = RefreshTimer.__new__(RefreshTimer)
+        timer._interval = 30
+        timer._remaining = 15
+        object.__setattr__(timer, "query_one", MagicMock())
+        object.__setattr__(timer, "post_message", MagicMock())
+        timer.increase_interval()
+        assert timer._interval == 30 + REFRESH_STEP
+        assert timer._remaining == timer._interval
+
+    def test_increase_interval_capped(self) -> None:
+        """increase_interval is capped at REFRESH_MAX_INTERVAL."""
+        timer = RefreshTimer.__new__(RefreshTimer)
+        timer._interval = REFRESH_MAX_INTERVAL
+        timer._remaining = 10
+        object.__setattr__(timer, "query_one", MagicMock())
+        object.__setattr__(timer, "post_message", MagicMock())
+        timer.increase_interval()
+        assert timer._interval == REFRESH_MAX_INTERVAL
+
+    def test_decrease_interval(self) -> None:
+        """decrease_interval subtracts REFRESH_STEP."""
+        timer = RefreshTimer.__new__(RefreshTimer)
+        timer._interval = 30
+        timer._remaining = 15
+        object.__setattr__(timer, "query_one", MagicMock())
+        object.__setattr__(timer, "post_message", MagicMock())
+        timer.decrease_interval()
+        assert timer._interval == 30 - REFRESH_STEP
+
+    def test_decrease_interval_floored(self) -> None:
+        """decrease_interval is floored at REFRESH_MIN_INTERVAL."""
+        timer = RefreshTimer.__new__(RefreshTimer)
+        timer._interval = REFRESH_MIN_INTERVAL
+        timer._remaining = 3
+        object.__setattr__(timer, "query_one", MagicMock())
+        object.__setattr__(timer, "post_message", MagicMock())
+        timer.decrease_interval()
+        assert timer._interval == REFRESH_MIN_INTERVAL
+
+    def test_reset(self) -> None:
+        """reset restores remaining to interval."""
+        timer = RefreshTimer.__new__(RefreshTimer)
+        timer._interval = 30
+        timer._remaining = 5
+        object.__setattr__(timer, "query_one", MagicMock())
+        timer.reset()
+        assert timer._remaining == 30
+
+    def test_pause_and_resume(self) -> None:
+        """pause sets _paused, resume clears it."""
+        timer = RefreshTimer.__new__(RefreshTimer)
+        timer._paused = False
+        timer.pause()
+        assert timer._paused is True
+        timer.resume()
+        assert timer._paused is False
+
+    def test_interval_changed_message(self) -> None:
+        """IntervalChanged message stores interval."""
+        msg = RefreshTimer.IntervalChanged(45)
+        assert msg.interval == 45
+
+    def test_refresh_triggered_message(self) -> None:
+        """RefreshTriggered is instantiable."""
+        msg = RefreshTimer.RefreshTriggered()
+        assert msg is not None

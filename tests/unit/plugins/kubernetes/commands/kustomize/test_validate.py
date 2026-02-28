@@ -12,6 +12,7 @@ from typer.testing import CliRunner
 
 from system_operations_manager.integrations.kubernetes.kustomize_client import (
     KustomizeBinaryNotFoundError,
+    KustomizeError,
 )
 from system_operations_manager.plugins.kubernetes.commands.kustomize import (
     register_kustomize_commands,
@@ -75,3 +76,20 @@ class TestValidateCommand:
 
         assert result.exit_code == 1
         assert "not found" in result.stdout
+
+    def test_validate_kustomize_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_kustomize_manager: MagicMock,
+        tmp_kustomization_dir: Path,
+    ) -> None:
+        """validate should handle KustomizeError gracefully (line 349)."""
+        mock_kustomize_manager.validate.side_effect = KustomizeError(
+            message="Validation failed", stderr="some kustomize output"
+        )
+
+        result = cli_runner.invoke(app, ["kustomize", "validate", str(tmp_kustomization_dir)])
+
+        assert result.exit_code == 1
+        assert "Kustomize error" in result.stdout

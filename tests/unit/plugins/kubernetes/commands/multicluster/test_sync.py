@@ -9,6 +9,9 @@ import pytest
 import typer
 from typer.testing import CliRunner
 
+from system_operations_manager.integrations.kubernetes.exceptions import (
+    KubernetesConnectionError,
+)
 from system_operations_manager.integrations.kubernetes.models.multicluster import (
     MultiClusterSyncResult,
 )
@@ -210,6 +213,66 @@ class TestMulticlusterSyncCommand:
         """multicluster sync should exit with error if clusters are not configured."""
         mock_multicluster_manager.sync_resource.side_effect = ValueError(
             "Unknown clusters: production"
+        )
+
+        result = cli_runner.invoke(
+            app,
+            [
+                "multicluster",
+                "sync",
+                "--source",
+                "staging",
+                "--target",
+                "production",
+                "--kind",
+                "ConfigMap",
+                "--name",
+                "app-config",
+                "-n",
+                "default",
+            ],
+        )
+
+        assert result.exit_code == 1
+        mock_multicluster_manager.sync_resource.assert_called_once()
+
+    def test_sync_empty_target_string(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_multicluster_manager: MagicMock,
+    ) -> None:
+        """multicluster sync should exit 1 when target string parses to empty list (lines 260-261)."""
+        result = cli_runner.invoke(
+            app,
+            [
+                "multicluster",
+                "sync",
+                "--source",
+                "staging",
+                "--target",
+                ",,,",
+                "--kind",
+                "ConfigMap",
+                "--name",
+                "app-config",
+                "-n",
+                "default",
+            ],
+        )
+
+        assert result.exit_code == 1
+        assert "No target clusters specified" in result.stdout
+
+    def test_sync_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_multicluster_manager: MagicMock,
+    ) -> None:
+        """multicluster sync should handle KubernetesError gracefully (line 301)."""
+        mock_multicluster_manager.sync_resource.side_effect = KubernetesConnectionError(
+            "Cannot connect to cluster"
         )
 
         result = cli_runner.invoke(

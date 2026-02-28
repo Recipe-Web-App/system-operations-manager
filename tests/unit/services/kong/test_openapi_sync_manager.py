@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -848,3 +849,435 @@ class TestPathSanitization:
         """Should replace special characters with hyphens."""
         result = manager._sanitize_path_for_name("/api/v1.0/users")
         assert result == "api-v1-0-users"
+
+
+class TestParseOpenAPIUnknownSuffix:
+    """Tests for parse_openapi with unknown file extensions (lines 147-150)."""
+
+    @pytest.mark.unit
+    def test_parse_unknown_suffix_falls_back_to_yaml(self, manager: OpenAPISyncManager) -> None:
+        """Unknown file extension should try YAML parsing first."""
+        yaml_content = "openapi: 3.0.0\ninfo:\n  title: Fallback API\n  version: 1.0.0\npaths: {}\n"
+        with NamedTemporaryFile(mode="w", suffix=".spec", delete=False) as f:
+            f.write(yaml_content)
+            f.flush()
+
+            spec = manager.parse_openapi(Path(f.name))
+
+            assert spec.title == "Fallback API"
+
+    @pytest.mark.unit
+    def test_parse_unknown_suffix_falls_back_to_json_when_yaml_fails(
+        self, manager: OpenAPISyncManager
+    ) -> None:
+        """Unknown file extension should fall back to JSON when YAML fails."""
+        json_content = '{"openapi": "3.0.0", "info": {"title": "JSON Fallback", "version": "1.0.0"}, "paths": {}}'
+        with NamedTemporaryFile(mode="w", suffix=".api", delete=False) as f:
+            f.write(json_content)
+            f.flush()
+
+            spec = manager.parse_openapi(Path(f.name))
+
+            assert spec.title == "JSON Fallback"
+
+
+class TestParseSpecDataNonDictItems:
+    """Tests for _parse_spec_data with non-dict path items (lines 203, 211)."""
+
+    @pytest.mark.unit
+    def test_non_dict_path_item_is_skipped(self, manager: OpenAPISyncManager) -> None:
+        """A path item that is not a dict should be skipped without error."""
+        data: dict[str, Any] = {
+            "openapi": "3.0.0",
+            "info": {"title": "T", "version": "1.0.0"},
+            "paths": {
+                "/valid": {"get": {"operationId": "validOp"}},
+                "/bad": "not-a-dict",
+            },
+        }
+        spec = manager._parse_spec_data(data, Path("test.yaml"))
+
+        # Only the valid path contributes an operation
+        assert len(spec.operations) == 1
+        assert spec.operations[0].operation_id == "validOp"
+
+    @pytest.mark.unit
+    def test_non_dict_operation_data_is_skipped(self, manager: OpenAPISyncManager) -> None:
+        """An operation value that is not a dict should be skipped."""
+        data: dict[str, Any] = {
+            "openapi": "3.0.0",
+            "info": {"title": "T", "version": "1.0.0"},
+            "paths": {
+                "/items": {
+                    "get": "not-a-dict-operation",
+                    "post": {"operationId": "createItem"},
+                }
+            },
+        }
+        spec = manager._parse_spec_data(data, Path("test.yaml"))
+
+        # Only the dict operation (post) is parsed
+        assert len(spec.operations) == 1
+        assert spec.operations[0].operation_id == "createItem"
+
+
+class TestExtractBasePathRelative:
+    """Tests for _extract_base_path with relative and trailing-slash URLs (lines 271, 275)."""
+
+    @pytest.mark.unit
+    def test_relative_url_used_as_path_directly(self, manager: OpenAPISyncManager) -> None:
+        """A relative server URL should be used as the base path directly."""
+        servers: list[dict[str, str]] = [{"url": "/api/v2"}]
+        result = manager._extract_base_path(servers)
+        assert result == "/api/v2"
+
+    @pytest.mark.unit
+    def test_trailing_slash_is_stripped_from_path(self, manager: OpenAPISyncManager) -> None:
+        """A trailing slash should be removed from the extracted base path."""
+        servers: list[dict[str, str]] = [{"url": "http://example.com/api/v1/"}]
+        result = manager._extract_base_path(servers)
+        assert result == "/api/v1"
+
+    @pytest.mark.unit
+    def test_relative_url_with_trailing_slash_is_stripped(
+        self, manager: OpenAPISyncManager
+    ) -> None:
+        """A relative URL with trailing slash should have the slash stripped."""
+        servers: list[dict[str, str]] = [{"url": "/v3/"}]
+        result = manager._extract_base_path(servers)
+        assert result == "/v3"
+
+
+class TestRouteNameCollision:
+    """Tests for route name collision handling in generate_route_mappings (lines 325-326)."""
+
+    @pytest.mark.unit
+    def test_name_collision_resolved_with_counter(self, manager: OpenAPISyncManager) -> None:
+        """When the same route name would be generated twice, a counter suffix is added."""
+        # Two operations on the same path but we force a collision by having two
+        # paths that sanitize to the same name and no operationId on either.
+        spec = OpenAPISpec(
+            title="Collision Test",
+            version="1.0.0",
+            operations=[
+                # Both paths sanitize to the same slug so the second path will
+                # collide with the first and receive a "-1" suffix.
+                OpenAPIOperation(path="/a", method="GET", operation_id="sharedName"),
+                OpenAPIOperation(path="/b", method="GET", operation_id="sharedName"),
+            ],
+            all_tags=[],
+        )
+
+        mappings = manager.generate_route_mappings(spec, "svc")
+
+        names = {m.route_name for m in mappings}
+        assert "svc-sharedName" in names
+        assert "svc-sharedName-1" in names
+
+
+class TestCompareRoutePathsAndTags:
+    """Tests for _compare_route path and tag diff branches (lines 562, 574)."""
+
+    @pytest.mark.unit
+    def test_compare_route_detects_path_change(self, manager: OpenAPISyncManager) -> None:
+        """Changed paths should appear in the diff field_changes."""
+        current = Route(
+            id="r1",
+            name="svc-route",
+            paths=["/old-path"],
+            methods=["GET"],
+            tags=["service:svc"],
+            strip_path=True,
+        )
+        desired = RouteMapping(
+            route_name="svc-route",
+            path="/new-path",
+            methods=["GET"],
+            tags=["service:svc"],
+            strip_path=True,
+        )
+
+        changes = manager._compare_route(current, desired)
+
+        assert changes is not None
+        assert "paths" in changes
+
+    @pytest.mark.unit
+    def test_compare_route_detects_tag_change(self, manager: OpenAPISyncManager) -> None:
+        """Changed tags should appear in the diff field_changes."""
+        current = Route(
+            id="r1",
+            name="svc-route",
+            paths=["/users"],
+            methods=["GET"],
+            tags=["old-tag"],
+            strip_path=True,
+        )
+        desired = RouteMapping(
+            route_name="svc-route",
+            path="/users",
+            methods=["GET"],
+            tags=["new-tag"],
+            strip_path=True,
+        )
+
+        changes = manager._compare_route(current, desired)
+
+        assert changes is not None
+        assert "tags" in changes
+
+
+class TestIsBreakingUpdateRemovedPaths:
+    """Tests for _is_breaking_update path-removal branch (line 606)."""
+
+    @pytest.mark.unit
+    def test_removed_path_is_breaking(self, manager: OpenAPISyncManager) -> None:
+        """Removing a path from a route should be classified as a breaking change."""
+        current = Route(
+            id="r1",
+            name="svc-route",
+            paths=["/users", "/persons"],
+            methods=["GET"],
+            tags=[],
+        )
+        desired = RouteMapping(
+            route_name="svc-route",
+            path="/users",
+            methods=["GET"],
+            tags=[],
+        )
+
+        is_breaking, reason = manager._is_breaking_update(current, desired)
+
+        assert is_breaking is True
+        assert reason is not None
+        assert "/persons" in reason
+
+
+class TestApplySyncDeleteBranch:
+    """Tests for apply_sync delete loop execution (lines 669-670)."""
+
+    @pytest.mark.unit
+    def test_apply_sync_with_force_executes_deletes(
+        self,
+        manager: OpenAPISyncManager,
+        mock_route_manager: MagicMock,
+    ) -> None:
+        """With force=True, breaking deletes should be applied."""
+        from system_operations_manager.integrations.kong.models.openapi import SyncChange
+
+        sync_result = SyncResult(
+            creates=[],
+            updates=[],
+            deletes=[
+                SyncChange(
+                    operation="delete",
+                    route_name="svc-old",
+                    path="/old",
+                    methods=["GET"],
+                    is_breaking=True,
+                    breaking_reason="Route will be deleted",
+                ),
+            ],
+            service_name="svc",
+        )
+
+        mock_route_manager.delete.return_value = None
+
+        result = manager.apply_sync(sync_result, force=True)
+
+        mock_route_manager.delete.assert_called_once_with("svc-old")
+        assert len(result.succeeded) == 1
+
+
+class TestApplyCreateError:
+    """Tests for _apply_create KongAPIError handling (lines 716-718)."""
+
+    @pytest.mark.unit
+    def test_apply_create_returns_failed_on_api_error(
+        self,
+        manager: OpenAPISyncManager,
+        mock_route_manager: MagicMock,
+    ) -> None:
+        """KongAPIError during route creation should return a failed result."""
+        from system_operations_manager.integrations.kong.exceptions import KongAPIError
+        from system_operations_manager.integrations.kong.models.openapi import SyncChange
+
+        mock_route_manager.create_for_service.side_effect = KongAPIError("conflict")
+
+        sync_result = SyncResult(
+            creates=[
+                SyncChange(
+                    operation="create",
+                    route_name="svc-fail",
+                    path="/fail",
+                    methods=["POST"],
+                    tags=["service:svc"],
+                ),
+            ],
+            updates=[],
+            deletes=[],
+            service_name="svc",
+        )
+
+        result = manager.apply_sync(sync_result)
+
+        assert len(result.failed) == 1
+        failed_op: Any = result.failed[0]
+        assert failed_op.route_name == "svc-fail"
+        assert failed_op.result == "failed"
+        assert "conflict" in (failed_op.error or "")
+
+
+class TestApplyUpdateSuccessAndError:
+    """Tests for _apply_update success path and KongAPIError handling (lines 748-750)."""
+
+    @pytest.mark.unit
+    def test_apply_update_returns_success(
+        self,
+        manager: OpenAPISyncManager,
+        mock_route_manager: MagicMock,
+    ) -> None:
+        """A successful update call should return a success operation result."""
+        from system_operations_manager.integrations.kong.models.openapi import SyncChange
+
+        mock_route_manager.update.return_value = MagicMock()
+
+        sync_result = SyncResult(
+            creates=[],
+            updates=[
+                SyncChange(
+                    operation="update",
+                    route_name="svc-users",
+                    path="/users",
+                    methods=["GET", "POST"],
+                    tags=["service:svc"],
+                ),
+            ],
+            deletes=[],
+            service_name="svc",
+        )
+
+        result = manager.apply_sync(sync_result)
+
+        assert len(result.succeeded) == 1
+        succeeded_op: Any = result.succeeded[0]
+        assert succeeded_op.route_name == "svc-users"
+        assert succeeded_op.result == "success"
+
+    @pytest.mark.unit
+    def test_apply_update_returns_failed_on_api_error(
+        self,
+        manager: OpenAPISyncManager,
+        mock_route_manager: MagicMock,
+    ) -> None:
+        """KongAPIError during route update should return a failed result."""
+        from system_operations_manager.integrations.kong.exceptions import KongAPIError
+        from system_operations_manager.integrations.kong.models.openapi import SyncChange
+
+        mock_route_manager.update.side_effect = KongAPIError("not found")
+
+        sync_result = SyncResult(
+            creates=[],
+            updates=[
+                SyncChange(
+                    operation="update",
+                    route_name="svc-broken",
+                    path="/broken",
+                    methods=["GET"],
+                    tags=[],
+                ),
+            ],
+            deletes=[],
+            service_name="svc",
+        )
+
+        result = manager.apply_sync(sync_result)
+
+        assert len(result.failed) == 1
+        failed_op: Any = result.failed[0]
+        assert failed_op.route_name == "svc-broken"
+        assert "not found" in (failed_op.error or "")
+
+
+class TestApplyDeleteAllBranches:
+    """Tests for all _apply_delete branches (lines 766-784)."""
+
+    @pytest.mark.unit
+    def test_apply_delete_success(
+        self,
+        manager: OpenAPISyncManager,
+        mock_route_manager: MagicMock,
+    ) -> None:
+        """Successful route deletion should return a success result."""
+        from system_operations_manager.integrations.kong.models.openapi import SyncChange
+
+        mock_route_manager.delete.return_value = None
+
+        change = SyncChange(
+            operation="delete",
+            route_name="svc-gone",
+            path="/gone",
+            methods=["GET"],
+            is_breaking=True,
+            breaking_reason="Route will be deleted",
+        )
+
+        result = manager._apply_delete(change)
+
+        assert result.result == "success"
+        assert result.route_name == "svc-gone"
+
+    @pytest.mark.unit
+    def test_apply_delete_already_deleted_treated_as_success(
+        self,
+        manager: OpenAPISyncManager,
+        mock_route_manager: MagicMock,
+    ) -> None:
+        """KongNotFoundError during deletion should be treated as a success."""
+        from system_operations_manager.integrations.kong.exceptions import KongNotFoundError
+        from system_operations_manager.integrations.kong.models.openapi import SyncChange
+
+        mock_route_manager.delete.side_effect = KongNotFoundError("route not found")
+
+        change = SyncChange(
+            operation="delete",
+            route_name="svc-already-gone",
+            path="/already-gone",
+            methods=["DELETE"],
+            is_breaking=True,
+            breaking_reason="Route will be deleted",
+        )
+
+        result = manager._apply_delete(change)
+
+        assert result.result == "success"
+        assert result.route_name == "svc-already-gone"
+        assert result.error is None
+
+    @pytest.mark.unit
+    def test_apply_delete_returns_failed_on_api_error(
+        self,
+        manager: OpenAPISyncManager,
+        mock_route_manager: MagicMock,
+    ) -> None:
+        """KongAPIError (non-404) during deletion should return a failed result."""
+        from system_operations_manager.integrations.kong.exceptions import KongAPIError
+        from system_operations_manager.integrations.kong.models.openapi import SyncChange
+
+        mock_route_manager.delete.side_effect = KongAPIError("server error")
+
+        change = SyncChange(
+            operation="delete",
+            route_name="svc-errored",
+            path="/errored",
+            methods=["GET"],
+            is_breaking=True,
+            breaking_reason="Route will be deleted",
+        )
+
+        result = manager._apply_delete(change)
+
+        assert result.result == "failed"
+        assert result.route_name == "svc-errored"
+        assert "server error" in (result.error or "")

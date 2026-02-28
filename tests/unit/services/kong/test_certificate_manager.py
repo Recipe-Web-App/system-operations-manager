@@ -386,3 +386,87 @@ class TestCACertificateManagerCRUD:
         manager.delete("ca-1")
 
         mock_client.delete.assert_called_once_with("ca_certificates/ca-1")
+
+    @pytest.mark.unit
+    def test_get_by_digest_found(
+        self, manager: CACertificateManager, mock_client: MagicMock
+    ) -> None:
+        """get_by_digest should return the matching CA certificate."""
+        mock_client.get.return_value = {
+            "data": [
+                {
+                    "id": "ca-1",
+                    "cert": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
+                    "cert_digest": "abc123",
+                    "tags": ["root-ca"],
+                },
+                {
+                    "id": "ca-2",
+                    "cert": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
+                    "cert_digest": "def456",
+                    "tags": ["intermediate-ca"],
+                },
+            ],
+            "offset": None,
+        }
+
+        result = manager.get_by_digest("abc123")
+
+        assert result is not None
+        assert result.id == "ca-1"
+        assert result.cert_digest == "abc123"
+
+    @pytest.mark.unit
+    def test_get_by_digest_not_found(
+        self, manager: CACertificateManager, mock_client: MagicMock
+    ) -> None:
+        """get_by_digest should return None when digest does not match."""
+        mock_client.get.return_value = {
+            "data": [
+                {
+                    "id": "ca-1",
+                    "cert": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----",
+                    "cert_digest": "abc123",
+                    "tags": ["root-ca"],
+                },
+            ],
+            "offset": None,
+        }
+
+        result = manager.get_by_digest("nonexistent-digest")
+
+        assert result is None
+
+
+class TestSNIManagerExtended:
+    """Additional tests for SNIManager missing coverage."""
+
+    @pytest.fixture
+    def manager(self, mock_client: MagicMock) -> SNIManager:
+        """Create a SNIManager with mocked client."""
+        return SNIManager(mock_client)
+
+    @pytest.mark.unit
+    def test_list_by_certificate(self, manager: SNIManager, mock_client: MagicMock) -> None:
+        """list_by_certificate should return all SNIs for a certificate."""
+        mock_client.get.return_value = {
+            "data": [
+                {
+                    "id": "sni-1",
+                    "name": "api.example.com",
+                    "certificate": {"id": "cert-1"},
+                },
+                {
+                    "id": "sni-2",
+                    "name": "www.example.com",
+                    "certificate": {"id": "cert-1"},
+                },
+            ]
+        }
+
+        snis = manager.list_by_certificate("cert-1")
+
+        assert len(snis) == 2
+        assert snis[0].name == "api.example.com"
+        assert snis[1].name == "www.example.com"
+        mock_client.get.assert_called_once_with("certificates/cert-1/snis")

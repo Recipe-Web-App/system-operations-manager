@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+import pytest
+
 from system_operations_manager.integrations.kong.models.unified import UnifiedEntityList
 from system_operations_manager.integrations.kong.models.upstream import Target
 from system_operations_manager.plugins.kong.commands.sync import (
@@ -12,6 +14,7 @@ from system_operations_manager.plugins.kong.commands.sync import (
 )
 
 
+@pytest.mark.unit
 class TestPushTargetsForUpstreams:
     """Tests for _push_targets_for_upstreams helper."""
 
@@ -117,6 +120,7 @@ class TestPushTargetsForUpstreams:
         assert mock_unified_service.list_targets_for_upstream.call_count == 2
 
 
+@pytest.mark.unit
 class TestPullTargetsForUpstreams:
     """Tests for _pull_targets_for_upstreams helper."""
 

@@ -12,6 +12,7 @@ import typer
 from typer.testing import CliRunner
 
 from system_operations_manager.integrations.kubernetes.exceptions import (
+    KubernetesError,
     KubernetesNotFoundError,
 )
 from system_operations_manager.plugins.kubernetes.commands.config_resources import (
@@ -185,3 +186,122 @@ class TestSecretCommands:
 
         assert result.exit_code == 1
         assert "not found" in result.stdout.lower()
+
+    def test_list_secrets_kubernetes_error(
+        self, cli_runner: CliRunner, app: typer.Typer, mock_config_manager: MagicMock
+    ) -> None:
+        """list should handle KubernetesError."""
+        mock_config_manager.list_secrets.side_effect = KubernetesError("connection failed")
+
+        result = cli_runner.invoke(app, ["secrets", "list"])
+
+        assert result.exit_code == 1
+
+    def test_create_secret_kubernetes_error(
+        self, cli_runner: CliRunner, app: typer.Typer, mock_config_manager: MagicMock
+    ) -> None:
+        """create should handle KubernetesError."""
+        mock_config_manager.create_secret.side_effect = KubernetesError("connection failed")
+
+        result = cli_runner.invoke(
+            app,
+            ["secrets", "create", "test-secret", "--data", "username=admin"],
+        )
+
+        assert result.exit_code == 1
+
+    def test_create_tls_secret_missing_key_file(
+        self, cli_runner: CliRunner, app: typer.Typer, mock_config_manager: MagicMock
+    ) -> None:
+        """create-tls should fail if key file doesn't exist but cert does."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cert_path = Path(tmpdir) / "tls.crt"
+            cert_path.write_text("cert-content")
+
+            result = cli_runner.invoke(
+                app,
+                [
+                    "secrets",
+                    "create-tls",
+                    "test-tls",
+                    "--cert",
+                    str(cert_path),
+                    "--key",
+                    "/nonexistent/tls.key",
+                ],
+            )
+
+            assert result.exit_code == 1
+            assert "not found" in result.stdout.lower()
+            mock_config_manager.create_tls_secret.assert_not_called()
+
+    def test_create_tls_secret_kubernetes_error(
+        self, cli_runner: CliRunner, app: typer.Typer, mock_config_manager: MagicMock
+    ) -> None:
+        """create-tls should handle KubernetesError."""
+        mock_config_manager.create_tls_secret.side_effect = KubernetesError("connection failed")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cert_path = Path(tmpdir) / "tls.crt"
+            key_path = Path(tmpdir) / "tls.key"
+            cert_path.write_text("cert-content")
+            key_path.write_text("key-content")
+
+            result = cli_runner.invoke(
+                app,
+                [
+                    "secrets",
+                    "create-tls",
+                    "test-tls",
+                    "--cert",
+                    str(cert_path),
+                    "--key",
+                    str(key_path),
+                ],
+            )
+
+            assert result.exit_code == 1
+
+    def test_create_docker_registry_secret_kubernetes_error(
+        self, cli_runner: CliRunner, app: typer.Typer, mock_config_manager: MagicMock
+    ) -> None:
+        """create-docker-registry should handle KubernetesError."""
+        mock_config_manager.create_docker_registry_secret.side_effect = KubernetesError(
+            "connection failed"
+        )
+
+        result = cli_runner.invoke(
+            app,
+            [
+                "secrets",
+                "create-docker-registry",
+                "test-registry",
+                "--server",
+                "https://index.docker.io/v1/",
+                "--username",
+                "testuser",
+                "--password",
+                "testpass",
+            ],
+        )
+
+        assert result.exit_code == 1
+
+    def test_delete_secret_aborts_without_confirmation(
+        self, cli_runner: CliRunner, app: typer.Typer, mock_config_manager: MagicMock
+    ) -> None:
+        """delete without --force should abort when user declines confirmation."""
+        result = cli_runner.invoke(app, ["secrets", "delete", "test-secret"], input="n\n")
+
+        assert result.exit_code != 0
+        mock_config_manager.delete_secret.assert_not_called()
+
+    def test_delete_secret_kubernetes_error(
+        self, cli_runner: CliRunner, app: typer.Typer, mock_config_manager: MagicMock
+    ) -> None:
+        """delete should handle KubernetesError."""
+        mock_config_manager.delete_secret.side_effect = KubernetesError("connection failed")
+
+        result = cli_runner.invoke(app, ["secrets", "delete", "test-secret", "--force"])
+
+        assert result.exit_code == 1

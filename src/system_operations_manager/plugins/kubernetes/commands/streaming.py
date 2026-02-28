@@ -16,6 +16,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Annotated, Any
 
 import typer
+from rich.console import Console
 
 from system_operations_manager.integrations.kubernetes.exceptions import KubernetesError
 from system_operations_manager.plugins.kubernetes.commands.base import (
@@ -455,7 +456,7 @@ def _run_interactive_session(ws_client: Any) -> None:
                     ws_client.write_stdin(data)
     except KeyboardInterrupt:
         # User requested to interrupt the interactive session (e.g. via Ctrl+C).
-        console.print("[yellow]Interactive session interrupted by user.[/yellow]", file=sys.stderr)
+        Console(stderr=True).print("[yellow]Interactive session interrupted by user.[/yellow]")
     finally:
         termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
         ws_client.close()
@@ -480,7 +481,7 @@ def _run_non_interactive_session(ws_client: Any) -> None:
                 sys.stderr.flush()
     except KeyboardInterrupt:
         # Gracefully handle user cancellation without a traceback.
-        console.print("[yellow]Execution interrupted by user.[/yellow]", file=sys.stderr)
+        Console(stderr=True).print("[yellow]Execution interrupted by user.[/yellow]")
     finally:
         ws_client.close()
 

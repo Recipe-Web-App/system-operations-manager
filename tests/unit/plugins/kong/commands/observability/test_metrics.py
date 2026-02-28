@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -462,6 +463,404 @@ class TestMetricsPercentiles(TestMetricsCommands):
         )
 
         result = cli_runner.invoke(app, ["metrics", "percentiles"])
+
+        assert result.exit_code == 1
+        assert "error" in result.stdout.lower()
+
+
+class TestPrometheusGetServiceRouteMatch(TestMetricsCommands):
+    """Tests for prometheus get command scope-matching branches."""
+
+    @pytest.mark.unit
+    def test_get_matching_service_plugin(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """prometheus get should find and display a plugin scoped to a service."""
+        mock_plugin: Any = MagicMock()
+        mock_plugin.model_dump.return_value = {
+            "id": "plugin-svc",
+            "name": "prometheus",
+            "service": {"id": "svc-123", "name": "my-api"},
+            "route": None,
+            "config": {},
+        }
+        mock_plugin_manager.list.return_value = [mock_plugin]
+
+        result = cli_runner.invoke(app, ["metrics", "prometheus", "get", "--service", "my-api"])
+
+        assert result.exit_code == 0
+
+    @pytest.mark.unit
+    def test_get_matching_route_plugin(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """prometheus get should find and display a plugin scoped to a route."""
+        mock_plugin: Any = MagicMock()
+        mock_plugin.model_dump.return_value = {
+            "id": "plugin-route",
+            "name": "prometheus",
+            "service": None,
+            "route": {"id": "rt-456", "name": "my-route"},
+            "config": {},
+        }
+        mock_plugin_manager.list.return_value = [mock_plugin]
+
+        result = cli_runner.invoke(app, ["metrics", "prometheus", "get", "--route", "my-route"])
+
+        assert result.exit_code == 0
+
+    @pytest.mark.unit
+    def test_get_no_match_for_service(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """prometheus get should print scope description when service not matched."""
+        mock_plugin: Any = MagicMock()
+        mock_plugin.model_dump.return_value = {
+            "id": "plugin-1",
+            "name": "prometheus",
+            "service": None,
+            "route": None,
+            "config": {},
+        }
+        mock_plugin_manager.list.return_value = [mock_plugin]
+
+        result = cli_runner.invoke(
+            app, ["metrics", "prometheus", "get", "--service", "nonexistent"]
+        )
+
+        assert result.exit_code == 0
+        assert "nonexistent" in result.stdout.lower() or "no prometheus" in result.stdout.lower()
+
+    @pytest.mark.unit
+    def test_get_no_match_for_route(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """prometheus get should print scope description when route not matched."""
+        mock_plugin: Any = MagicMock()
+        mock_plugin.model_dump.return_value = {
+            "id": "plugin-1",
+            "name": "prometheus",
+            "service": None,
+            "route": None,
+            "config": {},
+        }
+        mock_plugin_manager.list.return_value = [mock_plugin]
+
+        result = cli_runner.invoke(app, ["metrics", "prometheus", "get", "--route", "ghost-route"])
+
+        assert result.exit_code == 0
+        assert "ghost-route" in result.stdout.lower() or "no prometheus" in result.stdout.lower()
+
+    @pytest.mark.unit
+    def test_get_error_handling(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """prometheus get should handle KongAPIError gracefully."""
+        mock_plugin_manager.list.side_effect = KongAPIError("API error", status_code=500)
+
+        result = cli_runner.invoke(app, ["metrics", "prometheus", "get"])
+
+        assert result.exit_code == 1
+        assert "error" in result.stdout.lower()
+
+
+class TestPrometheusDisableServiceRouteMatch(TestMetricsCommands):
+    """Tests for prometheus disable command scope-matching and cancel branches."""
+
+    @pytest.mark.unit
+    def test_disable_matching_service(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """prometheus disable should match and remove a service-scoped plugin."""
+        mock_plugin: Any = MagicMock()
+        mock_plugin.model_dump.return_value = {
+            "id": "plugin-svc",
+            "name": "prometheus",
+            "service": {"id": "svc-123", "name": "my-api"},
+            "route": None,
+        }
+        mock_plugin_manager.list.return_value = [mock_plugin]
+
+        result = cli_runner.invoke(
+            app,
+            ["metrics", "prometheus", "disable", "--service", "my-api", "--force"],
+        )
+
+        assert result.exit_code == 0
+        mock_plugin_manager.disable.assert_called_once_with("plugin-svc")
+
+    @pytest.mark.unit
+    def test_disable_matching_route(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """prometheus disable should match and remove a route-scoped plugin."""
+        mock_plugin: Any = MagicMock()
+        mock_plugin.model_dump.return_value = {
+            "id": "plugin-rt",
+            "name": "prometheus",
+            "service": None,
+            "route": {"id": "rt-456", "name": "my-route"},
+        }
+        mock_plugin_manager.list.return_value = [mock_plugin]
+
+        result = cli_runner.invoke(
+            app,
+            ["metrics", "prometheus", "disable", "--route", "my-route", "--force"],
+        )
+
+        assert result.exit_code == 0
+        mock_plugin_manager.disable.assert_called_once_with("plugin-rt")
+
+    @pytest.mark.unit
+    def test_disable_cancelled(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """prometheus disable without --force should show cancelled when user says no."""
+        mock_plugin: Any = MagicMock()
+        mock_plugin.model_dump.return_value = {
+            "id": "plugin-1",
+            "name": "prometheus",
+            "service": None,
+            "route": None,
+        }
+        mock_plugin_manager.list.return_value = [mock_plugin]
+
+        result = cli_runner.invoke(app, ["metrics", "prometheus", "disable"], input="n\n")
+
+        assert result.exit_code == 0
+        assert "cancelled" in result.stdout.lower()
+        mock_plugin_manager.disable.assert_not_called()
+
+    @pytest.mark.unit
+    def test_disable_no_match_for_service(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """prometheus disable should show scope description when service not matched."""
+        mock_plugin: Any = MagicMock()
+        mock_plugin.model_dump.return_value = {
+            "id": "plugin-1",
+            "name": "prometheus",
+            "service": None,
+            "route": None,
+        }
+        mock_plugin_manager.list.return_value = [mock_plugin]
+
+        result = cli_runner.invoke(
+            app,
+            ["metrics", "prometheus", "disable", "--service", "ghost-svc", "--force"],
+        )
+
+        assert result.exit_code == 0
+        assert "ghost-svc" in result.stdout.lower() or "no prometheus" in result.stdout.lower()
+
+    @pytest.mark.unit
+    def test_disable_no_match_for_route(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """prometheus disable should show scope description when route not matched."""
+        mock_plugin: Any = MagicMock()
+        mock_plugin.model_dump.return_value = {
+            "id": "plugin-1",
+            "name": "prometheus",
+            "service": None,
+            "route": None,
+        }
+        mock_plugin_manager.list.return_value = [mock_plugin]
+
+        result = cli_runner.invoke(
+            app,
+            ["metrics", "prometheus", "disable", "--route", "ghost-rt", "--force"],
+        )
+
+        assert result.exit_code == 0
+        assert "ghost-rt" in result.stdout.lower() or "no prometheus" in result.stdout.lower()
+
+    @pytest.mark.unit
+    def test_disable_error_handling(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_plugin_manager: MagicMock,
+    ) -> None:
+        """prometheus disable should handle KongAPIError gracefully."""
+        mock_plugin_manager.list.side_effect = KongAPIError("API error", status_code=500)
+
+        result = cli_runner.invoke(app, ["metrics", "prometheus", "disable", "--force"])
+
+        assert result.exit_code == 1
+        assert "error" in result.stdout.lower()
+
+
+class TestMetricsShowNonTable(TestMetricsCommands):
+    """Tests for metrics show command non-table output path."""
+
+    @pytest.mark.unit
+    def test_show_json_output(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_observability_manager: MagicMock,
+    ) -> None:
+        """metrics show should use formatter for non-table output."""
+        result = cli_runner.invoke(app, ["metrics", "show", "--output", "json"])
+
+        assert result.exit_code == 0
+        mock_observability_manager.get_metrics_summary.assert_called_once()
+
+    @pytest.mark.unit
+    def test_show_error_handling(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_observability_manager: MagicMock,
+    ) -> None:
+        """metrics show should handle KongAPIError gracefully."""
+        mock_observability_manager.get_metrics_summary.side_effect = KongAPIError(
+            "Scrape failed", status_code=503
+        )
+
+        result = cli_runner.invoke(app, ["metrics", "show"])
+
+        assert result.exit_code == 1
+        assert "error" in result.stdout.lower()
+
+
+class TestMetricsListNonTable(TestMetricsCommands):
+    """Tests for metrics list command non-table output path."""
+
+    @pytest.mark.unit
+    def test_list_json_output(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_observability_manager: MagicMock,
+    ) -> None:
+        """metrics list should use formatter for non-table output."""
+        result = cli_runner.invoke(app, ["metrics", "list", "--output", "json"])
+
+        assert result.exit_code == 0
+        mock_observability_manager.list_metrics.assert_called_once()
+
+    @pytest.mark.unit
+    def test_list_error_handling(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_observability_manager: MagicMock,
+    ) -> None:
+        """metrics list should handle KongAPIError gracefully."""
+        mock_observability_manager.list_metrics.side_effect = KongAPIError(
+            "Scrape failed", status_code=503
+        )
+
+        result = cli_runner.invoke(app, ["metrics", "list"])
+
+        assert result.exit_code == 1
+        assert "error" in result.stdout.lower()
+
+
+class TestMetricsStatusMemoryAndNonTable(TestMetricsCommands):
+    """Tests for metrics status memory table and non-table output paths."""
+
+    @pytest.mark.unit
+    def test_status_with_memory_info(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_observability_manager: MagicMock,
+    ) -> None:
+        """metrics status should render memory shared dict table when data present."""
+        from system_operations_manager.integrations.kong.models.observability import NodeStatus
+
+        mock_observability_manager.get_node_status.return_value = NodeStatus(
+            database_reachable=True,
+            server_connections_active=10,
+            server_connections_reading=1,
+            server_connections_writing=2,
+            server_connections_waiting=7,
+            server_connections_accepted=1000,
+            server_connections_handled=1000,
+            server_total_requests=5000,
+            memory_lua_shared_dicts={
+                "kong": {"allocated_slabs": 8, "capacity": 16},
+                "kong_db_cache": {"allocated_slabs": 4, "capacity": 32},
+            },
+        )
+
+        result = cli_runner.invoke(app, ["metrics", "status"])
+
+        assert result.exit_code == 0
+        assert "kong" in result.stdout.lower()
+
+    @pytest.mark.unit
+    def test_status_disconnected_db(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_observability_manager: MagicMock,
+    ) -> None:
+        """metrics status should show disconnected state for unreachable database."""
+        from system_operations_manager.integrations.kong.models.observability import NodeStatus
+
+        mock_observability_manager.get_node_status.return_value = NodeStatus(
+            database_reachable=False,
+            server_connections_active=0,
+            server_connections_reading=0,
+            server_connections_writing=0,
+            server_connections_waiting=0,
+            server_connections_accepted=0,
+            server_connections_handled=0,
+            server_total_requests=0,
+        )
+
+        result = cli_runner.invoke(app, ["metrics", "status"])
+
+        assert result.exit_code == 0
+        assert "disconnected" in result.stdout.lower()
+
+    @pytest.mark.unit
+    def test_status_error_handling(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_observability_manager: MagicMock,
+    ) -> None:
+        """metrics status should handle KongAPIError gracefully."""
+        mock_observability_manager.get_node_status.side_effect = KongAPIError(
+            "Status unavailable", status_code=503
+        )
+
+        result = cli_runner.invoke(app, ["metrics", "status"])
 
         assert result.exit_code == 1
         assert "error" in result.stdout.lower()

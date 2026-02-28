@@ -9,7 +9,7 @@ detail screen for inspecting individual resources.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import structlog
 import yaml
@@ -39,6 +39,7 @@ from system_operations_manager.tui.base import BaseScreen
 if TYPE_CHECKING:
     from system_operations_manager.integrations.kubernetes.client import KubernetesClient
     from system_operations_manager.integrations.kubernetes.models.cluster import NodeSummary
+    from system_operations_manager.integrations.kubernetes.models.workloads import PodSummary
     from system_operations_manager.services.kubernetes.configuration_manager import (
         ConfigurationManager,
     )
@@ -621,7 +622,9 @@ class ResourceListScreen(BaseScreen[None]):
             LogViewerScreen,
         )
 
-        self.app.push_screen(LogViewerScreen(resource=resource, client=self._client))
+        self.app.push_screen(
+            LogViewerScreen(resource=cast("PodSummary", resource), client=self._client)
+        )
 
     # Namespace actions
     def action_cycle_namespace(self) -> None:
@@ -1557,7 +1560,9 @@ class ResourceDetailScreen(BaseScreen[None]):
             LogViewerScreen,
         )
 
-        self.app.push_screen(LogViewerScreen(resource=self._resource, client=self._client))
+        self.app.push_screen(
+            LogViewerScreen(resource=cast("PodSummary", self._resource), client=self._client)
+        )
 
     def action_exec(self) -> None:
         """Open an interactive exec session in this pod."""

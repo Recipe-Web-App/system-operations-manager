@@ -248,7 +248,7 @@ class TestK8sEntityBase:
 
     def test_model_config_extra_ignore(self) -> None:
         """Test that extra fields are ignored."""
-        entity = K8sEntityBase(name="test", unknown_field="ignored")
+        entity = K8sEntityBase(name="test", unknown_field="ignored")  # type: ignore[call-arg]
         assert entity.name == "test"
         assert not hasattr(entity, "unknown_field")
 
@@ -329,6 +329,6 @@ class TestOwnerReference:
 
     def test_model_config_extra_ignore(self) -> None:
         """Test that extra fields are ignored."""
-        ref = OwnerReference(kind="Pod", unknown="ignored")
+        ref = OwnerReference(kind="Pod", unknown="ignored")  # type: ignore[call-arg]
         assert ref.kind == "Pod"
         assert not hasattr(ref, "unknown")

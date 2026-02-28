@@ -135,6 +135,8 @@ def register_deployment_commands(
                 }
                 formatter.format_dict(data, title="Kong Deployment Status")
 
+        except typer.Exit:
+            raise
         except Exception as e:
             console.print(f"[red]Error:[/red] {e}")
             raise typer.Exit(1) from e
@@ -192,6 +194,8 @@ def register_deployment_commands(
             console.print("  • Check status: ops kong status")
             console.print("  • List services: ops kong services list")
 
+        except typer.Exit:
+            raise
         except Exception as e:
             console.print(f"[red]Error:[/red] {e}")
             if hasattr(e, "details") and e.details:
@@ -226,6 +230,8 @@ def register_deployment_commands(
 
             console.print("\n[green]✓ Kong Gateway upgraded successfully![/green]")
 
+        except typer.Exit:
+            raise
         except Exception as e:
             console.print(f"[red]Error:[/red] {e}")
             if hasattr(e, "details") and e.details:
@@ -294,6 +300,8 @@ def register_deployment_commands(
                 console.print("\n[dim]To fully clean up:[/dim]")
                 console.print("  ops kong deploy uninstall --delete-secrets --delete-pvc")
 
+        except typer.Exit:
+            raise
         except Exception as e:
             console.print(f"[red]Error:[/red] {e}")
             raise typer.Exit(1) from e

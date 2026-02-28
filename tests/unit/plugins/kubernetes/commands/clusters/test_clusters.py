@@ -231,3 +231,72 @@ class TestClusterInfoCommand:
         result = cli_runner.invoke(app, ["cluster-info"])
 
         assert result.exit_code == 1
+
+
+@pytest.mark.unit
+@pytest.mark.kubernetes
+class TestNodeCommandErrorPaths:
+    """Tests for node CLI command error handling paths."""
+
+    @pytest.fixture
+    def app(self, get_namespace_cluster_manager: Callable[[], MagicMock]) -> typer.Typer:
+        """Create a test app with cluster commands."""
+        app = typer.Typer()
+        register_cluster_commands(app, get_namespace_cluster_manager)
+        return app
+
+    def test_list_nodes_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_namespace_cluster_manager: MagicMock,
+    ) -> None:
+        """nodes list should handle KubernetesError and exit with code 1."""
+        mock_namespace_cluster_manager.list_nodes.side_effect = KubernetesError(
+            "Failed to list nodes"
+        )
+
+        result = cli_runner.invoke(app, ["nodes", "list"])
+
+        assert result.exit_code == 1
+
+    def test_get_node_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_namespace_cluster_manager: MagicMock,
+    ) -> None:
+        """nodes get should handle KubernetesError and exit with code 1."""
+        mock_namespace_cluster_manager.get_node.side_effect = KubernetesError("Failed to get node")
+
+        result = cli_runner.invoke(app, ["nodes", "get", "worker-1"])
+
+        assert result.exit_code == 1
+
+
+@pytest.mark.unit
+@pytest.mark.kubernetes
+class TestEventCommandErrorPaths:
+    """Tests for event CLI command error handling paths."""
+
+    @pytest.fixture
+    def app(self, get_namespace_cluster_manager: Callable[[], MagicMock]) -> typer.Typer:
+        """Create a test app with cluster commands."""
+        app = typer.Typer()
+        register_cluster_commands(app, get_namespace_cluster_manager)
+        return app
+
+    def test_list_events_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_namespace_cluster_manager: MagicMock,
+    ) -> None:
+        """events list should handle KubernetesError and exit with code 1."""
+        mock_namespace_cluster_manager.list_events.side_effect = KubernetesError(
+            "Failed to list events"
+        )
+
+        result = cli_runner.invoke(app, ["events", "list"])
+
+        assert result.exit_code == 1

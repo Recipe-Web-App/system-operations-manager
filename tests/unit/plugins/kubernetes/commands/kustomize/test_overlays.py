@@ -10,6 +10,10 @@ import pytest
 import typer
 from typer.testing import CliRunner
 
+from system_operations_manager.integrations.kubernetes.kustomize_client import (
+    KustomizeBinaryNotFoundError,
+    KustomizeError,
+)
 from system_operations_manager.plugins.kubernetes.commands.kustomize import (
     register_kustomize_commands,
 )
@@ -77,3 +81,35 @@ class TestOverlaysCommand:
 
         assert result.exit_code == 0
         mock_kustomize_manager.list_overlays.assert_called_once()
+
+    def test_overlays_binary_not_found(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_kustomize_manager: MagicMock,
+        tmp_kustomization_dir: Path,
+    ) -> None:
+        """overlays should handle KustomizeBinaryNotFoundError (lines 313-314)."""
+        mock_kustomize_manager.list_overlays.side_effect = KustomizeBinaryNotFoundError()
+
+        result = cli_runner.invoke(app, ["kustomize", "overlays", str(tmp_kustomization_dir)])
+
+        assert result.exit_code == 1
+        assert "not found" in result.stdout
+
+    def test_overlays_kustomize_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_kustomize_manager: MagicMock,
+        tmp_kustomization_dir: Path,
+    ) -> None:
+        """overlays should handle KustomizeError (lines 315-316)."""
+        mock_kustomize_manager.list_overlays.side_effect = KustomizeError(
+            message="Failed to list overlays", stderr=None
+        )
+
+        result = cli_runner.invoke(app, ["kustomize", "overlays", str(tmp_kustomization_dir)])
+
+        assert result.exit_code == 1
+        assert "Kustomize error" in result.stdout

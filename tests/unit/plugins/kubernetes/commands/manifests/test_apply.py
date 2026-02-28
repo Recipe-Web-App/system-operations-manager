@@ -142,3 +142,91 @@ class TestApplyCommand:
         result = cli_runner.invoke(app, ["manifests", "apply", str(tmp_manifest_file)])
 
         assert result.exit_code == 1
+
+    def test_apply_no_manifests(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_manifest_manager: MagicMock,
+        tmp_manifest_file: Path,
+    ) -> None:
+        """apply should print warning and return when no manifests found (lines 127-128)."""
+        mock_manifest_manager.load_manifests.return_value = []
+
+        result = cli_runner.invoke(app, ["manifests", "apply", str(tmp_manifest_file)])
+
+        assert result.exit_code == 0
+        assert "no manifests" in result.stdout.lower()
+        mock_manifest_manager.apply_manifests.assert_not_called()
+
+    def test_apply_json_output(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_manifest_manager: MagicMock,
+        sample_valid_manifest: dict[str, object],
+        sample_validation_ok: ValidationResult,
+        sample_apply_created: ApplyResult,
+        tmp_manifest_file: Path,
+    ) -> None:
+        """apply --output json should use formatter.format_dict (line 154)."""
+        mock_manifest_manager.load_manifests.return_value = [sample_valid_manifest]
+        mock_manifest_manager.validate_manifests.return_value = [sample_validation_ok]
+        mock_manifest_manager.apply_manifests.return_value = [sample_apply_created]
+
+        result = cli_runner.invoke(
+            app, ["manifests", "apply", str(tmp_manifest_file), "--output", "json"]
+        )
+
+        assert result.exit_code == 0
+
+    def test_apply_resource_failure_exits_1(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_manifest_manager: MagicMock,
+        sample_valid_manifest: dict[str, object],
+        sample_validation_ok: ValidationResult,
+        sample_apply_failed: ApplyResult,
+        tmp_manifest_file: Path,
+    ) -> None:
+        """apply should exit 1 when any apply result fails (line 161)."""
+        mock_manifest_manager.load_manifests.return_value = [sample_valid_manifest]
+        mock_manifest_manager.validate_manifests.return_value = [sample_validation_ok]
+        mock_manifest_manager.apply_manifests.return_value = [sample_apply_failed]
+
+        result = cli_runner.invoke(app, ["manifests", "apply", str(tmp_manifest_file)])
+
+        assert result.exit_code == 1
+
+    def test_apply_file_not_found_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_manifest_manager: MagicMock,
+        tmp_manifest_file: Path,
+    ) -> None:
+        """apply should handle FileNotFoundError gracefully (lines 164-165)."""
+        mock_manifest_manager.load_manifests.side_effect = FileNotFoundError(
+            "Manifest file not found"
+        )
+
+        result = cli_runner.invoke(app, ["manifests", "apply", str(tmp_manifest_file)])
+
+        assert result.exit_code == 1
+        assert "Error" in result.stdout
+
+    def test_apply_value_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_manifest_manager: MagicMock,
+        tmp_manifest_file: Path,
+    ) -> None:
+        """apply should handle ValueError gracefully (lines 164-165)."""
+        mock_manifest_manager.load_manifests.side_effect = ValueError("Invalid YAML content")
+
+        result = cli_runner.invoke(app, ["manifests", "apply", str(tmp_manifest_file)])
+
+        assert result.exit_code == 1
+        assert "Error" in result.stdout

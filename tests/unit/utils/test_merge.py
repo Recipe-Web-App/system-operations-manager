@@ -12,6 +12,7 @@ from system_operations_manager.utils.merge import (
 )
 
 
+@pytest.mark.unit
 class TestAnalyzeMergePotential:
     """Tests for analyze_merge_potential function."""
 
@@ -103,6 +104,7 @@ class TestAnalyzeMergePotential:
         assert analysis.can_auto_merge is False
 
 
+@pytest.mark.unit
 class TestComputeAutoMerge:
     """Tests for compute_auto_merge function."""
 
@@ -190,6 +192,7 @@ class TestComputeAutoMerge:
         assert merged["a"] == 1
 
 
+@pytest.mark.unit
 class TestValidateMergedState:
     """Tests for validate_merged_state function."""
 

@@ -12,7 +12,7 @@ import subprocess
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -34,7 +34,7 @@ class DeploymentError(Exception):
         super().__init__(message)
 
 
-class DeploymentStatus(str, Enum):
+class DeploymentStatus(StrEnum):
     """Status of Kong deployment."""
 
     NOT_INSTALLED = "not_installed"

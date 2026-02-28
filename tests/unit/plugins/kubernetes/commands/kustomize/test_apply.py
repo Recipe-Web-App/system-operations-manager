@@ -13,6 +13,10 @@ from typer.testing import CliRunner
 from system_operations_manager.integrations.kubernetes.exceptions import (
     KubernetesConnectionError,
 )
+from system_operations_manager.integrations.kubernetes.kustomize_client import (
+    KustomizeBinaryNotFoundError,
+    KustomizeError,
+)
 from system_operations_manager.plugins.kubernetes.commands.kustomize import (
     register_kustomize_commands,
 )
@@ -125,3 +129,69 @@ class TestApplyCommand:
         result = cli_runner.invoke(app, ["kustomize", "apply", str(tmp_kustomization_dir)])
 
         assert result.exit_code == 1
+
+    def test_apply_json_output(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_kustomize_manager: MagicMock,
+        sample_apply_created: ApplyResult,
+        tmp_kustomization_dir: Path,
+    ) -> None:
+        """apply --output json should use formatter.format_dict (line 218)."""
+        mock_kustomize_manager.apply.return_value = [sample_apply_created]
+
+        result = cli_runner.invoke(
+            app, ["kustomize", "apply", str(tmp_kustomization_dir), "--output", "json"]
+        )
+
+        assert result.exit_code == 0
+        mock_kustomize_manager.apply.assert_called_once()
+
+    def test_apply_binary_not_found(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_kustomize_manager: MagicMock,
+        tmp_kustomization_dir: Path,
+    ) -> None:
+        """apply should handle KustomizeBinaryNotFoundError (line 227)."""
+        mock_kustomize_manager.apply.side_effect = KustomizeBinaryNotFoundError()
+
+        result = cli_runner.invoke(app, ["kustomize", "apply", str(tmp_kustomization_dir)])
+
+        assert result.exit_code == 1
+        assert "not found" in result.stdout
+
+    def test_apply_table_output_prints_total(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_kustomize_manager: MagicMock,
+        sample_apply_created: ApplyResult,
+        tmp_kustomization_dir: Path,
+    ) -> None:
+        """apply table output should print total resource count (line 415)."""
+        mock_kustomize_manager.apply.return_value = [sample_apply_created]
+
+        result = cli_runner.invoke(app, ["kustomize", "apply", str(tmp_kustomization_dir)])
+
+        assert result.exit_code == 0
+        assert "resource(s)" in result.stdout
+
+    def test_apply_kustomize_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_kustomize_manager: MagicMock,
+        tmp_kustomization_dir: Path,
+    ) -> None:
+        """apply should handle KustomizeError gracefully (line 229)."""
+        mock_kustomize_manager.apply.side_effect = KustomizeError(
+            message="Apply failed", stderr=None
+        )
+
+        result = cli_runner.invoke(app, ["kustomize", "apply", str(tmp_kustomization_dir)])
+
+        assert result.exit_code == 1
+        assert "Kustomize error" in result.stdout

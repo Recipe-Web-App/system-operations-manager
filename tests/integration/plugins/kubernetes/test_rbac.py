@@ -2,13 +2,17 @@
 
 import pytest
 
+from system_operations_manager.services.kubernetes import RBACManager
+
 
 @pytest.mark.integration
 @pytest.mark.kubernetes
 class TestServiceAccountCRUD:
     """Test CRUD operations for Kubernetes service accounts."""
 
-    def test_create_service_account(self, rbac_manager, test_namespace, unique_name):
+    def test_create_service_account(
+        self, rbac_manager: RBACManager, test_namespace: str, unique_name: str
+    ) -> None:
         """Test creating a service account."""
         sa_name = f"sa-{unique_name}"
 
@@ -21,7 +25,9 @@ class TestServiceAccountCRUD:
         assert sa.name == sa_name
         assert sa.namespace == test_namespace
 
-    def test_list_service_accounts(self, rbac_manager, test_namespace, unique_name):
+    def test_list_service_accounts(
+        self, rbac_manager: RBACManager, test_namespace: str, unique_name: str
+    ) -> None:
         """Test listing service accounts (default SA should exist)."""
         sa_name = f"sa-{unique_name}"
 
@@ -41,7 +47,9 @@ class TestServiceAccountCRUD:
         assert "default" in sa_names
         assert sa_name in sa_names
 
-    def test_get_service_account(self, rbac_manager, test_namespace, unique_name):
+    def test_get_service_account(
+        self, rbac_manager: RBACManager, test_namespace: str, unique_name: str
+    ) -> None:
         """Test getting a specific service account."""
         sa_name = f"sa-{unique_name}"
 
@@ -57,7 +65,9 @@ class TestServiceAccountCRUD:
         assert sa.name == created_sa.name
         assert sa.namespace == created_sa.namespace
 
-    def test_delete_service_account(self, rbac_manager, test_namespace, unique_name):
+    def test_delete_service_account(
+        self, rbac_manager: RBACManager, test_namespace: str, unique_name: str
+    ) -> None:
         """Test deleting a service account."""
         sa_name = f"sa-{unique_name}"
 
@@ -81,7 +91,9 @@ class TestServiceAccountCRUD:
 class TestRoleCRUD:
     """Test CRUD operations for Kubernetes roles and role bindings."""
 
-    def test_create_role(self, rbac_manager, test_namespace, unique_name):
+    def test_create_role(
+        self, rbac_manager: RBACManager, test_namespace: str, unique_name: str
+    ) -> None:
         """Test creating a role."""
         role_name = f"role-{unique_name}"
 
@@ -103,7 +115,9 @@ class TestRoleCRUD:
         assert role.name == role_name
         assert role.namespace == test_namespace
 
-    def test_list_roles(self, rbac_manager, test_namespace, unique_name):
+    def test_list_roles(
+        self, rbac_manager: RBACManager, test_namespace: str, unique_name: str
+    ) -> None:
         """Test listing roles in a namespace."""
         role_name = f"role-{unique_name}"
 
@@ -129,7 +143,9 @@ class TestRoleCRUD:
         role_names = [r.name for r in roles]
         assert role_name in role_names
 
-    def test_create_role_binding(self, rbac_manager, test_namespace, unique_name):
+    def test_create_role_binding(
+        self, rbac_manager: RBACManager, test_namespace: str, unique_name: str
+    ) -> None:
         """Test creating a role binding."""
         role_name = f"role-{unique_name}"
         sa_name = f"sa-{unique_name}"
@@ -182,7 +198,9 @@ class TestRoleCRUD:
         assert rb.name == rb_name
         assert rb.namespace == test_namespace
 
-    def test_list_role_bindings(self, rbac_manager, test_namespace, unique_name):
+    def test_list_role_bindings(
+        self, rbac_manager: RBACManager, test_namespace: str, unique_name: str
+    ) -> None:
         """Test listing role bindings in a namespace."""
         role_name = f"role-{unique_name}"
         sa_name = f"sa-{unique_name}"

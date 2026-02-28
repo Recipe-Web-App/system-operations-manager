@@ -274,3 +274,203 @@ class TestVaultConfigureEnvCommand:
 
         assert result.exit_code == 0
         mock_vault_manager.configure_env.assert_called_once()
+
+
+class TestVaultListCommandError:
+    """Tests for KongAPIError handling in vault list command."""
+
+    @pytest.fixture
+    def app(self, get_vault_manager: Callable[[], MagicMock]) -> typer.Typer:
+        """Create app with vault commands."""
+        return create_enterprise_app(register_vault_commands, get_vault_manager)
+
+    @pytest.mark.unit
+    def test_list_vaults_api_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_vault_manager: MagicMock,
+    ) -> None:
+        """list should handle KongAPIError gracefully."""
+        from system_operations_manager.integrations.kong.exceptions import KongAPIError
+
+        mock_vault_manager.list.side_effect = KongAPIError("Connection failed", status_code=500)
+
+        result = cli_runner.invoke(app, ["vaults", "list"])
+
+        assert result.exit_code == 1
+        assert "error" in result.output.lower()
+
+
+class TestVaultDeleteCommandError:
+    """Tests for KongAPIError handling in vault delete command."""
+
+    @pytest.fixture
+    def app(self, get_vault_manager: Callable[[], MagicMock]) -> typer.Typer:
+        """Create app with vault commands."""
+        return create_enterprise_app(register_vault_commands, get_vault_manager)
+
+    @pytest.mark.unit
+    def test_delete_vault_api_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_vault_manager: MagicMock,
+    ) -> None:
+        """delete should handle KongAPIError gracefully."""
+        from system_operations_manager.integrations.kong.exceptions import KongAPIError
+
+        mock_vault_manager.get.side_effect = KongAPIError("Not found", status_code=404)
+
+        result = cli_runner.invoke(app, ["vaults", "delete", "nonexistent", "--force"])
+
+        assert result.exit_code == 1
+        assert "error" in result.output.lower()
+
+
+class TestVaultConfigureHCVCommandError:
+    """Tests for KongAPIError handling in vault configure hcv command."""
+
+    @pytest.fixture
+    def app(self, get_vault_manager: Callable[[], MagicMock]) -> typer.Typer:
+        """Create app with vault commands."""
+        return create_enterprise_app(register_vault_commands, get_vault_manager)
+
+    @pytest.mark.unit
+    def test_configure_hcv_api_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_vault_manager: MagicMock,
+    ) -> None:
+        """configure hcv should handle KongAPIError gracefully."""
+        from system_operations_manager.integrations.kong.exceptions import KongAPIError
+
+        mock_vault_manager.configure_hcv.side_effect = KongAPIError("Bad request", status_code=400)
+
+        result = cli_runner.invoke(
+            app, ["vaults", "configure", "hcv", "bad-hcv", "--host", "vault.example.com"]
+        )
+
+        assert result.exit_code == 1
+        assert "error" in result.output.lower()
+
+
+class TestVaultConfigureAWSCommandError:
+    """Tests for KongAPIError handling in vault configure aws command."""
+
+    @pytest.fixture
+    def app(self, get_vault_manager: Callable[[], MagicMock]) -> typer.Typer:
+        """Create app with vault commands."""
+        return create_enterprise_app(register_vault_commands, get_vault_manager)
+
+    @pytest.mark.unit
+    def test_configure_aws_api_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_vault_manager: MagicMock,
+    ) -> None:
+        """configure aws should handle KongAPIError gracefully."""
+        from system_operations_manager.integrations.kong.exceptions import KongAPIError
+
+        mock_vault_manager.configure_aws.side_effect = KongAPIError("Bad request", status_code=400)
+
+        result = cli_runner.invoke(
+            app, ["vaults", "configure", "aws", "bad-aws", "--region", "us-east-1"]
+        )
+
+        assert result.exit_code == 1
+        assert "error" in result.output.lower()
+
+
+class TestVaultConfigureGCPCommandError:
+    """Tests for KongAPIError handling in vault configure gcp command."""
+
+    @pytest.fixture
+    def app(self, get_vault_manager: Callable[[], MagicMock]) -> typer.Typer:
+        """Create app with vault commands."""
+        return create_enterprise_app(register_vault_commands, get_vault_manager)
+
+    @pytest.mark.unit
+    def test_configure_gcp_api_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_vault_manager: MagicMock,
+    ) -> None:
+        """configure gcp should handle KongAPIError gracefully."""
+        from system_operations_manager.integrations.kong.exceptions import KongAPIError
+
+        mock_vault_manager.configure_gcp.side_effect = KongAPIError("Bad request", status_code=400)
+
+        result = cli_runner.invoke(
+            app, ["vaults", "configure", "gcp", "bad-gcp", "--project-id", "bad-project"]
+        )
+
+        assert result.exit_code == 1
+        assert "error" in result.output.lower()
+
+
+class TestVaultConfigureAzureCommandError:
+    """Tests for KongAPIError handling in vault configure azure command."""
+
+    @pytest.fixture
+    def app(self, get_vault_manager: Callable[[], MagicMock]) -> typer.Typer:
+        """Create app with vault commands."""
+        return create_enterprise_app(register_vault_commands, get_vault_manager)
+
+    @pytest.mark.unit
+    def test_configure_azure_api_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_vault_manager: MagicMock,
+    ) -> None:
+        """configure azure should handle KongAPIError gracefully."""
+        from system_operations_manager.integrations.kong.exceptions import KongAPIError
+
+        mock_vault_manager.configure_azure.side_effect = KongAPIError(
+            "Bad request", status_code=400
+        )
+
+        result = cli_runner.invoke(
+            app,
+            [
+                "vaults",
+                "configure",
+                "azure",
+                "bad-azure",
+                "--vault-uri",
+                "https://myvault.vault.azure.net",
+            ],
+        )
+
+        assert result.exit_code == 1
+        assert "error" in result.output.lower()
+
+
+class TestVaultConfigureEnvCommandError:
+    """Tests for KongAPIError handling in vault configure env command."""
+
+    @pytest.fixture
+    def app(self, get_vault_manager: Callable[[], MagicMock]) -> typer.Typer:
+        """Create app with vault commands."""
+        return create_enterprise_app(register_vault_commands, get_vault_manager)
+
+    @pytest.mark.unit
+    def test_configure_env_api_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_vault_manager: MagicMock,
+    ) -> None:
+        """configure env should handle KongAPIError gracefully."""
+        from system_operations_manager.integrations.kong.exceptions import KongAPIError
+
+        mock_vault_manager.configure_env.side_effect = KongAPIError("Bad request", status_code=400)
+
+        result = cli_runner.invoke(app, ["vaults", "configure", "env", "bad-env"])
+
+        assert result.exit_code == 1
+        assert "error" in result.output.lower()

@@ -7,7 +7,7 @@ support for drift detection between sources.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from system_operations_manager.integrations.kong.models.base import KongEntityBase
 
 
-class EntitySource(str, Enum):
+class EntitySource(StrEnum):
     """Source of a Kong entity."""
 
     GATEWAY = "gateway"

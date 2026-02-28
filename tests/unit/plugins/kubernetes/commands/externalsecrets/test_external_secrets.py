@@ -10,6 +10,7 @@ import typer
 from typer.testing import CliRunner
 
 from system_operations_manager.integrations.kubernetes.exceptions import (
+    KubernetesError,
     KubernetesNotFoundError,
 )
 from system_operations_manager.plugins.kubernetes.commands.externalsecrets import (
@@ -225,3 +226,84 @@ class TestExternalSecretCommands:
 
         assert result.exit_code == 1
         assert "not found" in result.stdout.lower()
+
+    def test_list_external_secrets_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_external_secrets_manager: MagicMock,
+    ) -> None:
+        """list should handle KubernetesError."""
+        mock_external_secrets_manager.list_external_secrets.side_effect = KubernetesError(
+            "connection failed"
+        )
+
+        result = cli_runner.invoke(app, ["external-secrets", "list"])
+
+        assert result.exit_code == 1
+
+    def test_create_external_secret_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_external_secrets_manager: MagicMock,
+    ) -> None:
+        """create should handle KubernetesError."""
+        mock_external_secrets_manager.create_external_secret.side_effect = KubernetesError(
+            "connection failed"
+        )
+
+        result = cli_runner.invoke(
+            app,
+            [
+                "external-secrets",
+                "create",
+                "my-secret",
+                "--store",
+                "vault-store",
+            ],
+        )
+
+        assert result.exit_code == 1
+
+    def test_delete_external_secret_aborts_without_confirmation(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_external_secrets_manager: MagicMock,
+    ) -> None:
+        """delete without --force should abort when user declines."""
+        result = cli_runner.invoke(app, ["external-secrets", "delete", "my-secret"], input="n\n")
+
+        assert result.exit_code != 0
+        mock_external_secrets_manager.delete_external_secret.assert_not_called()
+
+    def test_delete_external_secret_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_external_secrets_manager: MagicMock,
+    ) -> None:
+        """delete should handle KubernetesError."""
+        mock_external_secrets_manager.delete_external_secret.side_effect = KubernetesError(
+            "connection failed"
+        )
+
+        result = cli_runner.invoke(app, ["external-secrets", "delete", "my-secret", "--force"])
+
+        assert result.exit_code == 1
+
+    def test_sync_status_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_external_secrets_manager: MagicMock,
+    ) -> None:
+        """sync-status should handle KubernetesError."""
+        mock_external_secrets_manager.get_sync_status.side_effect = KubernetesError(
+            "connection failed"
+        )
+
+        result = cli_runner.invoke(app, ["external-secrets", "sync-status", "my-secret"])
+
+        assert result.exit_code == 1

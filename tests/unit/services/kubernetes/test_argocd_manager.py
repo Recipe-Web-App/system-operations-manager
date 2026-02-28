@@ -483,3 +483,353 @@ class TestArgoCDManager:
             APP_PROJECT_PLURAL,
             "my-project",
         )
+
+
+@pytest.mark.unit
+@pytest.mark.kubernetes
+class TestArgoCDManagerListProjectsLabelSelector:
+    """Tests for list_projects label selector branch."""
+
+    def test_list_projects_with_label_selector(
+        self,
+        argocd_manager: ArgoCDManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """list_projects should pass label selector to the custom_objects API."""
+        mock_k8s_client.custom_objects.list_namespaced_custom_object.return_value = {"items": []}
+
+        argocd_manager.list_projects(label_selector="team=platform")
+
+        mock_k8s_client.custom_objects.list_namespaced_custom_object.assert_called_once_with(
+            ARGOCD_GROUP,
+            ARGOCD_VERSION,
+            ARGOCD_NAMESPACE,
+            APP_PROJECT_PLURAL,
+            label_selector="team=platform",
+        )
+
+
+@pytest.mark.unit
+@pytest.mark.kubernetes
+class TestArgoCDManagerApplicationErrors:
+    """Tests for error handling in application operations."""
+
+    def test_list_applications_propagates_api_error(
+        self,
+        argocd_manager: ArgoCDManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """list_applications should invoke _handle_api_error on exception."""
+        api_error = RuntimeError("connection refused")
+        mock_k8s_client.custom_objects.list_namespaced_custom_object.side_effect = api_error
+        sentinel = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.side_effect = sentinel
+
+        with pytest.raises(RuntimeError, match="translated"):
+            argocd_manager.list_applications()
+
+        mock_k8s_client.translate_api_exception.assert_called_once_with(
+            api_error,
+            resource_type="Application",
+            resource_name=None,
+            namespace=ARGOCD_NAMESPACE,
+        )
+
+    def test_get_application_propagates_api_error(
+        self,
+        argocd_manager: ArgoCDManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """get_application should invoke _handle_api_error on exception."""
+        api_error = RuntimeError("not found")
+        mock_k8s_client.custom_objects.get_namespaced_custom_object.side_effect = api_error
+        sentinel = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.side_effect = sentinel
+
+        with pytest.raises(RuntimeError, match="translated"):
+            argocd_manager.get_application("missing-app")
+
+        mock_k8s_client.translate_api_exception.assert_called_once_with(
+            api_error,
+            resource_type="Application",
+            resource_name="missing-app",
+            namespace=ARGOCD_NAMESPACE,
+        )
+
+    def test_create_application_propagates_api_error(
+        self,
+        argocd_manager: ArgoCDManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """create_application should invoke _handle_api_error on exception."""
+        api_error = RuntimeError("already exists")
+        mock_k8s_client.custom_objects.create_namespaced_custom_object.side_effect = api_error
+        sentinel = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.side_effect = sentinel
+
+        with pytest.raises(RuntimeError, match="translated"):
+            argocd_manager.create_application(
+                "my-app",
+                repo_url="https://github.com/org/repo",
+                path="k8s",
+            )
+
+        mock_k8s_client.translate_api_exception.assert_called_once_with(
+            api_error,
+            resource_type="Application",
+            resource_name="my-app",
+            namespace=ARGOCD_NAMESPACE,
+        )
+
+    def test_delete_application_propagates_api_error(
+        self,
+        argocd_manager: ArgoCDManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """delete_application should invoke _handle_api_error on exception."""
+        api_error = RuntimeError("forbidden")
+        mock_k8s_client.custom_objects.delete_namespaced_custom_object.side_effect = api_error
+        sentinel = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.side_effect = sentinel
+
+        with pytest.raises(RuntimeError, match="translated"):
+            argocd_manager.delete_application("my-app")
+
+        mock_k8s_client.translate_api_exception.assert_called_once_with(
+            api_error,
+            resource_type="Application",
+            resource_name="my-app",
+            namespace=ARGOCD_NAMESPACE,
+        )
+
+    def test_sync_application_propagates_api_error(
+        self,
+        argocd_manager: ArgoCDManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """sync_application should invoke _handle_api_error on exception."""
+        api_error = RuntimeError("timeout")
+        mock_k8s_client.custom_objects.patch_namespaced_custom_object.side_effect = api_error
+        sentinel = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.side_effect = sentinel
+
+        with pytest.raises(RuntimeError, match="translated"):
+            argocd_manager.sync_application("my-app")
+
+        mock_k8s_client.translate_api_exception.assert_called_once_with(
+            api_error,
+            resource_type="Application",
+            resource_name="my-app",
+            namespace=ARGOCD_NAMESPACE,
+        )
+
+    def test_get_application_health_propagates_api_error(
+        self,
+        argocd_manager: ArgoCDManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """get_application_health should invoke _handle_api_error on exception."""
+        api_error = RuntimeError("server error")
+        mock_k8s_client.custom_objects.get_namespaced_custom_object.side_effect = api_error
+        sentinel = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.side_effect = sentinel
+
+        with pytest.raises(RuntimeError, match="translated"):
+            argocd_manager.get_application_health("my-app")
+
+        mock_k8s_client.translate_api_exception.assert_called_once_with(
+            api_error,
+            resource_type="Application",
+            resource_name="my-app",
+            namespace=ARGOCD_NAMESPACE,
+        )
+
+    def test_diff_application_propagates_api_error(
+        self,
+        argocd_manager: ArgoCDManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """diff_application should invoke _handle_api_error on exception."""
+        api_error = RuntimeError("unauthorized")
+        mock_k8s_client.custom_objects.get_namespaced_custom_object.side_effect = api_error
+        sentinel = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.side_effect = sentinel
+
+        with pytest.raises(RuntimeError, match="translated"):
+            argocd_manager.diff_application("my-app")
+
+        mock_k8s_client.translate_api_exception.assert_called_once_with(
+            api_error,
+            resource_type="Application",
+            resource_name="my-app",
+            namespace=ARGOCD_NAMESPACE,
+        )
+
+
+@pytest.mark.unit
+@pytest.mark.kubernetes
+class TestArgoCDManagerRollbackEdgeCases:
+    """Tests for rollback_application edge cases and error handling."""
+
+    def test_rollback_application_no_history_returns_error_dict(
+        self,
+        argocd_manager: ArgoCDManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """rollback_application should return error dict when no history exists."""
+        mock_k8s_client.custom_objects.get_namespaced_custom_object.return_value = {"status": {}}
+        mock_k8s_client.custom_objects.patch_namespaced_custom_object.return_value = {}
+
+        result = argocd_manager.rollback_application("my-app")
+
+        assert result["name"] == "my-app"
+        assert result["namespace"] == ARGOCD_NAMESPACE
+        assert "error" in result
+        assert result["error"] == "No deployment history available"
+        mock_k8s_client.custom_objects.patch_namespaced_custom_object.assert_not_called()
+
+    def test_rollback_application_empty_history_list_returns_error_dict(
+        self,
+        argocd_manager: ArgoCDManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """rollback_application should return error dict when history list is empty."""
+        mock_k8s_client.custom_objects.get_namespaced_custom_object.return_value = {
+            "status": {"history": []}
+        }
+        mock_k8s_client.custom_objects.patch_namespaced_custom_object.return_value = {}
+
+        result = argocd_manager.rollback_application("my-app")
+
+        assert result["error"] == "No deployment history available"
+        mock_k8s_client.custom_objects.patch_namespaced_custom_object.assert_not_called()
+
+    def test_rollback_application_single_history_entry_uses_last(
+        self,
+        argocd_manager: ArgoCDManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """rollback_application with single history entry falls back to history[-1]."""
+        mock_k8s_client.custom_objects.get_namespaced_custom_object.return_value = {
+            "status": {
+                "history": [
+                    {"revision": "only123"},
+                ]
+            }
+        }
+        mock_k8s_client.custom_objects.patch_namespaced_custom_object.return_value = {}
+
+        result = argocd_manager.rollback_application("my-app")
+
+        assert result["target_revision"] == "only123"
+
+    def test_rollback_application_propagates_api_error(
+        self,
+        argocd_manager: ArgoCDManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """rollback_application should invoke _handle_api_error on exception."""
+        api_error = RuntimeError("api failure")
+        mock_k8s_client.custom_objects.get_namespaced_custom_object.side_effect = api_error
+        sentinel = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.side_effect = sentinel
+
+        with pytest.raises(RuntimeError, match="translated"):
+            argocd_manager.rollback_application("my-app")
+
+        mock_k8s_client.translate_api_exception.assert_called_once_with(
+            api_error,
+            resource_type="Application",
+            resource_name="my-app",
+            namespace=ARGOCD_NAMESPACE,
+        )
+
+
+@pytest.mark.unit
+@pytest.mark.kubernetes
+class TestArgoCDManagerProjectErrors:
+    """Tests for error handling in AppProject operations."""
+
+    def test_list_projects_propagates_api_error(
+        self,
+        argocd_manager: ArgoCDManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """list_projects should invoke _handle_api_error on exception."""
+        api_error = RuntimeError("connection refused")
+        mock_k8s_client.custom_objects.list_namespaced_custom_object.side_effect = api_error
+        sentinel = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.side_effect = sentinel
+
+        with pytest.raises(RuntimeError, match="translated"):
+            argocd_manager.list_projects()
+
+        mock_k8s_client.translate_api_exception.assert_called_once_with(
+            api_error,
+            resource_type="AppProject",
+            resource_name=None,
+            namespace=ARGOCD_NAMESPACE,
+        )
+
+    def test_get_project_propagates_api_error(
+        self,
+        argocd_manager: ArgoCDManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """get_project should invoke _handle_api_error on exception."""
+        api_error = RuntimeError("not found")
+        mock_k8s_client.custom_objects.get_namespaced_custom_object.side_effect = api_error
+        sentinel = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.side_effect = sentinel
+
+        with pytest.raises(RuntimeError, match="translated"):
+            argocd_manager.get_project("missing-project")
+
+        mock_k8s_client.translate_api_exception.assert_called_once_with(
+            api_error,
+            resource_type="AppProject",
+            resource_name="missing-project",
+            namespace=ARGOCD_NAMESPACE,
+        )
+
+    def test_create_project_propagates_api_error(
+        self,
+        argocd_manager: ArgoCDManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """create_project should invoke _handle_api_error on exception."""
+        api_error = RuntimeError("conflict")
+        mock_k8s_client.custom_objects.create_namespaced_custom_object.side_effect = api_error
+        sentinel = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.side_effect = sentinel
+
+        with pytest.raises(RuntimeError, match="translated"):
+            argocd_manager.create_project("my-project")
+
+        mock_k8s_client.translate_api_exception.assert_called_once_with(
+            api_error,
+            resource_type="AppProject",
+            resource_name="my-project",
+            namespace=ARGOCD_NAMESPACE,
+        )
+
+    def test_delete_project_propagates_api_error(
+        self,
+        argocd_manager: ArgoCDManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """delete_project should invoke _handle_api_error on exception."""
+        api_error = RuntimeError("forbidden")
+        mock_k8s_client.custom_objects.delete_namespaced_custom_object.side_effect = api_error
+        sentinel = RuntimeError("translated")
+        mock_k8s_client.translate_api_exception.side_effect = sentinel
+
+        with pytest.raises(RuntimeError, match="translated"):
+            argocd_manager.delete_project("my-project")
+
+        mock_k8s_client.translate_api_exception.assert_called_once_with(
+            api_error,
+            resource_type="AppProject",
+            resource_name="my-project",
+            namespace=ARGOCD_NAMESPACE,
+        )

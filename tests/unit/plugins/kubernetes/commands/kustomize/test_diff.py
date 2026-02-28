@@ -13,6 +13,10 @@ from typer.testing import CliRunner
 from system_operations_manager.integrations.kubernetes.exceptions import (
     KubernetesConnectionError,
 )
+from system_operations_manager.integrations.kubernetes.kustomize_client import (
+    KustomizeBinaryNotFoundError,
+    KustomizeError,
+)
 from system_operations_manager.plugins.kubernetes.commands.kustomize import (
     register_kustomize_commands,
 )
@@ -96,3 +100,95 @@ class TestDiffCommand:
         result = cli_runner.invoke(app, ["kustomize", "diff", str(tmp_kustomization_dir)])
 
         assert result.exit_code == 1
+
+    def test_diff_json_output(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_kustomize_manager: MagicMock,
+        sample_diff_changed: DiffResult,
+        tmp_kustomization_dir: Path,
+    ) -> None:
+        """diff --output json should use formatter.format_dict (line 264)."""
+        mock_kustomize_manager.diff.return_value = [sample_diff_changed]
+
+        result = cli_runner.invoke(
+            app, ["kustomize", "diff", str(tmp_kustomization_dir), "--output", "json"]
+        )
+
+        assert result.exit_code == 0
+        mock_kustomize_manager.diff.assert_called_once()
+
+    def test_diff_binary_not_found(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_kustomize_manager: MagicMock,
+        tmp_kustomization_dir: Path,
+    ) -> None:
+        """diff should handle KustomizeBinaryNotFoundError (line 270)."""
+        mock_kustomize_manager.diff.side_effect = KustomizeBinaryNotFoundError()
+
+        result = cli_runner.invoke(app, ["kustomize", "diff", str(tmp_kustomization_dir)])
+
+        assert result.exit_code == 1
+        assert "not found" in result.stdout
+
+    def test_diff_table_shows_normal_diff_lines(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_kustomize_manager: MagicMock,
+        tmp_kustomization_dir: Path,
+    ) -> None:
+        """diff table should print unchanged context lines in diff (line 431)."""
+        diff_result = DiffResult(
+            resource="ConfigMap/test",
+            namespace="default",
+            diff="context line\n+added line\n-removed line\n@@ hunk @@\nnormal line",
+            exists_on_cluster=True,
+            identical=False,
+        )
+        mock_kustomize_manager.diff.return_value = [diff_result]
+
+        result = cli_runner.invoke(app, ["kustomize", "diff", str(tmp_kustomization_dir)])
+
+        assert result.exit_code == 0
+        assert "ConfigMap/test" in result.stdout
+
+    def test_diff_table_shows_new_resource_status(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_kustomize_manager: MagicMock,
+        tmp_kustomization_dir: Path,
+    ) -> None:
+        """diff table should show New status when resource does not exist on cluster (line 415)."""
+        diff_result = DiffResult(
+            resource="ConfigMap/brand-new",
+            namespace="default",
+            diff="+new line",
+            exists_on_cluster=False,
+            identical=False,
+        )
+        mock_kustomize_manager.diff.return_value = [diff_result]
+
+        result = cli_runner.invoke(app, ["kustomize", "diff", str(tmp_kustomization_dir)])
+
+        assert result.exit_code == 0
+        assert "ConfigMap/brand-new" in result.stdout
+
+    def test_diff_kustomize_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_kustomize_manager: MagicMock,
+        tmp_kustomization_dir: Path,
+    ) -> None:
+        """diff should handle KustomizeError gracefully (line 272)."""
+        mock_kustomize_manager.diff.side_effect = KustomizeError(message="Diff failed", stderr=None)
+
+        result = cli_runner.invoke(app, ["kustomize", "diff", str(tmp_kustomization_dir)])
+
+        assert result.exit_code == 1
+        assert "Kustomize error" in result.stdout

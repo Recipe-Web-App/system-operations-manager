@@ -63,6 +63,13 @@ class TestPrometheusConfig:
             PrometheusConfig(timeout=-1)
 
     @pytest.mark.unit
+    def test_timeout_validation_accepts_positive(self) -> None:
+        """Timeout validator should return positive value unchanged."""
+        config = PrometheusConfig(timeout=60)
+
+        assert config.timeout == 60
+
+    @pytest.mark.unit
     def test_basic_auth_config(self) -> None:
         """Config should support basic auth."""
         config = PrometheusConfig(
@@ -135,6 +142,25 @@ class TestElasticsearchConfig:
         assert config.cloud_id == "my-deployment:xyz"
         assert config.api_key == "my-api-key"
 
+    @pytest.mark.unit
+    def test_timeout_validation_rejects_zero(self) -> None:
+        """Timeout must be positive."""
+        with pytest.raises(ValidationError):
+            ElasticsearchConfig(timeout=0)
+
+    @pytest.mark.unit
+    def test_timeout_validation_rejects_negative(self) -> None:
+        """Timeout must be a positive integer."""
+        with pytest.raises(ValidationError):
+            ElasticsearchConfig(timeout=-5)
+
+    @pytest.mark.unit
+    def test_timeout_validation_accepts_positive(self) -> None:
+        """Timeout validator should return positive value unchanged."""
+        config = ElasticsearchConfig(timeout=120)
+
+        assert config.timeout == 120
+
 
 class TestLokiConfig:
     """Tests for LokiConfig."""
@@ -169,6 +195,31 @@ class TestLokiConfig:
         assert config.username == "user"
         assert config.password == "pass"
 
+    @pytest.mark.unit
+    def test_url_validation_rejects_invalid_scheme(self) -> None:
+        """URL must start with http:// or https://."""
+        with pytest.raises(ValidationError):
+            LokiConfig(url="grpc://localhost:3100")
+
+    @pytest.mark.unit
+    def test_timeout_validation_rejects_zero(self) -> None:
+        """Timeout must be positive."""
+        with pytest.raises(ValidationError):
+            LokiConfig(timeout=0)
+
+    @pytest.mark.unit
+    def test_timeout_validation_rejects_negative(self) -> None:
+        """Timeout must be a positive integer."""
+        with pytest.raises(ValidationError):
+            LokiConfig(timeout=-1)
+
+    @pytest.mark.unit
+    def test_timeout_validation_accepts_positive(self) -> None:
+        """Timeout validator should return positive value unchanged."""
+        config = LokiConfig(timeout=45)
+
+        assert config.timeout == 45
+
 
 class TestJaegerConfig:
     """Tests for JaegerConfig."""
@@ -199,6 +250,31 @@ class TestJaegerConfig:
         assert config.username == "admin"
         assert config.password == "secret"
 
+    @pytest.mark.unit
+    def test_url_validation_rejects_invalid_scheme(self) -> None:
+        """query_url must start with http:// or https://."""
+        with pytest.raises(ValidationError):
+            JaegerConfig(query_url="grpc://jaeger:14250")
+
+    @pytest.mark.unit
+    def test_timeout_validation_rejects_zero(self) -> None:
+        """Timeout must be positive."""
+        with pytest.raises(ValidationError):
+            JaegerConfig(timeout=0)
+
+    @pytest.mark.unit
+    def test_timeout_validation_rejects_negative(self) -> None:
+        """Timeout must be a positive integer."""
+        with pytest.raises(ValidationError):
+            JaegerConfig(timeout=-10)
+
+    @pytest.mark.unit
+    def test_timeout_validation_accepts_positive(self) -> None:
+        """Timeout validator should return positive value unchanged."""
+        config = JaegerConfig(timeout=15)
+
+        assert config.timeout == 15
+
 
 class TestZipkinConfig:
     """Tests for ZipkinConfig."""
@@ -217,6 +293,31 @@ class TestZipkinConfig:
         config = ZipkinConfig(url="https://zipkin.example.com")
 
         assert config.url == "https://zipkin.example.com"
+
+    @pytest.mark.unit
+    def test_url_validation_rejects_invalid_scheme(self) -> None:
+        """URL must start with http:// or https://."""
+        with pytest.raises(ValidationError):
+            ZipkinConfig(url="ftp://zipkin:9411")
+
+    @pytest.mark.unit
+    def test_timeout_validation_rejects_zero(self) -> None:
+        """Timeout must be positive."""
+        with pytest.raises(ValidationError):
+            ZipkinConfig(timeout=0)
+
+    @pytest.mark.unit
+    def test_timeout_validation_rejects_negative(self) -> None:
+        """Timeout must be a positive integer."""
+        with pytest.raises(ValidationError):
+            ZipkinConfig(timeout=-3)
+
+    @pytest.mark.unit
+    def test_timeout_validation_accepts_positive(self) -> None:
+        """Timeout validator should return positive value unchanged."""
+        config = ZipkinConfig(timeout=10)
+
+        assert config.timeout == 10
 
 
 class TestObservabilityStackConfig:
@@ -294,6 +395,42 @@ class TestObservabilityStackConfig:
         assert "zipkin" not in backends
 
     @pytest.mark.unit
+    def test_configured_backends_includes_loki_and_zipkin(self) -> None:
+        """configured_backends should include loki and zipkin when set."""
+        config = ObservabilityStackConfig(
+            loki=LokiConfig(),
+            zipkin=ZipkinConfig(),
+        )
+
+        backends = config.configured_backends
+        assert "loki" in backends
+        assert "zipkin" in backends
+        assert "prometheus" not in backends
+        assert "elasticsearch" not in backends
+        assert "jaeger" not in backends
+
+    @pytest.mark.unit
+    def test_configured_backends_all_set(self) -> None:
+        """configured_backends should list all five backends when all are configured."""
+        config = ObservabilityStackConfig(
+            prometheus=PrometheusConfig(),
+            elasticsearch=ElasticsearchConfig(),
+            loki=LokiConfig(),
+            jaeger=JaegerConfig(),
+            zipkin=ZipkinConfig(),
+        )
+
+        backends = config.configured_backends
+        assert backends == ["prometheus", "elasticsearch", "loki", "jaeger", "zipkin"]
+
+    @pytest.mark.unit
+    def test_configured_backends_empty(self) -> None:
+        """configured_backends should return empty list when nothing is configured."""
+        config = ObservabilityStackConfig()
+
+        assert config.configured_backends == []
+
+    @pytest.mark.unit
     def test_from_env_prometheus(self) -> None:
         """Should read Prometheus config from environment."""
         with patch.dict(os.environ, {"OPS_PROMETHEUS_URL": "http://prom:9090"}):
@@ -355,3 +492,68 @@ class TestObservabilityStackConfig:
 
             assert config.prometheus is not None
             assert config.prometheus.url == "http://new:9090"
+
+    @pytest.mark.unit
+    def test_from_env_elasticsearch_index_only_creates_new_section(self) -> None:
+        """OPS_ELASTICSEARCH_INDEX alone should create elasticsearch config with default hosts."""
+        with patch.dict(
+            os.environ,
+            {"OPS_ELASTICSEARCH_INDEX": "custom-index-*"},
+            clear=False,
+        ):
+            # Ensure OPS_ELASTICSEARCH_HOSTS is not set so line 252 is exercised
+            env_without_hosts = {
+                k: v for k, v in os.environ.items() if k != "OPS_ELASTICSEARCH_HOSTS"
+            }
+            with patch.dict(os.environ, env_without_hosts, clear=True):
+                os.environ["OPS_ELASTICSEARCH_INDEX"] = "custom-index-*"
+                config = ObservabilityStackConfig.from_env()
+
+            assert config.elasticsearch is not None
+            assert config.elasticsearch.index_pattern == "custom-index-*"
+
+    @pytest.mark.unit
+    def test_from_env_no_env_vars_returns_empty_config(self) -> None:
+        """from_env with no relevant env vars should return empty config."""
+        keys_to_remove = {
+            "OPS_PROMETHEUS_URL",
+            "OPS_ELASTICSEARCH_HOSTS",
+            "OPS_ELASTICSEARCH_INDEX",
+            "OPS_LOKI_URL",
+            "OPS_JAEGER_URL",
+            "OPS_ZIPKIN_URL",
+        }
+        clean_env = {k: v for k, v in os.environ.items() if k not in keys_to_remove}
+
+        with patch.dict(os.environ, clean_env, clear=True):
+            config = ObservabilityStackConfig.from_env()
+
+        assert config.prometheus is None
+        assert config.elasticsearch is None
+        assert config.loki is None
+        assert config.jaeger is None
+        assert config.zipkin is None
+
+    @pytest.mark.unit
+    def test_from_env_with_base_config_preserves_non_overridden_fields(self) -> None:
+        """Base config fields not overridden by env vars should be preserved."""
+        base = {
+            "elasticsearch": {"hosts": ["http://base-es:9200"], "index_pattern": "base-*"},
+        }
+
+        keys_to_remove = {
+            "OPS_PROMETHEUS_URL",
+            "OPS_ELASTICSEARCH_HOSTS",
+            "OPS_ELASTICSEARCH_INDEX",
+            "OPS_LOKI_URL",
+            "OPS_JAEGER_URL",
+            "OPS_ZIPKIN_URL",
+        }
+        clean_env = {k: v for k, v in os.environ.items() if k not in keys_to_remove}
+
+        with patch.dict(os.environ, clean_env, clear=True):
+            config = ObservabilityStackConfig.from_env(base)
+
+        assert config.elasticsearch is not None
+        assert config.elasticsearch.hosts == ["http://base-es:9200"]
+        assert config.elasticsearch.index_pattern == "base-*"

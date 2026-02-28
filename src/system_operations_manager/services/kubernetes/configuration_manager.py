@@ -422,9 +422,7 @@ class ConfigurationManager(K8sBaseManager):
         try:
             patch: dict[str, Any] = {}
             if data is not None:
-                patch["data"] = {
-                    k: base64.b64encode(v.encode()).decode() for k, v in data.items()
-                }
+                patch["data"] = {k: base64.b64encode(v.encode()).decode() for k, v in data.items()}
 
             result = self._client.core_v1.patch_namespaced_secret(
                 name=name, namespace=ns, body=patch

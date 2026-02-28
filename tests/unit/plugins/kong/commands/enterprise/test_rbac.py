@@ -538,3 +538,344 @@ class TestRBACListUserRolesCommand:
 
         assert result.exit_code == 0
         assert "No roles assigned" in result.output
+
+
+class TestRBACRoleListCommandError:
+    """Tests for KongAPIError handling in RBAC role list command."""
+
+    @pytest.fixture
+    def app(self, get_rbac_manager: Callable[[], MagicMock]) -> typer.Typer:
+        """Create app with RBAC commands."""
+        return create_enterprise_app(register_rbac_commands, get_rbac_manager)
+
+    @pytest.mark.unit
+    def test_list_roles_api_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_rbac_manager: MagicMock,
+    ) -> None:
+        """list should handle KongAPIError gracefully."""
+        from system_operations_manager.integrations.kong.exceptions import KongAPIError
+
+        mock_rbac_manager.list_roles.side_effect = KongAPIError(
+            "Connection failed", status_code=500
+        )
+
+        result = cli_runner.invoke(app, ["rbac", "roles", "list"])
+
+        assert result.exit_code == 1
+        assert "error" in result.output.lower()
+
+
+class TestRBACRoleCreateCommandError:
+    """Tests for KongAPIError handling in RBAC role create command."""
+
+    @pytest.fixture
+    def app(self, get_rbac_manager: Callable[[], MagicMock]) -> typer.Typer:
+        """Create app with RBAC commands."""
+        return create_enterprise_app(register_rbac_commands, get_rbac_manager)
+
+    @pytest.mark.unit
+    def test_create_role_api_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_rbac_manager: MagicMock,
+    ) -> None:
+        """create should handle KongAPIError gracefully."""
+        from system_operations_manager.integrations.kong.exceptions import KongAPIError
+
+        mock_rbac_manager.create_role.side_effect = KongAPIError("Conflict", status_code=409)
+
+        result = cli_runner.invoke(app, ["rbac", "roles", "create", "new-role"])
+
+        assert result.exit_code == 1
+        assert "error" in result.output.lower()
+
+
+class TestRBACRoleDeleteCommandError:
+    """Tests for KongAPIError handling in RBAC role delete command."""
+
+    @pytest.fixture
+    def app(self, get_rbac_manager: Callable[[], MagicMock]) -> typer.Typer:
+        """Create app with RBAC commands."""
+        return create_enterprise_app(register_rbac_commands, get_rbac_manager)
+
+    @pytest.mark.unit
+    def test_delete_role_api_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_rbac_manager: MagicMock,
+    ) -> None:
+        """delete should handle KongAPIError gracefully."""
+        from system_operations_manager.integrations.kong.exceptions import KongAPIError
+
+        mock_rbac_manager.get_role.side_effect = KongAPIError("Not found", status_code=404)
+
+        result = cli_runner.invoke(app, ["rbac", "roles", "delete", "bad-role", "--force"])
+
+        assert result.exit_code == 1
+        assert "error" in result.output.lower()
+
+
+class TestRBACAddPermissionCommandError:
+    """Tests for KongAPIError handling in RBAC add-permission command."""
+
+    @pytest.fixture
+    def app(self, get_rbac_manager: Callable[[], MagicMock]) -> typer.Typer:
+        """Create app with RBAC commands."""
+        return create_enterprise_app(register_rbac_commands, get_rbac_manager)
+
+    @pytest.mark.unit
+    def test_add_permission_api_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_rbac_manager: MagicMock,
+    ) -> None:
+        """add-permission should handle KongAPIError gracefully."""
+        from system_operations_manager.integrations.kong.exceptions import KongAPIError
+
+        mock_rbac_manager.add_role_permission.side_effect = KongAPIError(
+            "Forbidden", status_code=403
+        )
+
+        result = cli_runner.invoke(
+            app,
+            ["rbac", "roles", "add-permission", "admin", "-e", "/services/*", "-a", "read"],
+        )
+
+        assert result.exit_code == 1
+        assert "error" in result.output.lower()
+
+
+class TestRBACListPermissionsCommandError:
+    """Tests for KongAPIError handling in RBAC list-permissions command."""
+
+    @pytest.fixture
+    def app(self, get_rbac_manager: Callable[[], MagicMock]) -> typer.Typer:
+        """Create app with RBAC commands."""
+        return create_enterprise_app(register_rbac_commands, get_rbac_manager)
+
+    @pytest.mark.unit
+    def test_list_permissions_api_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_rbac_manager: MagicMock,
+    ) -> None:
+        """list-permissions should handle KongAPIError gracefully."""
+        from system_operations_manager.integrations.kong.exceptions import KongAPIError
+
+        mock_rbac_manager.list_role_permissions.side_effect = KongAPIError(
+            "Server error", status_code=500
+        )
+
+        result = cli_runner.invoke(app, ["rbac", "roles", "list-permissions", "admin"])
+
+        assert result.exit_code == 1
+        assert "error" in result.output.lower()
+
+
+class TestRBACUserListCommandError:
+    """Tests for KongAPIError handling in RBAC user list command."""
+
+    @pytest.fixture
+    def app(self, get_rbac_manager: Callable[[], MagicMock]) -> typer.Typer:
+        """Create app with RBAC commands."""
+        return create_enterprise_app(register_rbac_commands, get_rbac_manager)
+
+    @pytest.mark.unit
+    def test_list_users_api_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_rbac_manager: MagicMock,
+    ) -> None:
+        """list should handle KongAPIError gracefully."""
+        from system_operations_manager.integrations.kong.exceptions import KongAPIError
+
+        mock_rbac_manager.list_users.side_effect = KongAPIError(
+            "Connection failed", status_code=503
+        )
+
+        result = cli_runner.invoke(app, ["rbac", "users", "list"])
+
+        assert result.exit_code == 1
+        assert "error" in result.output.lower()
+
+
+class TestRBACUserGetCommandError:
+    """Tests for KongAPIError handling in RBAC user get command."""
+
+    @pytest.fixture
+    def app(self, get_rbac_manager: Callable[[], MagicMock]) -> typer.Typer:
+        """Create app with RBAC commands."""
+        return create_enterprise_app(register_rbac_commands, get_rbac_manager)
+
+    @pytest.mark.unit
+    def test_get_user_api_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_rbac_manager: MagicMock,
+    ) -> None:
+        """get should handle KongAPIError gracefully."""
+        from system_operations_manager.integrations.kong.exceptions import KongAPIError
+
+        mock_rbac_manager.get_user.side_effect = KongAPIError("Not found", status_code=404)
+
+        result = cli_runner.invoke(app, ["rbac", "users", "get", "nonexistent"])
+
+        assert result.exit_code == 1
+        assert "error" in result.output.lower()
+
+
+class TestRBACUserCreateCommandError:
+    """Tests for KongAPIError handling in RBAC user create command."""
+
+    @pytest.fixture
+    def app(self, get_rbac_manager: Callable[[], MagicMock]) -> typer.Typer:
+        """Create app with RBAC commands."""
+        return create_enterprise_app(register_rbac_commands, get_rbac_manager)
+
+    @pytest.mark.unit
+    def test_create_user_api_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_rbac_manager: MagicMock,
+    ) -> None:
+        """create should handle KongAPIError gracefully."""
+        from system_operations_manager.integrations.kong.exceptions import KongAPIError
+
+        mock_rbac_manager.create_user.side_effect = KongAPIError("Conflict", status_code=409)
+
+        result = cli_runner.invoke(app, ["rbac", "users", "create", "existing-user"])
+
+        assert result.exit_code == 1
+        assert "error" in result.output.lower()
+
+
+class TestRBACUserDeleteCommandErrors:
+    """Tests for cancel and KongAPIError handling in RBAC user delete command."""
+
+    @pytest.fixture
+    def app(self, get_rbac_manager: Callable[[], MagicMock]) -> typer.Typer:
+        """Create app with RBAC commands."""
+        return create_enterprise_app(register_rbac_commands, get_rbac_manager)
+
+    @pytest.mark.unit
+    def test_delete_user_cancelled(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_rbac_manager: MagicMock,
+    ) -> None:
+        """delete should cancel when user declines confirmation."""
+        result = cli_runner.invoke(app, ["rbac", "users", "delete", "alice"], input="n\n")
+
+        assert result.exit_code == 0
+        assert "Cancelled" in result.output
+        mock_rbac_manager.delete_user.assert_not_called()
+
+    @pytest.mark.unit
+    def test_delete_user_api_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_rbac_manager: MagicMock,
+    ) -> None:
+        """delete should handle KongAPIError gracefully."""
+        from system_operations_manager.integrations.kong.exceptions import KongAPIError
+
+        mock_rbac_manager.get_user.side_effect = KongAPIError("Not found", status_code=404)
+
+        result = cli_runner.invoke(app, ["rbac", "users", "delete", "ghost", "--force"])
+
+        assert result.exit_code == 1
+        assert "error" in result.output.lower()
+
+
+class TestRBACAssignRoleCommandError:
+    """Tests for KongAPIError handling in RBAC assign-role command."""
+
+    @pytest.fixture
+    def app(self, get_rbac_manager: Callable[[], MagicMock]) -> typer.Typer:
+        """Create app with RBAC commands."""
+        return create_enterprise_app(register_rbac_commands, get_rbac_manager)
+
+    @pytest.mark.unit
+    def test_assign_role_api_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_rbac_manager: MagicMock,
+    ) -> None:
+        """assign-role should handle KongAPIError gracefully."""
+        from system_operations_manager.integrations.kong.exceptions import KongAPIError
+
+        mock_rbac_manager.assign_role.side_effect = KongAPIError("Not found", status_code=404)
+
+        result = cli_runner.invoke(app, ["rbac", "users", "assign-role", "alice", "bad-role"])
+
+        assert result.exit_code == 1
+        assert "error" in result.output.lower()
+
+
+class TestRBACRevokeRoleCommandError:
+    """Tests for KongAPIError handling in RBAC revoke-role command."""
+
+    @pytest.fixture
+    def app(self, get_rbac_manager: Callable[[], MagicMock]) -> typer.Typer:
+        """Create app with RBAC commands."""
+        return create_enterprise_app(register_rbac_commands, get_rbac_manager)
+
+    @pytest.mark.unit
+    def test_revoke_role_api_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_rbac_manager: MagicMock,
+    ) -> None:
+        """revoke-role should handle KongAPIError gracefully."""
+        from system_operations_manager.integrations.kong.exceptions import KongAPIError
+
+        mock_rbac_manager.revoke_role.side_effect = KongAPIError("Not found", status_code=404)
+
+        result = cli_runner.invoke(
+            app, ["rbac", "users", "revoke-role", "alice", "bad-role", "--force"]
+        )
+
+        assert result.exit_code == 1
+        assert "error" in result.output.lower()
+
+
+class TestRBACListUserRolesCommandError:
+    """Tests for KongAPIError handling in RBAC list-roles command."""
+
+    @pytest.fixture
+    def app(self, get_rbac_manager: Callable[[], MagicMock]) -> typer.Typer:
+        """Create app with RBAC commands."""
+        return create_enterprise_app(register_rbac_commands, get_rbac_manager)
+
+    @pytest.mark.unit
+    def test_list_user_roles_api_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_rbac_manager: MagicMock,
+    ) -> None:
+        """list-roles should handle KongAPIError gracefully."""
+        from system_operations_manager.integrations.kong.exceptions import KongAPIError
+
+        mock_rbac_manager.list_user_roles.side_effect = KongAPIError(
+            "Server error", status_code=500
+        )
+
+        result = cli_runner.invoke(app, ["rbac", "users", "list-roles", "alice"])
+
+        assert result.exit_code == 1
+        assert "error" in result.output.lower()

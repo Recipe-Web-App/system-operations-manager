@@ -10,6 +10,9 @@ import pytest
 import typer
 from typer.testing import CliRunner
 
+from system_operations_manager.integrations.kubernetes.exceptions import (
+    KubernetesConnectionError,
+)
 from system_operations_manager.plugins.kubernetes.commands.manifests import (
     register_manifest_commands,
 )
@@ -101,3 +104,52 @@ class TestValidateCommand:
         )
 
         assert result.exit_code == 0
+
+    def test_validate_file_not_found_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_manifest_manager: MagicMock,
+        tmp_manifest_file: Path,
+    ) -> None:
+        """validate should handle FileNotFoundError gracefully (lines 265-266)."""
+        mock_manifest_manager.load_manifests.side_effect = FileNotFoundError(
+            "Manifest file not found"
+        )
+
+        result = cli_runner.invoke(app, ["manifests", "validate", str(tmp_manifest_file)])
+
+        assert result.exit_code == 1
+        assert "Error" in result.stdout
+
+    def test_validate_value_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_manifest_manager: MagicMock,
+        tmp_manifest_file: Path,
+    ) -> None:
+        """validate should handle ValueError gracefully (lines 265-266)."""
+        mock_manifest_manager.load_manifests.side_effect = ValueError("Invalid YAML content")
+
+        result = cli_runner.invoke(app, ["manifests", "validate", str(tmp_manifest_file)])
+
+        assert result.exit_code == 1
+
+    def test_validate_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_manifest_manager: MagicMock,
+        sample_valid_manifest: dict[str, object],
+        tmp_manifest_file: Path,
+    ) -> None:
+        """validate should handle KubernetesError gracefully (line 268)."""
+        mock_manifest_manager.load_manifests.return_value = [sample_valid_manifest]
+        mock_manifest_manager.validate_manifests.side_effect = KubernetesConnectionError(
+            "Cannot connect to cluster"
+        )
+
+        result = cli_runner.invoke(app, ["manifests", "validate", str(tmp_manifest_file)])
+
+        assert result.exit_code == 1

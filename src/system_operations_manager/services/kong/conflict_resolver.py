@@ -11,7 +11,7 @@ from __future__ import annotations
 import difflib
 import json
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -22,7 +22,7 @@ from system_operations_manager.integrations.kong.models.unified import (
 )
 
 
-class ResolutionAction(str, Enum):
+class ResolutionAction(StrEnum):
     """Action to take when resolving a conflict."""
 
     KEEP_SOURCE = "keep_source"

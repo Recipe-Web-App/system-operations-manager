@@ -10,6 +10,9 @@ import pytest
 import typer
 from typer.testing import CliRunner
 
+from system_operations_manager.integrations.kubernetes.exceptions import (
+    KubernetesConnectionError,
+)
 from system_operations_manager.plugins.kubernetes.commands.manifests import (
     register_manifest_commands,
 )
@@ -97,3 +100,100 @@ class TestDiffCommand:
         )
 
         assert result.exit_code == 0
+
+    def test_diff_file_not_found_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_manifest_manager: MagicMock,
+        tmp_manifest_file: Path,
+    ) -> None:
+        """diff should handle FileNotFoundError gracefully (lines 211-213)."""
+        mock_manifest_manager.load_manifests.side_effect = FileNotFoundError(
+            "Manifest file not found"
+        )
+
+        result = cli_runner.invoke(app, ["manifests", "diff", str(tmp_manifest_file)])
+
+        assert result.exit_code == 1
+        assert "Error" in result.stdout
+
+    def test_diff_value_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_manifest_manager: MagicMock,
+        tmp_manifest_file: Path,
+    ) -> None:
+        """diff should handle ValueError gracefully (lines 211-213)."""
+        mock_manifest_manager.load_manifests.side_effect = ValueError("Invalid YAML")
+
+        result = cli_runner.invoke(app, ["manifests", "diff", str(tmp_manifest_file)])
+
+        assert result.exit_code == 1
+
+    def test_diff_kubernetes_error(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_manifest_manager: MagicMock,
+        sample_valid_manifest: dict[str, object],
+        tmp_manifest_file: Path,
+    ) -> None:
+        """diff should handle KubernetesError gracefully (lines 214-215)."""
+        mock_manifest_manager.load_manifests.return_value = [sample_valid_manifest]
+        mock_manifest_manager.diff_manifests.side_effect = KubernetesConnectionError(
+            "Cannot connect to cluster"
+        )
+
+        result = cli_runner.invoke(app, ["manifests", "diff", str(tmp_manifest_file)])
+
+        assert result.exit_code == 1
+
+    def test_diff_table_new_resource_status(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_manifest_manager: MagicMock,
+        sample_valid_manifest: dict[str, object],
+        tmp_manifest_file: Path,
+    ) -> None:
+        """diff table should show New status when resource not on cluster (line 336)."""
+        new_resource = DiffResult(
+            resource="Deployment/new-app",
+            namespace="default",
+            diff="+image: nginx:latest",
+            exists_on_cluster=False,
+            identical=False,
+        )
+        mock_manifest_manager.load_manifests.return_value = [sample_valid_manifest]
+        mock_manifest_manager.diff_manifests.return_value = [new_resource]
+
+        result = cli_runner.invoke(app, ["manifests", "diff", str(tmp_manifest_file)])
+
+        assert result.exit_code == 0
+        assert "Deployment/new-app" in result.stdout
+
+    def test_diff_table_prints_normal_context_lines(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_manifest_manager: MagicMock,
+        sample_valid_manifest: dict[str, object],
+        tmp_manifest_file: Path,
+    ) -> None:
+        """diff table should print unchanged context lines in diff (line 353)."""
+        diff_with_context = DiffResult(
+            resource="Deployment/test-app",
+            namespace="default",
+            diff="+added\n-removed\n@@ hunk @@\nunchanged context line",
+            exists_on_cluster=True,
+            identical=False,
+        )
+        mock_manifest_manager.load_manifests.return_value = [sample_valid_manifest]
+        mock_manifest_manager.diff_manifests.return_value = [diff_with_context]
+
+        result = cli_runner.invoke(app, ["manifests", "diff", str(tmp_manifest_file)])
+
+        assert result.exit_code == 0
+        assert "Deployment/test-app" in result.stdout

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -378,3 +379,365 @@ class TestHealthFailures(TestHealthCommands):
 
         assert result.exit_code == 1
         assert "error" in result.stdout.lower()
+
+
+class TestHealthShowExtended(TestHealthCommands):
+    """Additional tests covering missed health show branches."""
+
+    @pytest.mark.unit
+    def test_show_truncates_more_than_three_addresses(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_observability_manager: MagicMock,
+    ) -> None:
+        """health show should truncate addresses list to 3 with overflow indicator."""
+        from system_operations_manager.integrations.kong.models.observability import (
+            TargetHealthDetail,
+            UpstreamHealthSummary,
+        )
+
+        mock_observability_manager.get_upstream_health.return_value = UpstreamHealthSummary(
+            upstream_name="big-upstream",
+            overall_health="HEALTHY",
+            total_targets=1,
+            healthy_targets=1,
+            unhealthy_targets=0,
+            targets=[
+                TargetHealthDetail(
+                    target="api1:8080",
+                    weight=100,
+                    health="HEALTHY",
+                    addresses=[
+                        {"ip": "10.0.0.1"},
+                        {"ip": "10.0.0.2"},
+                        {"ip": "10.0.0.3"},
+                        {"ip": "10.0.0.4"},
+                        {"ip": "10.0.0.5"},
+                    ],
+                ),
+            ],
+        )
+
+        result = cli_runner.invoke(app, ["health", "show", "big-upstream"])
+
+        assert result.exit_code == 0
+        assert "+2" in result.stdout
+
+    @pytest.mark.unit
+    def test_show_no_targets_message(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_observability_manager: MagicMock,
+    ) -> None:
+        """health show should display message when upstream has no targets."""
+        from system_operations_manager.integrations.kong.models.observability import (
+            UpstreamHealthSummary,
+        )
+
+        mock_observability_manager.get_upstream_health.return_value = UpstreamHealthSummary(
+            upstream_name="empty-upstream",
+            overall_health="HEALTHCHECKS_OFF",
+            total_targets=0,
+            healthy_targets=0,
+            unhealthy_targets=0,
+            targets=[],
+        )
+
+        result = cli_runner.invoke(app, ["health", "show", "empty-upstream"])
+
+        assert result.exit_code == 0
+        assert "no targets" in result.stdout.lower()
+
+    @pytest.mark.unit
+    def test_show_unhealthy_status_color(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_observability_manager: MagicMock,
+    ) -> None:
+        """health show should handle UNHEALTHY overall status."""
+        from system_operations_manager.integrations.kong.models.observability import (
+            TargetHealthDetail,
+            UpstreamHealthSummary,
+        )
+
+        mock_observability_manager.get_upstream_health.return_value = UpstreamHealthSummary(
+            upstream_name="bad-upstream",
+            overall_health="UNHEALTHY",
+            total_targets=1,
+            healthy_targets=0,
+            unhealthy_targets=1,
+            targets=[
+                TargetHealthDetail(
+                    target="api1:8080",
+                    weight=100,
+                    health="UNHEALTHY",
+                ),
+            ],
+        )
+
+        result = cli_runner.invoke(app, ["health", "show", "bad-upstream"])
+
+        assert result.exit_code == 0
+        assert "unhealthy" in result.stdout.lower()
+
+
+class TestHealthListNonTable(TestHealthCommands):
+    """Tests for health list non-table output path."""
+
+    @pytest.mark.unit
+    def test_list_json_output(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_observability_manager: MagicMock,
+    ) -> None:
+        """health list should use formatter for non-table output."""
+        result = cli_runner.invoke(app, ["health", "list", "--output", "json"])
+
+        assert result.exit_code == 0
+        mock_observability_manager.list_upstreams_health.assert_called_once()
+
+    @pytest.mark.unit
+    def test_list_error_handling(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_observability_manager: MagicMock,
+    ) -> None:
+        """health list should handle KongAPIError gracefully."""
+        mock_observability_manager.list_upstreams_health.side_effect = KongAPIError(
+            "API error", status_code=500
+        )
+
+        result = cli_runner.invoke(app, ["health", "list"])
+
+        assert result.exit_code == 1
+        assert "error" in result.stdout.lower()
+
+
+class TestHealthSetExtended(TestHealthCommands):
+    """Additional tests covering missed health set configuration branches."""
+
+    @pytest.mark.unit
+    def test_set_active_timeout(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_upstream_manager: MagicMock,
+    ) -> None:
+        """health set should configure active timeout."""
+        from system_operations_manager.integrations.kong.models.upstream import Upstream
+
+        mock_upstream: Any = MagicMock()
+        mock_upstream.model_dump.return_value = {
+            "name": "test-upstream",
+            "healthchecks": {},
+        }
+        mock_upstream_manager.get.return_value = mock_upstream
+        mock_upstream_manager.update.return_value = Upstream(name="test-upstream")
+
+        result = cli_runner.invoke(
+            app,
+            ["health", "set", "test-upstream", "--active-timeout", "10"],
+        )
+
+        assert result.exit_code == 0
+        call_args = mock_upstream_manager.update.call_args
+        updated: Any = call_args[0][1]
+        hc: Any = updated.healthchecks
+        assert hc.active["timeout"] == 10
+
+    @pytest.mark.unit
+    def test_set_active_interval(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_upstream_manager: MagicMock,
+    ) -> None:
+        """health set should configure active interval in both healthy and unhealthy."""
+        from system_operations_manager.integrations.kong.models.upstream import Upstream
+
+        mock_upstream: Any = MagicMock()
+        mock_upstream.model_dump.return_value = {
+            "name": "test-upstream",
+            "healthchecks": {},
+        }
+        mock_upstream_manager.get.return_value = mock_upstream
+        mock_upstream_manager.update.return_value = Upstream(name="test-upstream")
+
+        result = cli_runner.invoke(
+            app,
+            ["health", "set", "test-upstream", "--active-interval", "30"],
+        )
+
+        assert result.exit_code == 0
+        call_args = mock_upstream_manager.update.call_args
+        updated: Any = call_args[0][1]
+        hc: Any = updated.healthchecks
+        # healthchecks is a HealthCheckConfig model; .active is a dict
+        assert hc.active["healthy"]["interval"] == 30
+        assert hc.active["unhealthy"]["interval"] == 30
+
+    @pytest.mark.unit
+    def test_set_active_healthy_threshold(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_upstream_manager: MagicMock,
+    ) -> None:
+        """health set should configure active healthy threshold (successes)."""
+        from system_operations_manager.integrations.kong.models.upstream import Upstream
+
+        mock_upstream: Any = MagicMock()
+        mock_upstream.model_dump.return_value = {
+            "name": "test-upstream",
+            "healthchecks": {},
+        }
+        mock_upstream_manager.get.return_value = mock_upstream
+        mock_upstream_manager.update.return_value = Upstream(name="test-upstream")
+
+        result = cli_runner.invoke(
+            app,
+            ["health", "set", "test-upstream", "--active-healthy-threshold", "3"],
+        )
+
+        assert result.exit_code == 0
+        call_args = mock_upstream_manager.update.call_args
+        updated: Any = call_args[0][1]
+        hc: Any = updated.healthchecks
+        assert hc.active["healthy"]["successes"] == 3
+
+    @pytest.mark.unit
+    def test_set_active_unhealthy_threshold(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_upstream_manager: MagicMock,
+    ) -> None:
+        """health set should configure active unhealthy threshold (http_failures)."""
+        from system_operations_manager.integrations.kong.models.upstream import Upstream
+
+        mock_upstream: Any = MagicMock()
+        mock_upstream.model_dump.return_value = {
+            "name": "test-upstream",
+            "healthchecks": {},
+        }
+        mock_upstream_manager.get.return_value = mock_upstream
+        mock_upstream_manager.update.return_value = Upstream(name="test-upstream")
+
+        result = cli_runner.invoke(
+            app,
+            ["health", "set", "test-upstream", "--active-unhealthy-threshold", "5"],
+        )
+
+        assert result.exit_code == 0
+        call_args = mock_upstream_manager.update.call_args
+        updated: Any = call_args[0][1]
+        hc: Any = updated.healthchecks
+        assert hc.active["unhealthy"]["http_failures"] == 5
+
+    @pytest.mark.unit
+    def test_set_passive_timeouts(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_upstream_manager: MagicMock,
+    ) -> None:
+        """health set should configure passive unhealthy timeouts."""
+        from system_operations_manager.integrations.kong.models.upstream import Upstream
+
+        mock_upstream: Any = MagicMock()
+        mock_upstream.model_dump.return_value = {
+            "name": "test-upstream",
+            "healthchecks": {},
+        }
+        mock_upstream_manager.get.return_value = mock_upstream
+        mock_upstream_manager.update.return_value = Upstream(name="test-upstream")
+
+        result = cli_runner.invoke(
+            app,
+            ["health", "set", "test-upstream", "--passive-unhealthy-timeouts", "3"],
+        )
+
+        assert result.exit_code == 0
+        call_args = mock_upstream_manager.update.call_args
+        updated: Any = call_args[0][1]
+        hc: Any = updated.healthchecks
+        assert hc.passive["unhealthy"]["timeouts"] == 3
+
+    @pytest.mark.unit
+    def test_set_merges_with_existing_healthchecks(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_upstream_manager: MagicMock,
+    ) -> None:
+        """health set should merge new config with existing healthchecks."""
+        from system_operations_manager.integrations.kong.models.upstream import Upstream
+
+        mock_upstream: Any = MagicMock()
+        mock_upstream.model_dump.return_value = {
+            "name": "test-upstream",
+            "healthchecks": {
+                "active": {"type": "http", "timeout": 5},
+                "passive": {"healthy": {"successes": 2}},
+            },
+        }
+        mock_upstream_manager.get.return_value = mock_upstream
+        mock_upstream_manager.update.return_value = Upstream(name="test-upstream")
+
+        result = cli_runner.invoke(
+            app,
+            [
+                "health",
+                "set",
+                "test-upstream",
+                "--active-interval",
+                "15",
+                "--passive-unhealthy-failures",
+                "3",
+            ],
+        )
+
+        assert result.exit_code == 0
+        call_args = mock_upstream_manager.update.call_args
+        updated: Any = call_args[0][1]
+        hc: Any = updated.healthchecks
+        # Active section merged: existing type preserved alongside new interval
+        assert hc.active["type"] == "http"
+        assert hc.active["healthy"]["interval"] == 15
+        # Passive section merged
+        assert hc.passive["healthy"]["successes"] == 2
+        assert hc.passive["unhealthy"]["http_failures"] == 3
+
+    @pytest.mark.unit
+    def test_set_passive_healthy_successes(
+        self,
+        cli_runner: CliRunner,
+        app: typer.Typer,
+        mock_upstream_manager: MagicMock,
+    ) -> None:
+        """health set should configure passive healthy successes."""
+        from system_operations_manager.integrations.kong.models.upstream import Upstream
+
+        mock_upstream: Any = MagicMock()
+        mock_upstream.model_dump.return_value = {
+            "name": "test-upstream",
+            "healthchecks": {},
+        }
+        mock_upstream_manager.get.return_value = mock_upstream
+        mock_upstream_manager.update.return_value = Upstream(name="test-upstream")
+
+        result = cli_runner.invoke(
+            app,
+            ["health", "set", "test-upstream", "--passive-healthy-successes", "5"],
+        )
+
+        assert result.exit_code == 0
+        call_args = mock_upstream_manager.update.call_args
+        updated: Any = call_args[0][1]
+        hc: Any = updated.healthchecks
+        assert hc.passive["healthy"]["successes"] == 5

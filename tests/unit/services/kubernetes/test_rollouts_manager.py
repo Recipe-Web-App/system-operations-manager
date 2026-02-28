@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -471,4 +472,290 @@ class TestRolloutsManager:
             "default",
             ANALYSIS_RUN_PLURAL,
             "my-rollout-abc123",
+        )
+
+
+@pytest.mark.unit
+@pytest.mark.kubernetes
+class TestRolloutsManagerErrorPaths:
+    """Tests for RolloutsManager API error handling (exception branches)."""
+
+    def test_list_rollouts_api_error(
+        self,
+        rollouts_manager: RolloutsManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """list_rollouts should propagate translated API errors."""
+        sentinel = RuntimeError("list rollouts failed")
+        mock_k8s_client.custom_objects.list_namespaced_custom_object.side_effect = RuntimeError(
+            "raw"
+        )
+        mock_k8s_client.translate_api_exception.side_effect = sentinel
+
+        with pytest.raises(RuntimeError, match="list rollouts failed"):
+            rollouts_manager.list_rollouts()
+
+    def test_get_rollout_api_error(
+        self,
+        rollouts_manager: RolloutsManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """get_rollout should propagate translated API errors."""
+        sentinel = RuntimeError("get rollout failed")
+        mock_k8s_client.custom_objects.get_namespaced_custom_object.side_effect = RuntimeError(
+            "raw"
+        )
+        mock_k8s_client.translate_api_exception.side_effect = sentinel
+
+        with pytest.raises(RuntimeError, match="get rollout failed"):
+            rollouts_manager.get_rollout("my-rollout")
+
+    def test_create_rollout_api_error(
+        self,
+        rollouts_manager: RolloutsManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """create_rollout should propagate translated API errors."""
+        sentinel = RuntimeError("create rollout failed")
+        mock_k8s_client.custom_objects.create_namespaced_custom_object.side_effect = RuntimeError(
+            "raw"
+        )
+        mock_k8s_client.translate_api_exception.side_effect = sentinel
+
+        with pytest.raises(RuntimeError, match="create rollout failed"):
+            rollouts_manager.create_rollout("my-rollout", image="nginx:latest")
+
+    def test_delete_rollout_api_error(
+        self,
+        rollouts_manager: RolloutsManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """delete_rollout should propagate translated API errors."""
+        sentinel = RuntimeError("delete rollout failed")
+        mock_k8s_client.custom_objects.delete_namespaced_custom_object.side_effect = RuntimeError(
+            "raw"
+        )
+        mock_k8s_client.translate_api_exception.side_effect = sentinel
+
+        with pytest.raises(RuntimeError, match="delete rollout failed"):
+            rollouts_manager.delete_rollout("my-rollout")
+
+    def test_get_rollout_status_api_error(
+        self,
+        rollouts_manager: RolloutsManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """get_rollout_status should propagate translated API errors."""
+        sentinel = RuntimeError("get status failed")
+        mock_k8s_client.custom_objects.get_namespaced_custom_object.side_effect = RuntimeError(
+            "raw"
+        )
+        mock_k8s_client.translate_api_exception.side_effect = sentinel
+
+        with pytest.raises(RuntimeError, match="get status failed"):
+            rollouts_manager.get_rollout_status("my-rollout")
+
+    def test_promote_rollout_api_error(
+        self,
+        rollouts_manager: RolloutsManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """promote_rollout should propagate translated API errors."""
+        sentinel = RuntimeError("promote rollout failed")
+        mock_k8s_client.custom_objects.patch_namespaced_custom_object.side_effect = RuntimeError(
+            "raw"
+        )
+        mock_k8s_client.translate_api_exception.side_effect = sentinel
+
+        with pytest.raises(RuntimeError, match="promote rollout failed"):
+            rollouts_manager.promote_rollout("my-rollout")
+
+    def test_abort_rollout_api_error(
+        self,
+        rollouts_manager: RolloutsManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """abort_rollout should propagate translated API errors."""
+        sentinel = RuntimeError("abort rollout failed")
+        mock_k8s_client.custom_objects.patch_namespaced_custom_object.side_effect = RuntimeError(
+            "raw"
+        )
+        mock_k8s_client.translate_api_exception.side_effect = sentinel
+
+        with pytest.raises(RuntimeError, match="abort rollout failed"):
+            rollouts_manager.abort_rollout("my-rollout")
+
+    def test_retry_rollout_api_error(
+        self,
+        rollouts_manager: RolloutsManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """retry_rollout should propagate translated API errors."""
+        sentinel = RuntimeError("retry rollout failed")
+        mock_k8s_client.custom_objects.patch_namespaced_custom_object.side_effect = RuntimeError(
+            "raw"
+        )
+        mock_k8s_client.translate_api_exception.side_effect = sentinel
+
+        with pytest.raises(RuntimeError, match="retry rollout failed"):
+            rollouts_manager.retry_rollout("my-rollout")
+
+    def test_list_analysis_templates_api_error(
+        self,
+        rollouts_manager: RolloutsManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """list_analysis_templates should propagate translated API errors."""
+        sentinel = RuntimeError("list templates failed")
+        mock_k8s_client.custom_objects.list_namespaced_custom_object.side_effect = RuntimeError(
+            "raw"
+        )
+        mock_k8s_client.translate_api_exception.side_effect = sentinel
+
+        with pytest.raises(RuntimeError, match="list templates failed"):
+            rollouts_manager.list_analysis_templates()
+
+    def test_get_analysis_template_api_error(
+        self,
+        rollouts_manager: RolloutsManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """get_analysis_template should propagate translated API errors."""
+        sentinel = RuntimeError("get template failed")
+        mock_k8s_client.custom_objects.get_namespaced_custom_object.side_effect = RuntimeError(
+            "raw"
+        )
+        mock_k8s_client.translate_api_exception.side_effect = sentinel
+
+        with pytest.raises(RuntimeError, match="get template failed"):
+            rollouts_manager.get_analysis_template("success-rate")
+
+    def test_list_analysis_runs_api_error(
+        self,
+        rollouts_manager: RolloutsManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """list_analysis_runs should propagate translated API errors."""
+        sentinel = RuntimeError("list runs failed")
+        mock_k8s_client.custom_objects.list_namespaced_custom_object.side_effect = RuntimeError(
+            "raw"
+        )
+        mock_k8s_client.translate_api_exception.side_effect = sentinel
+
+        with pytest.raises(RuntimeError, match="list runs failed"):
+            rollouts_manager.list_analysis_runs()
+
+    def test_get_analysis_run_api_error(
+        self,
+        rollouts_manager: RolloutsManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """get_analysis_run should propagate translated API errors."""
+        sentinel = RuntimeError("get run failed")
+        mock_k8s_client.custom_objects.get_namespaced_custom_object.side_effect = RuntimeError(
+            "raw"
+        )
+        mock_k8s_client.translate_api_exception.side_effect = sentinel
+
+        with pytest.raises(RuntimeError, match="get run failed"):
+            rollouts_manager.get_analysis_run("my-rollout-abc123")
+
+
+@pytest.mark.unit
+@pytest.mark.kubernetes
+class TestRolloutsManagerEdgeCases:
+    """Tests for RolloutsManager edge cases and alternate branches."""
+
+    def test_create_rollout_with_canary_steps(
+        self,
+        rollouts_manager: RolloutsManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """create_rollout should include canary steps in strategy spec."""
+        mock_k8s_client.custom_objects.create_namespaced_custom_object.return_value = {
+            "metadata": {"name": "my-rollout", "namespace": "default"},
+            "spec": {
+                "replicas": 1,
+                "strategy": {
+                    "canary": {"steps": [{"setWeight": 20}, {"pause": {"duration": "10m"}}]}
+                },
+                "template": {"spec": {"containers": [{"image": "nginx:latest"}]}},
+            },
+            "status": {},
+        }
+        canary_steps: list[dict[str, Any]] = [{"setWeight": 20}, {"pause": {"duration": "10m"}}]
+
+        rollouts_manager.create_rollout(
+            "my-rollout",
+            image="nginx:latest",
+            canary_steps=canary_steps,
+        )
+
+        call_args = mock_k8s_client.custom_objects.create_namespaced_custom_object.call_args
+        body = call_args.args[4]
+        assert body["spec"]["strategy"]["canary"]["steps"] == canary_steps
+
+    def test_create_rollout_with_labels(
+        self,
+        rollouts_manager: RolloutsManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """create_rollout should merge provided labels into app_labels."""
+        mock_k8s_client.custom_objects.create_namespaced_custom_object.return_value = {
+            "metadata": {"name": "my-rollout", "namespace": "default"},
+            "spec": {
+                "replicas": 1,
+                "strategy": {"canary": {}},
+                "template": {"spec": {"containers": [{"image": "nginx:latest"}]}},
+            },
+            "status": {},
+        }
+        extra_labels = {"env": "prod", "team": "platform"}
+
+        rollouts_manager.create_rollout(
+            "my-rollout",
+            image="nginx:latest",
+            labels=extra_labels,
+        )
+
+        call_args = mock_k8s_client.custom_objects.create_namespaced_custom_object.call_args
+        body = call_args.args[4]
+        assert body["metadata"]["labels"]["app"] == "my-rollout"
+        assert body["metadata"]["labels"]["env"] == "prod"
+        assert body["metadata"]["labels"]["team"] == "platform"
+
+    def test_list_analysis_templates_with_label_selector(
+        self,
+        rollouts_manager: RolloutsManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """list_analysis_templates should pass label_selector when provided."""
+        mock_k8s_client.custom_objects.list_namespaced_custom_object.return_value = {"items": []}
+
+        rollouts_manager.list_analysis_templates(label_selector="team=platform")
+
+        mock_k8s_client.custom_objects.list_namespaced_custom_object.assert_called_once_with(
+            ARGO_ROLLOUTS_GROUP,
+            ARGO_ROLLOUTS_VERSION,
+            "default",
+            ANALYSIS_TEMPLATE_PLURAL,
+            label_selector="team=platform",
+        )
+
+    def test_list_analysis_runs_with_label_selector(
+        self,
+        rollouts_manager: RolloutsManager,
+        mock_k8s_client: MagicMock,
+    ) -> None:
+        """list_analysis_runs should pass label_selector when provided."""
+        mock_k8s_client.custom_objects.list_namespaced_custom_object.return_value = {"items": []}
+
+        rollouts_manager.list_analysis_runs(label_selector="rollout=my-rollout")
+
+        mock_k8s_client.custom_objects.list_namespaced_custom_object.assert_called_once_with(
+            ARGO_ROLLOUTS_GROUP,
+            ARGO_ROLLOUTS_VERSION,
+            "default",
+            ANALYSIS_RUN_PLURAL,
+            label_selector="rollout=my-rollout",
         )

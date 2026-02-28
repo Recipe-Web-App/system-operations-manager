@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 import yaml
 
 
+@pytest.mark.unit
 class TestUpdateValuesFile:
     """Tests for _update_values_file helper function."""
 
