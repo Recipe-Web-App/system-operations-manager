@@ -113,15 +113,15 @@ wheels = [
 
 [[package]]
 name = "blessed"
-version = "1.30.0"
+version = "1.32.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jinxed", marker = "sys_platform == 'win32'" },
     { name = "wcwidth" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/dd/19/e926a0dbbf93c7aeb15d4dfff0d0e3de02653b3ba540b687307d0819c1ff/blessed-1.30.0.tar.gz", hash = "sha256:4d547019d7b40fc5420ea2ba2bc180fdccc31d6715298e2b49ffa7b020d44667", size = 13948932, upload-time = "2026-02-06T19:40:23.541Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e6/0c/658dea9ba35fcea19e6feaa8ba0d2dbf8cac9aeaa1f9ab1d77d36f534757/blessed-1.32.0.tar.gz", hash = "sha256:d4090e9908cf86bea15a5275845c8bfc69c4c34eb6d22de07c65d26f1e54a918", size = 13979999, upload-time = "2026-02-28T20:59:01.815Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/64/b0/8d87c7c8015ce8d4b2c5ee7a82a1d955f10138322c4f0cb387d7d2c1b2e7/blessed-1.30.0-py3-none-any.whl", hash = "sha256:4061a9f10dd22798716c2548ba36385af6a29d856c897f367c6ccc927e0b3a5a", size = 98399, upload-time = "2026-02-06T19:40:20.815Z" },
+    { url = "https://files.pythonhosted.org/packages/f6/47/de8f185a1f537fdb5117fcde7050472b8cde3561179e9a68e1a566a6e6c6/blessed-1.32.0-py3-none-any.whl", hash = "sha256:c6fdc18838491ebc7f0460234917eff4e172074934f5f80e82672417bd74be70", size = 111172, upload-time = "2026-02-28T20:58:58.59Z" },
 ]
 
 [[package]]
@@ -1847,7 +1847,7 @@ dev = [
 requires-dist = [
     { name = "azure-identity", marker = "extra == 'vault'", specifier = ">=1.25.2" },
     { name = "azure-keyvault-secrets", marker = "extra == 'vault'", specifier = ">=4.10.0" },
-    { name = "blessed", marker = "extra == 'cli'", specifier = ">=1.30.0" },
+    { name = "blessed", marker = "extra == 'cli'", specifier = ">=1.32.0" },
     { name = "boto3", marker = "extra == 'vault'", specifier = ">=1.42.54" },
     { name = "cement", marker = "extra == 'cli'", specifier = ">=3.0.14" },
     { name = "click", specifier = ">=8.3.1" },
