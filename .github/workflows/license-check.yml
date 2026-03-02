@@ -55,7 +55,7 @@ jobs:
           uv run pip-licenses --fail-on="GPL-3.0;AGPL-3.0;LGPL-3.0" || echo "problematic_licenses=true" >> $GITHUB_OUTPUT
 
       - name: Upload license report
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: license-report
           path: |
