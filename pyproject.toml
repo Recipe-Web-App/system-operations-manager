@@ -63,7 +63,7 @@ dependencies = [
 cli = [
     "cloup>=3.0.8",
     "cement>=3.0.14",
-    "blessed>=1.30.0",
+    "blessed>=1.32.0",
     "prompt-toolkit>=3.0.52",
 ]
 kubernetes = [
