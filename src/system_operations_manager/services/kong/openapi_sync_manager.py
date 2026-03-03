@@ -283,6 +283,7 @@ class OpenAPISyncManager:
         *,
         path_prefix: str | None = None,
         strip_path: bool = True,
+        include_options_method: bool = False,
     ) -> list[RouteMapping]:
         """Generate Kong route mappings from OpenAPI spec.
 
@@ -294,6 +295,9 @@ class OpenAPISyncManager:
             service_name: Kong service name (used for route naming and tagging).
             path_prefix: Optional prefix to add to all paths.
             strip_path: Whether routes should strip the matched path.
+            include_options_method: Include OPTIONS in route methods for CORS
+                preflight support. When True, OPTIONS is added to every route's
+                methods list so Kong can match preflight requests.
 
         Returns:
             List of route mappings.
@@ -328,6 +332,8 @@ class OpenAPISyncManager:
 
             # Collect methods and tags
             methods = sorted({op.method for op in operations})
+            if include_options_method and "OPTIONS" not in methods:
+                methods = sorted(set(methods) | {"OPTIONS"})
             operation_tags: set[str] = set()
             operation_ids: list[str] = []
 

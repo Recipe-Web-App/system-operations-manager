@@ -191,6 +191,13 @@ def register_registry_commands(
             bool,
             typer.Option("--strip-path/--no-strip-path", help="Strip path when proxying"),
         ] = False,
+        include_options_method: Annotated[
+            bool,
+            typer.Option(
+                "--include-options/--no-include-options",
+                help="Include OPTIONS method on all routes for CORS preflight",
+            ),
+        ] = False,
     ) -> None:
         """Add a service to the registry.
 
@@ -198,6 +205,7 @@ def register_registry_commands(
             ops kong registry add auth-service --host auth.local --port 8080
             ops kong registry add api --host api.local --tag prod --tag api
             ops kong registry add users --host users.local --openapi-spec ./openapi.yaml
+            ops kong registry add api --host api.local --spec ./openapi.yaml --include-options
         """
         try:
             entry = ServiceRegistryEntry(
@@ -210,6 +218,7 @@ def register_registry_commands(
                 openapi_spec=openapi_spec,
                 path_prefix=path_prefix,
                 strip_path=strip_path,
+                include_options_method=include_options_method,
             )
         except PydanticValidationError as e:
             console.print("[red]Error:[/red] Invalid service configuration")
@@ -253,6 +262,13 @@ def register_registry_commands(
             bool | None,
             typer.Option("--strip-path/--no-strip-path", help="Strip path when proxying"),
         ] = None,
+        include_options_method: Annotated[
+            bool | None,
+            typer.Option(
+                "--include-options/--no-include-options",
+                help="Include OPTIONS method on all routes for CORS preflight",
+            ),
+        ] = None,
     ) -> None:
         """Edit an existing service in the registry.
 
@@ -262,7 +278,7 @@ def register_registry_commands(
             ops kong registry edit auth-service --port 9090
             ops kong registry edit auth-service --host new-host.local --port 8080
             ops kong registry edit auth-service --no-strip-path
-            ops kong registry edit auth-service --tag prod --tag api
+            ops kong registry edit auth-service --include-options
         """
         manager = get_registry_manager()
         existing = manager.get_service(name)
@@ -290,6 +306,8 @@ def register_registry_commands(
             updated_data["path_prefix"] = path_prefix
         if strip_path is not None:
             updated_data["strip_path"] = strip_path
+        if include_options_method is not None:
+            updated_data["include_options_method"] = include_options_method
 
         try:
             updated_entry = ServiceRegistryEntry(**updated_data)

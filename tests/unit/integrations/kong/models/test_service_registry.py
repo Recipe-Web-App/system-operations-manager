@@ -30,6 +30,7 @@ class TestServiceRegistryEntry:
         assert entry.port == 80
         assert entry.protocol == "http"
         assert entry.enabled is True
+        assert entry.include_options_method is False
         assert entry.openapi_spec is None
 
     @pytest.mark.unit
@@ -50,6 +51,7 @@ class TestServiceRegistryEntry:
             openapi_spec="~/specs/api.yaml",
             path_prefix="/api/v1",
             strip_path=False,
+            include_options_method=True,
         )
 
         assert entry.name == "api-service"
@@ -62,6 +64,7 @@ class TestServiceRegistryEntry:
         assert entry.openapi_spec is not None
         assert entry.path_prefix == "/api/v1"
         assert entry.strip_path is False
+        assert entry.include_options_method is True
 
     @pytest.mark.unit
     def test_name_validation_empty(self) -> None:
