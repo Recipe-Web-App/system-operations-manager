@@ -708,6 +708,9 @@ class RegistryManager:
                 if method in methods:
                     http_methods.append(method.upper())
 
+            if entry.include_options_method and "OPTIONS" not in http_methods:
+                http_methods.append("OPTIONS")
+
             if not http_methods:
                 continue
 
@@ -791,6 +794,7 @@ class RegistryManager:
             entry.name,
             path_prefix=entry.path_prefix,
             strip_path=entry.strip_path,
+            include_options_method=entry.include_options_method,
         )
 
         # Calculate diff and apply

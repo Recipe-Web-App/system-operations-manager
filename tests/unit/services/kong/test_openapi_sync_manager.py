@@ -255,6 +255,56 @@ class TestRouteMapping:
         assert "Users" in users_route.tags
 
     @pytest.mark.unit
+    def test_generate_route_mappings_with_include_options(
+        self, manager: OpenAPISyncManager
+    ) -> None:
+        """Should include OPTIONS in methods when include_options_method is True."""
+        spec = OpenAPISpec(
+            title="Test API",
+            version="1.0.0",
+            operations=[
+                OpenAPIOperation(
+                    path="/login",
+                    method="POST",
+                    operation_id="login",
+                    tags=["Auth"],
+                ),
+            ],
+            all_tags=["Auth"],
+        )
+
+        mappings = manager.generate_route_mappings(
+            spec, "auth-service", include_options_method=True
+        )
+
+        assert len(mappings) == 1
+        assert set(mappings[0].methods) == {"OPTIONS", "POST"}
+
+    @pytest.mark.unit
+    def test_generate_route_mappings_without_include_options(
+        self, manager: OpenAPISyncManager
+    ) -> None:
+        """Should not include OPTIONS by default."""
+        spec = OpenAPISpec(
+            title="Test API",
+            version="1.0.0",
+            operations=[
+                OpenAPIOperation(
+                    path="/login",
+                    method="POST",
+                    operation_id="login",
+                    tags=["Auth"],
+                ),
+            ],
+            all_tags=["Auth"],
+        )
+
+        mappings = manager.generate_route_mappings(spec, "auth-service")
+
+        assert len(mappings) == 1
+        assert set(mappings[0].methods) == {"POST"}
+
+    @pytest.mark.unit
     def test_route_naming_with_operation_id(self, manager: OpenAPISyncManager) -> None:
         """Should use operationId for route naming."""
         spec = OpenAPISpec(

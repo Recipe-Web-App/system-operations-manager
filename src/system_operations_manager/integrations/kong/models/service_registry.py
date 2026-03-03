@@ -40,6 +40,7 @@ class ServiceRegistryEntry(BaseModel):
         openapi_spec: Path to OpenAPI specification file.
         path_prefix: Prefix to add to all route paths.
         strip_path: Whether to strip matched path when proxying.
+        include_options_method: Include OPTIONS in route methods for CORS preflight.
     """
 
     model_config = ConfigDict(
@@ -76,6 +77,10 @@ class ServiceRegistryEntry(BaseModel):
     strip_path: bool = Field(
         default=False,
         description="Strip matched path when proxying",
+    )
+    include_options_method: bool = Field(
+        default=False,
+        description="Include OPTIONS method on all routes for CORS preflight support",
     )
 
     @field_validator("name")
