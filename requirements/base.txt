@@ -24,7 +24,7 @@ PyYAML>=6.0
 
 # HTTP client for API integrations
 httpx>=0.25.0
-requests>=2.31.0
+requests>=2.33.0
 
 # Templating
 jinja2>=3.1.0
@@ -42,7 +42,7 @@ watchdog>=3.0.0
 pathspec>=0.11.0
 
 # Cryptography for secret management
-cryptography>=41.0.0
+cryptography>=48.0.1
 
 # Validation and data processing
 jsonschema>=4.17.0

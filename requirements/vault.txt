@@ -23,7 +23,7 @@ google-cloud-secret-manager>=2.17.0
 kubernetes>=28.1.0
 
 # Encryption utilities
-cryptography>=41.0.0
+cryptography>=48.0.1
 pynacl>=1.5.0
 
 # Key derivation and password utilities
@@ -31,7 +31,7 @@ bcrypt>=4.1.0
 passlib>=1.7.4
 
 # JWT token handling
-pyjwt>=2.8.0
+pyjwt>=2.13.0
 
 # Certificate management
 pyopenssl>=23.3.0
